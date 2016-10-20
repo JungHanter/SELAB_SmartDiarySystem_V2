@@ -26,8 +26,8 @@ class SimilarityAnalyzer:
         self.current_sent = ""
         self.current_lemma = []
 
-        self.diary_db = database.DiaryManager()
-        self.c_text_db = database.ConvertedTextManager()
+        self.diary_db = database.AudioDiaryManager()
+        self.c_text_db = database.TextDiaryManager()
 
     def find_most_similar_docs(self, query_sentence, user_id='lhs', limit=10):
         """Find N most similar documents

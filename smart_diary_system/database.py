@@ -15,12 +15,12 @@ logger.setLevel(level=logging.DEBUG)
 
 class DBManager(object):
     def __init__(self):
-        """DB Connection Class for Smart Diary (SD) Database
+        """DB Connection Class for Smart audio_diary (SD) Database
 
         """
         try:
             self.conn = pymysql.connect(host='203.253.23.17', port=3306, user='root', passwd='lovejesus',
-                                        db='smartdiary', charset='utf8', use_unicode=True)
+                                        db='new_smartdiary', charset='utf8', use_unicode=True)
             self.connected = True
         except pymysql.Error:
             self.connected = False
@@ -28,12 +28,12 @@ class DBManager(object):
 
 class UserManager(DBManager):
     def __init__(self):
-        """DB Model Class for smarydiary.user table
+        """DB Model Class for smaryaudio_diary.user table
 
         """
         DBManager.__init__(self)
 
-    def add_user(self, user_id, password, name, timestamp, gender):
+    def create_user(self, user_id, password, name, birthday, gender, email, phone):
         """Adding new user to SD DB
         Usually, this method be called
         When User register to SD
@@ -49,22 +49,22 @@ class UserManager(DBManager):
         start = timeit.default_timer()
 
         assert self.connected
-        query_for_add_user = "INSERT INTO user " \
-                             "(user_id, password, name, timestamp, gender) " \
-                             "VALUES (%s, %s, %s, %s, %s)"
+        query_for_create_user = "INSERT INTO user " \
+                             "(user_id, password, name, birthday, gender, email, phone) " \
+                             "VALUES (%s, %s, %s, %s, %s, %s ,%s)"
         try:
             with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                cur.execute(query_for_add_user,
-                            (user_id, password, name, timestamp, gender))
+                cur.execute(query_for_create_user,
+                            (user_id, password, name, birthday, gender, email, phone))
                 self.conn.commit()
                 # END : for calculating execution time
                 stop = timeit.default_timer()
-                logger.debug("DB : add_user() - Execution Time : %s", stop - start)
+                logger.debug("DB : create_user() - Execution Time : %s", stop - start)
             return True
 
         except Exception as exp:
             logger.error(">>>MYSQL ERROR<<<")
-            logger.error("At add_user()")
+            logger.error("At create_user()")
             num, error_msg = exp.args
             logger.error("ERROR NO : %s", num)
             logger.error("ERROR MSG : %s", error_msg)
@@ -96,7 +96,7 @@ class UserManager(DBManager):
             logger.error("ERROR NO : %s", num)
             logger.error("ERROR MSG : %s", error_msg)
 
-    def update_user(self, user_info):
+    def update_user(self, user_id, name, password, gender, email, phone, birthday):
         """retrieving new user from H.I.S DB
             Usually, this method be called
             When User Information need to be display
@@ -107,16 +107,18 @@ class UserManager(DBManager):
         # START : for calculating execution time
         start = timeit.default_timer()
         assert self.connected  # Connection Check Flag
-        query_for_update_user = "UPDATE user SET name = %s, timestamp = %s, gender = %s, password = %s WHERE user_id = %s"
+        query_for_update_user = "UPDATE user SET name = %s, birthday = %s, gender = %s, password = %s," \
+                                " email = %s, phone = %s WHERE user_id = %s"
         try:
             with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                cur.execute(query_for_update_user, (user_info['name'], user_info['timestamp'],
-                                                    user_info['gender'], user_info['password'],
-                                                    user_info['user_id']))
+                affected_rows = cur.execute(query_for_update_user, (name, birthday,
+                                                    gender, password, email, phone,
+                                                    user_id))
                 self.conn.commit()
                 # END : for calculating execution time
                 stop = timeit.default_timer()
                 logger.debug("DB : update_user() - Execution Time : %s", stop - start)
+                logger.debug("DB : AFFECTED ROWS : %s rows", affected_rows)
                 return cur.fetchone()
 
         except Exception as exp:
@@ -126,61 +128,87 @@ class UserManager(DBManager):
             logger.error("ERROR NO : %s", num)
             logger.error("ERROR MSG : %s", error_msg)
 
+    def delete_user(self, user_id):
+        """retrieving new user from H.I.S DB
+            Usually, this method be called
+            When User Information need to be display
 
-class DiaryManager(DBManager):
-    def __init__(self):
-        """DB Model Class for smarydiary.diary table
-
-        """
-        DBManager.__init__(self)
-
-    def create_diary(self, diary_info):
-        """Creating new diary to SD DB
-        Usually, this method be called
-        When User creating new diary
-
-
-        :param diary_info:
-        :rtype None:
-        """
+            :param user_id: id of user of Retrieving Target
+            :rtype: dict contains user's inforamtion
+            """
         # START : for calculating execution time
         start = timeit.default_timer()
-
-        assert self.connected
-        query_for_create_diary = "INSERT INTO diary " \
-                             "(user_id, location, timestamp, title, annotation, audio) " \
-                             "VALUES (%s, %s, %s, %s, %s, %s)"
+        assert self.connected  # Connection Check Flag
+        query_for_delete_user = "DELETE FROM user WHERE user_id = %s "
         try:
             with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                cur.execute(query_for_create_diary,
-                            (diary_info['user_id'],
-                             diary_info['location'], diary_info['timestamp'],
-                             diary_info['title'],
-                             diary_info['annotation'],
-                             diary_info['audio']))
-                cur.execute("SELECT LAST_INSERT_ID()")
+                affected_rows = cur.execute(query_for_delete_user, user_id)
                 self.conn.commit()
-                diary_id = cur.fetchone()['LAST_INSERT_ID()']
                 # END : for calculating execution time
                 stop = timeit.default_timer()
-                logger.debug("DB : create_diary() - Execution Time : %s", stop - start)
-            return diary_id
+                logger.debug("DB : delete_user() - Execution Time : %s", stop - start)
+                logger.debug("DB : AFFECTED ROWS : %s rows", affected_rows)
+                return True
 
         except Exception as exp:
             logger.error(">>>MYSQL ERROR<<<")
-            logger.error("At create_diary()")
+            logger.error("At delete_user()")
             num, error_msg = exp.args
             logger.error("ERROR NO : %s", num)
             logger.error("ERROR MSG : %s", error_msg)
             return False
 
-    def retrieve_diary(self, diary_id):
-        """Creating new diary to SD DB
+
+class AudioDiaryManager(DBManager):
+    def __init__(self):
+        """DB Model Class for smaryaudio_diary.audio_diary table
+
+        """
+        DBManager.__init__(self)
+
+    def create_audio_diary(self, user_id, title, created_date):
+        """Creating new audio_diary to SD DB
         Usually, this method be called
-        When User retrieving diary
+        When User creating new audio_diary
 
 
-        :param diary_info:
+        :param audio_diary_info:
+        :rtype None:
+        """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+
+        assert self.connected
+        query_for_create_audio_diary = "INSERT INTO audio_diary " \
+                             "(user_id, title, created_date) " \
+                             "VALUES (%s, %s, %s)"
+        try:
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                cur.execute(query_for_create_audio_diary,
+                            (user_id, title, created_date))
+                cur.execute("SELECT LAST_INSERT_ID()")
+                self.conn.commit()
+                audio_diary_id = cur.fetchone()['LAST_INSERT_ID()']
+                # END : for calculating execution time
+                stop = timeit.default_timer()
+                logger.debug("DB : create_audio_diary() - Execution Time : %s", stop - start)
+            return audio_diary_id
+
+        except Exception as exp:
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At create_audio_diary()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+            return False
+
+    def retrieve_audio_diary_by_user_id(self, user_id):
+        """Creating new audio_diary to SD DB
+        Usually, this method be called
+        When User retrieving audio_diary
+
+
+        :param audio_diary_info:
         :rtype None:
         """
         # START : for calculating execution time
@@ -188,15 +216,14 @@ class DiaryManager(DBManager):
 
         assert self.connected
         try:
-            query_for_create_diary = "SELECT diary.diary_id, diary.user_id, diary.title, diary.timestamp, diary.location, diary.annotation, " \
-                              "IF(audio, 'True', 'False') as audio, converted_text.text FROM diary, converted_text WHERE diary.diary_id = %s AND diary.diary_id = converted_text.diary_id"
+            query_for_retrieve_audio_diary = "SELECT * FROM audio_diary WHERE user_id = %s  "
             with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                cur.execute(query_for_create_diary, diary_id)
-                result = cur.fetchone()
+                cur.execute(query_for_retrieve_audio_diary, user_id)
+                result = cur.fetchall()
                 if result:
                     # END : for calculating execution time
                     stop = timeit.default_timer()
-                    logger.debug("DB : retrieve_user() - Execution Time : %s", stop - start)
+                    logger.debug("DB : retrieve_audio_diary_by_user_id() - Execution Time : %s", stop - start)
                     logger.debug('DB RESULT : %s', result) 
                     return result
                 else:
@@ -204,19 +231,19 @@ class DiaryManager(DBManager):
 
         except Exception as exp:
             logger.error(">>>MYSQL ERROR<<<")
-            logger.error("At retrieve_diary()")
+            logger.error("At retrieve_audio_diary_by_user_id()")
             num, error_msg = exp.args
             logger.error("ERROR NO : %s", num)
             logger.error("ERROR MSG : %s", error_msg)
             return False
 
-    def retrieve_diary_detail(self, diary_info):
-        """Creating new diary to SD DB
+    def retrieve_audio_diary_detail_by_audio_diary_id(self, user_id, audio_diary_id):
+        """Creating new audio_diary to SD DB
         Usually, this method be called
-        When User retrieving diary
+        When User retrieving audio_diary
 
 
-        :param diary_info:
+        :param audio_diary_info:
         :rtype None:
         """
         # START : for calculating execution time
@@ -224,103 +251,37 @@ class DiaryManager(DBManager):
 
         assert self.connected
         try:
-            query_for_diary = "SELECT diary.diary_id, diary.user_id, diary.title, diary.timestamp, diary.annotation, " \
-                              "IF(audio, 'True', 'False') as audio, converted_text.text as text, " \
-                              "diary.location, " \
-                              "converted_text.c_text_id as c_text_id " \
-                                     "FROM diary, converted_text " \
-                                     "WHERE diary.user_id = %s and diary.diary_id = %s " \
-                                     "and diary.diary_id = converted_text.diary_id"
+            query_for_audio_diary = "SELECT audio_diary.*, text_diary.content " \
+                                     "FROM audio_diary, text_diary " \
+                                     "WHERE audio_diary.audio_diary_id = %s AND audio_diary.user_id = %s " \
+                                     "AND audio_diary.audio_diary_id = text_diary.audio_diary_id "
+
             with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                cur.execute(query_for_diary, (diary_info['user_id'], diary_info['diary_id']))
-                diary_result = cur.fetchone()
+                cur.execute(query_for_audio_diary, (audio_diary_id, user_id))
+                audio_diary_result = cur.fetchone()
                 # END : for calculating execution time
                 stop = timeit.default_timer()
-                logger.debug("DB : retrieve_diary_detail() - Execution Time : %s", stop - start)
-            if diary_result:
-                pass
-                # query_for_sentence = "SELECT text as sentence, sentence_id FROM sentence WHERE c_text_id = %s"
-                # with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                #     cur.execute(query_for_sentence, diary_result['c_text_id'])
-                #     sentence_result = cur.fetchall()
-                # if sentence_result:
-                #     query_for_s_element = "SELECT text, pos, element_no FROM s_element WHERE sentence_id = %s"
-                #     for idx, sentence in enumerate(sentence_result):
-                #         with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                #             cur.execute(query_for_s_element, sentence['sentence_id'])
-                #             s_element_result = cur.fetchall()
-                #         sentence_result[idx]['s_element_list'] = s_element_result
-                #     diary_result['sentence_list'] = sentence_result
-                # else:
-                #     pass
+                logger.debug("DB : retrieve_audio_diary_detail_by_audio_diary_id() - Execution Time : %s", stop - start)
+            if audio_diary_result:
+                return audio_diary_result
             else:
-                diary_result = False
-
-            return diary_result
-
-        except Exception as exp:
-            logger.error(">>>MYSQL ERROR<<<")
-            logger.error("At retrieve_diary_detail()")
-            num, error_msg = exp.args
-            logger.error("ERROR NO : %s", num)
-            logger.error("ERROR MSG : %s", error_msg)
-            return False
-
-    def retrieve_diary_list_wit_c_text_list(self, c_text_id_list):
-        """Creating new diary to SD DB
-            Usually, this method be called
-            When User retrieving diary
-
-
-            :param diary_info:
-            :rtype None:
-            """
-        # START : for calculating execution time
-        start = timeit.default_timer()
-
-        assert self.connected
-        try:
-            query_for_list = "SELECT converted_text.text, diary.title, diary.timestamp, diary.user_id, " \
-                             "diary.diary_id, converted_text.c_text_id, diary.annotation, " \
-                              "IF(audio, 'True', 'False') as audio, diary.location FROM diary, converted_text " \
-                             "WHERE diary.diary_id = converted_text.diary_id AND converted_text.c_text_id IN ( "
-            flag = True
-            for c_text_id in c_text_id_list:
-                if c_text_id[1] == 0.0:
-                    break
-                query_for_list = query_for_list + str(int(c_text_id[0])) + ','
-                flag = False
-            if flag:
                 return None
-            query_for_list = query_for_list[:-1]
-            query_for_list = query_for_list + " ) LIMIT 10 "
-            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                cur.execute(query_for_list)
-                result = cur.fetchall()
-                # END : for calculating execution time
-                stop = timeit.default_timer()
-                logger.debug("DB : retrieve_diary_list_wit_c_text_list() - Execution Time : %s", stop - start)
-                if result:
-                    logger.debug('DB RESULT : %s', result) 
-                    return result
-                else:
-                    return None
 
         except Exception as exp:
             logger.error(">>>MYSQL ERROR<<<")
-            logger.error("At retrieve_c_text_list_from_diary()")
+            logger.error("At retrieve_audio_diary_detail_by_audio_diary_id()")
             num, error_msg = exp.args
             logger.error("ERROR NO : %s", num)
             logger.error("ERROR MSG : %s", error_msg)
             return False
 
-    def retrieve_sentence_list_from_diary(self, diary_id):
-        """Creating new diary to SD DB
+    def retrieve_sentence_list_from_audio_diary(self, audio_diary_id):
+        """Creating new audio_diary to SD DB
             Usually, this method be called
-            When User retrieving diary
+            When User retrieving audio_diary
 
 
-            :param diary_info:
+            :param audio_diary_info:
             :rtype None:
             """
         # START : for calculating execution time
@@ -328,14 +289,14 @@ class DiaryManager(DBManager):
 
         assert self.connected
         try:
-            query_for_list = "SELECT sentence.text FROM sentence INNER JOIN converted_text " \
-                             "WHERE converted_text.diary_id = %s "
+            query_for_list = "SELECT sentence.text FROM sentence INNER JOIN text_diary " \
+                             "WHERE text_diary.audio_diary_id = %s "
             with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                cur.execute(query_for_list, diary_id)
+                cur.execute(query_for_list, audio_diary_id)
                 result = cur.fetchall()
                 # END : for calculating execution time
                 stop = timeit.default_timer()
-                logger.debug("DB : retrieve_sentence_list_from_diary() - Execution Time : %s", stop - start)
+                logger.debug("DB : retrieve_sentence_list_from_audio_diary() - Execution Time : %s", stop - start)
 
                 if result:
                     logger.debug('DB RESULT : %s', result)
@@ -346,19 +307,19 @@ class DiaryManager(DBManager):
 
         except Exception as exp:
             logger.error(">>>MYSQL ERROR<<<")
-            logger.error("At retrive_setence_list_from_diary()")
+            logger.error("At retrive_setence_list_from_audio_diary()")
             num, error_msg = exp.args
             logger.error("ERROR NO : %s", num)
             logger.error("ERROR MSG : %s", error_msg)
             return False
 
-    def retrieve_diary_with_keyword(self, diary_info):
-        """Creating new diary to SD DB
+    def retrieve_audio_diary_by_title(self, audio_diary_info):
+        """Creating new audio_diary to SD DB
             Usually, this method be called
-            When User retrieving diary
+            When User retrieving audio_diary
 
 
-            :param diary_info:
+            :param audio_diary_info:
             :rtype None:
             """
         # START : for calculating execution time
@@ -366,28 +327,28 @@ class DiaryManager(DBManager):
 
         assert self.connected
         try:
-            query_for_list = "SELECT diary.diary_id, diary.user_id, diary.title, diary.timestamp, diary.annotation, " \
-                              "IF(audio, 'True', 'False') as audio, converted_text.text, diary.location FROM diary, converted_text " \
-                             "WHERE diary.diary_id = converted_text.diary_id AND converted_text.text LIKE %s " \
-                             "AND diary.user_id = %s "
+            query_for_list = "SELECT audio_diary.audio_diary_id, audio_diary.user_id, audio_diary.title, audio_diary.timestamp, audio_diary.annotation, " \
+                              "IF(audio, 'True', 'False') as audio, text_diary.text, audio_diary.location FROM audio_diary, text_diary " \
+                             "WHERE audio_diary.audio_diary_id = text_diary.audio_diary_id AND text_diary.text LIKE %s " \
+                             "AND audio_diary.user_id = %s "
             with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                if 'limit' in diary_info:
-                    if 'offset' in diary_info:
-                        query_for_list += " ORDER BY diary.timestamp DESC LIMIT %s OFFSET %s"
-                        cur.execute(query_for_list, ('%'+diary_info['keyword']+'%', diary_info["user_id"],
-                                                     int(diary_info['limit']), int(diary_info['offset'])))
+                if 'limit' in audio_diary_info:
+                    if 'offset' in audio_diary_info:
+                        query_for_list += " ORDER BY audio_diary.timestamp DESC LIMIT %s OFFSET %s"
+                        cur.execute(query_for_list, ('%'+audio_diary_info['keyword']+'%', audio_diary_info["user_id"],
+                                                     int(audio_diary_info['limit']), int(audio_diary_info['offset'])))
                     else:
-                        query_for_list += " ORDER BY diary.timestamp DESC LIMIT %s"
-                        cur.execute(query_for_list, ('%'+diary_info['keyword']+'%', diary_info["user_id"],
-                                                     int(diary_info['limit'])))
+                        query_for_list += " ORDER BY audio_diary.timestamp DESC LIMIT %s"
+                        cur.execute(query_for_list, ('%'+audio_diary_info['keyword']+'%', audio_diary_info["user_id"],
+                                                     int(audio_diary_info['limit'])))
                 else:
-                    query_for_list += " ORDER BY diary.timestamp DESC"
-                    cur.execute(query_for_list, ('%'+diary_info['keyword']+'%', diary_info["user_id"]))
+                    query_for_list += " ORDER BY audio_diary.timestamp DESC"
+                    cur.execute(query_for_list, ('%'+audio_diary_info['keyword']+'%', audio_diary_info["user_id"]))
 
                 result = cur.fetchall()
                 # END : for calculating execution time
                 stop = timeit.default_timer()
-                logger.debug("DB : retrieve_diary_with_keyword() - Execution Time : %s", stop - start)
+                logger.debug("DB : retrieve_audio_diary_with_keyword() - Execution Time : %s", stop - start)
                 if result:
 
                     logger.debug('DB RESULT : %s', result) 
@@ -397,19 +358,19 @@ class DiaryManager(DBManager):
 
         except Exception as exp:
             logger.error(">>>MYSQL ERROR<<<")
-            logger.error("At retrieve_diary_with_keyword()")
+            logger.error("At retrieve_audio_diary_with_keyword()")
             num, error_msg = exp.args
             logger.error("ERROR NO : %s", num)
             logger.error("ERROR MSG : %s", error_msg)
             return False
 
-    def update_diary(self, diary_info):
-        """Creating new diary to SD DB
+    def update_audio_diary(self, audio_diary_info):
+        """Creating new audio_diary to SD DB
             Usually, this method be called
-            When User retrieving diary
+            When User retrieving audio_diary
 
 
-            :param diary_info:
+            :param audio_diary_info:
             :rtype None:
             """
         # START : for calculating execution time
@@ -417,32 +378,32 @@ class DiaryManager(DBManager):
 
         assert self.connected
         try:
-            query_for_delete = "UPDATE diary SET title = %s, location = %s, annotation = %s, audio = %s, timestamp = %s WHERE diary_id = %s "
+            query_for_delete = "UPDATE audio_diary SET title = %s, created_date = %s WHERE audio_diary_id = %s "
 
             with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                cur.execute(query_for_delete, (diary_info['title'], diary_info['location'], diary_info['annotation'],
-                                               diary_info['audio'], int(diary_info['timestamp']),
-                                               int(diary_info['diary_id'])))
+                affected_rows = cur.execute(query_for_delete, (audio_diary_info['title'], audio_diary_info['created_date'], int(audio_diary_info['audio_diary_id'])))
                 self.conn.commit()
                 # END : for calculating execution time
                 stop = timeit.default_timer()
-                logger.debug("DB : update_diary() - Execution Time : %s", stop - start)
+                logger.debug("DB : update_audio_diary() - Execution Time : %s", stop - start)
+                logger.debug("DB : AFFECTED ROWS : %s rows", affected_rows)
+                return True
 
         except Exception as exp:
             logger.error(">>>MYSQL ERROR<<<")
-            logger.error("At update_diary()")
+            logger.error("At update_audio_diary()")
             num, error_msg = exp.args
             logger.error("ERROR NO : %s", num)
             logger.error("ERROR MSG : %s", error_msg)
             return False
 
-    def delete_diary(self, diary_id):
-        """Creating new diary to SD DB
+    def delete_audio_diary(self, audio_diary_id):
+        """Creating new audio_diary to SD DB
         Usually, this method be called
-        When User retrieving diary
+        When User retrieving audio_diary
 
 
-        :param diary_info:
+        :param audio_diary_info:
         :rtype None:
         """
         # START : for calculating execution time
@@ -450,32 +411,32 @@ class DiaryManager(DBManager):
 
         assert self.connected
         try:
-            query_for_delete = "DELETE FROM diary WHERE diary_id  = %s "
+            query_for_delete = "DELETE FROM audio_diary WHERE audio_diary_id  = %s "
             with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                cur.execute(query_for_delete, int(diary_id))
+                cur.execute(query_for_delete, int(audio_diary_id))
                 self.conn.commit()
                 # END : for calculating execution time
                 stop = timeit.default_timer()
-                logger.debug("DB : update_diary() - Execution Time : %s", stop - start)
-
+                logger.debug("DB : delete_audio_diary() - Execution Time : %s", stop - start)
+                print(cur.fetchone())
             return True
 
         except Exception as exp:
             logger.exception(exp)
             logger.error(">>>MYSQL ERROR<<<")
-            logger.error("At delete_diary()")
+            logger.error("At delete_audio_diary()")
             num, error_msg = exp.args
             logger.error("ERROR NO : %s", num)
             logger.error("ERROR MSG : %s", error_msg)
             return False
 
-    def delete_c_text_from_diary(self, diary_id):
-        """Creating new diary to SD DB
+    def delete_c_text_from_audio_diary(self, audio_diary_id):
+        """Creating new audio_diary to SD DB
         Usually, this method be called
-        When User retrieving diary
+        When User retrieving audio_diary
 
 
-        :param diary_info:
+        :param audio_diary_info:
         :rtype None:
         """
         # START : for calculating execution time
@@ -483,83 +444,83 @@ class DiaryManager(DBManager):
 
         assert self.connected
         try:
-            query_for_delete = "DELETE FROM converted_text WHERE diary_id  = %s "
+            query_for_delete = "DELETE FROM text_diary WHERE audio_diary_id  = %s "
             with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                cur.execute(query_for_delete, int(diary_id))
+                cur.execute(query_for_delete, int(audio_diary_id))
                 self.conn.commit()
                 # END : for calculating execution time
                 stop = timeit.default_timer()
-                logger.debug("DB : delete_c_text_from_diary() - Execution Time : %s", stop - start)
+                logger.debug("DB : delete_c_text_from_audio_diary() - Execution Time : %s", stop - start)
             return True
 
         except Exception as exp:
             logger.exception(exp)
             logger.error(">>>MYSQL ERROR<<<")
-            logger.error("At delete_c_text_from_diary()")
+            logger.error("At delete_c_text_from_audio_diary()")
             num, error_msg = exp.args
             logger.error("ERROR NO : %s", num)
             logger.error("ERROR MSG : %s", error_msg)
             return False
 
 
-class ConvertedTextManager(DBManager):
+class TextDiaryManager(DBManager):
     def __init__(self):
-        """DB Model Class for smarydiary.converted_text table
+        """DB Model Class for smaryaudio_diary.text_diary table
 
         """
         DBManager.__init__(self)
 
-    def add_converted_text(self, c_text_info):
-        """Adding new diary to SD DB
+    def create_text_diary(self, audio_diary_id, content, created_date):
+        """Adding new audio_diary to SD DB
         Usually, this method be called
-        When User creating new diary
+        When User creating new audio_diary
 
         :rtype None:
         """
         # START : for calculating execution time
         start = timeit.default_timer()
         assert self.connected
-        query_for_add_c_text = "INSERT INTO converted_text " \
-                             "(diary_id, text) " \
-                             "VALUES (%s, %s) "
+        query_for_create_c_text = "INSERT INTO text_diary " \
+                             "(audio_diary_id, content, created_date) " \
+                             "VALUES (%s, %s, %s) "
         try:
             with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                cur.execute(query_for_add_c_text, (c_text_info['diary_id'], c_text_info['text']))
+                cur.execute(query_for_create_c_text, (audio_diary_id, content, created_date))
                 cur.execute("SELECT LAST_INSERT_ID()")
                 self.conn.commit()
 
-                c_text_id = cur.fetchone()['LAST_INSERT_ID()']
+                text_diary_id = cur.fetchone()['LAST_INSERT_ID()']
 
                 # END : for calculating execution time
                 stop = timeit.default_timer()
-                logger.debug("DB : add_converted_text() - Execution Time : %s", stop - start)
-            return c_text_id
+                logger.debug("DB : create_text_diary() - Execution Time : %s", stop - start)
+            return text_diary_id
         except pymysql.MySQLError as exp:
             logger.error(">>>MYSQL ERROR<<<")
-            logger.error("At add_converted_text()")
+            logger.error("At create_text_diary()")
             num, error_msg = exp.args
             logger.error("ERROR NO : %s", num)
             logger.error("ERROR MSG : %s", error_msg)
             return False
 
-    def get_converted_text(self, c_text_id):
+    def retrieve_text_diary_by_audio_diary_id(self, audio_diary_id):
         """retrieving converted text from SD DB
         Usually, this method be called
         When ...
 
-        :param c_text_id:
+        :param text_diary_id:
         :rtype: dict contains user's inforamtion
         """
         # START : for calculating execution time
         start = timeit.default_timer()
         assert self.connected  # Connection Check Flag
-        query_for_c_text = "SELECT * FROM converted_text WHERE c_text_id = %s"
+        query_for_c_text = "SELECT * FROM text_diary WHERE audio_diary_id = %s"
         try:
             with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                cur.execute(query_for_c_text, c_text_id)
+                cur.execute(query_for_c_text, audio_diary_id)
                 # END : for calculating execution time
                 stop = timeit.default_timer()
-                logger.debug("DB : get_converted_text() - Execution Time : %s", stop - start)
+                logger.debug("DB : get_text_diary() - Execution Time : %s", stop - start)
                 result = cur.fetchone()
                 if result:
                     logger.debug('DB RESULT : %s', result) 
@@ -568,98 +529,270 @@ class ConvertedTextManager(DBManager):
                     return None
         except pymysql.MySQLError as exp:
             logger.error(">>>MYSQL ERROR<<<")
-            logger.error("At get_converted_text()")
+            logger.error("At get_text_diary()")
             num, error_msg = exp.args
             logger.error("ERROR NO : %s", num)
             logger.error("ERROR MSG : %s", error_msg)
             return False
 
-    def get_converted_text_list(self, diary_info):
-        """Creating new diary to SD DB
+    def retrieve_text_diary_list(self, audio_diary_info):
+        """Creating new audio_diary to SD DB
         Usually, this method be called
-        When User creating new diary
+        When User creating new audio_diary
 
 
 
-        :type diary_info: dict contains user_id, timestamp_from, timestamp_to
+        :type audio_diary_info: dict contains user_id, timestamp_from, timestamp_to
         :rtype query result[list] or false:
         """
         # START : for calculating execution time
         start = timeit.default_timer()
         assert self.connected
-        query_for_get_c_text_list = "SELECT d.c_text_id, d.text, m.user_id, d.diary_id, m.timestamp, m.title, m.annotation FROM converted_text AS d " \
-                                    "INNER JOIN diary as m " \
-                                    "ON m.diary_id = d.diary_id " \
+        query_for_get_c_text_list = "SELECT d.content, d.audio_diary_id, m.created_date, m.title FROM text_diary AS d " \
+                                    "INNER JOIN audio_diary as m " \
+                                    "ON m.audio_diary_id = d.audio_diary_id " \
                                     "WHERE m.user_id = %s"
         try:
             with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                if 'timestamp_from' in diary_info and 'timestamp_to' in diary_info:
-                    if 'limit' in diary_info:
-                        if 'offset' in diary_info:
-                            query_for_get_c_text_list += " AND m.timestamp>=%s AND m.timestamp<=%s ORDER BY m.timestamp DESC LIMIT %s OFFSET %s"
-                            cur.execute(query_for_get_c_text_list, (diary_info["user_id"], diary_info["timestamp_from"],
-                                        diary_info["timestamp_to"], int(diary_info['limit']),
-                                        int(diary_info['offset'])))
+                if 'timestamp_from' in audio_diary_info and 'timestamp_to' in audio_diary_info:
+                    if 'limit' in audio_diary_info:
+                        if 'offset' in audio_diary_info:
+                            query_for_get_c_text_list += " AND m.created_date>=%s AND m.created_date<=%s ORDER BY m.created_date DESC LIMIT %s OFFSET %s"
+                            cur.execute(query_for_get_c_text_list, (audio_diary_info["user_id"], audio_diary_info["timestamp_from"],
+                                        audio_diary_info["timestamp_to"], int(audio_diary_info['limit']),
+                                        int(audio_diary_info['offset'])))
                         else:
-                            query_for_get_c_text_list += " AND m.timestamp>=%s AND m.timestamp<=%s ORDER BY m.timestamp DESC LIMIT %s"
-                            cur.execute(query_for_get_c_text_list, (diary_info["user_id"], diary_info["timestamp_from"],
-                                                                    diary_info["timestamp_to"], int(diary_info['limit'])))
+                            query_for_get_c_text_list += " AND m.created_date>=%s AND m.created_date<=%s ORDER BY m.created_date DESC LIMIT %s"
+                            cur.execute(query_for_get_c_text_list, (audio_diary_info["user_id"], audio_diary_info["timestamp_from"],
+                                                                    audio_diary_info["timestamp_to"], int(audio_diary_info['limit'])))
                     else:
-                        query_for_get_c_text_list += " AND m.timestamp>=%s AND m.timestamp<=%s ORDER BY m.timestamp DESC"
-                        cur.execute(query_for_get_c_text_list, (diary_info["user_id"], diary_info["timestamp_from"],
-                                                                diary_info["timestamp_to"]))
-                elif 'timestamp_from' in diary_info:
-                    if 'limit' in diary_info:
-                        if 'offset' in diary_info:
-                            query_for_get_c_text_list += " AND m.timestamp>=%s ORDER BY m.timestamp DESC LIMIT %s OFFSET %s"
-                            cur.execute(query_for_get_c_text_list, (diary_info["user_id"], diary_info["timestamp_from"],
-                                        int(diary_info['limit']), int(diary_info['offset'])))
+                        query_for_get_c_text_list += " AND m.created_date>=%s AND m.created_date<=%s ORDER BY m.created_date DESC"
+                        cur.execute(query_for_get_c_text_list, (audio_diary_info["user_id"], audio_diary_info["timestamp_from"],
+                                                                audio_diary_info["timestamp_to"]))
+                elif 'timestamp_from' in audio_diary_info:
+                    if 'limit' in audio_diary_info:
+                        if 'offset' in audio_diary_info:
+                            query_for_get_c_text_list += " AND m.created_date>=%s ORDER BY m.created_date DESC LIMIT %s OFFSET %s"
+                            cur.execute(query_for_get_c_text_list, (audio_diary_info["user_id"], audio_diary_info["timestamp_from"],
+                                        int(audio_diary_info['limit']), int(audio_diary_info['offset'])))
                         else:
-                            query_for_get_c_text_list += " AND m.timestamp>=%s ORDER BY m.timestamp DESC LIMIT %s"
+                            query_for_get_c_text_list += " AND m.created_date>=%s ORDER BY m.created_date DESC LIMIT %s"
                             cur.execute(query_for_get_c_text_list,
-                                        (diary_info["user_id"], diary_info["timestamp_from"],
-                                        int(diary_info['limit'])))
+                                        (audio_diary_info["user_id"], audio_diary_info["timestamp_from"],
+                                        int(audio_diary_info['limit'])))
                     else:
-                        query_for_get_c_text_list += " AND m.timestamp>=%s ORDER BY m.timestamp DESC"
-                        cur.execute(query_for_get_c_text_list, (diary_info["user_id"], diary_info["timestamp_from"]))
+                        query_for_get_c_text_list += " AND m.created_date>=%s ORDER BY m.created_date DESC"
+                        cur.execute(query_for_get_c_text_list, (audio_diary_info["user_id"], audio_diary_info["timestamp_from"]))
 
-                elif 'timestamp_to' in diary_info:
-                    if 'limit' in diary_info:
-                        if 'offset' in diary_info:
-                            query_for_get_c_text_list += " AND m.timestamp<=%s ORDER BY m.timestamp DESC LIMIT %s OFFSET %s"
-                            cur.execute(query_for_get_c_text_list, (diary_info["user_id"], diary_info["timestamp_to"],
-                                        int(diary_info['limit']), int(diary_info['offset'])))
+                elif 'timestamp_to' in audio_diary_info:
+                    if 'limit' in audio_diary_info:
+                        if 'offset' in audio_diary_info:
+                            query_for_get_c_text_list += " AND m.created_date<=%s ORDER BY m.created_date DESC LIMIT %s OFFSET %s"
+                            cur.execute(query_for_get_c_text_list, (audio_diary_info["user_id"], audio_diary_info["timestamp_to"],
+                                        int(audio_diary_info['limit']), int(audio_diary_info['offset'])))
                         else:
-                            query_for_get_c_text_list += " AND m.timestamp<=%s ORDER BY m.timestamp DESC LIMIT %s"
-                            cur.execute(query_for_get_c_text_list, (diary_info["user_id"], diary_info["timestamp_to"],
-                                        int(diary_info['limit'])))
+                            query_for_get_c_text_list += " AND m.created_date<=%s ORDER BY m.created_date DESC LIMIT %s"
+                            cur.execute(query_for_get_c_text_list, (audio_diary_info["user_id"], audio_diary_info["timestamp_to"],
+                                        int(audio_diary_info['limit'])))
                     else:
-                        query_for_get_c_text_list += " AND m.timestamp<=%s ORDER BY m.timestamp DESC"
-                        cur.execute(query_for_get_c_text_list, (diary_info["user_id"], diary_info["timestamp_to"]))
+                        query_for_get_c_text_list += " AND m.created_date<=%s ORDER BY m.created_date DESC"
+                        cur.execute(query_for_get_c_text_list, (audio_diary_info["user_id"], audio_diary_info["timestamp_to"]))
                 else:
-                    if 'limit' in diary_info:
-                        if 'offset' in diary_info:
-                            query_for_get_c_text_list += " ORDER BY m.timestamp DESC LIMIT %s OFFSET %s"
-                            cur.execute(query_for_get_c_text_list, (diary_info["user_id"], int(diary_info['limit']),
-                                                                    int(diary_info['offset'])))
+                    if 'limit' in audio_diary_info:
+                        if 'offset' in audio_diary_info:
+                            query_for_get_c_text_list += " ORDER BY m.created_date DESC LIMIT %s OFFSET %s"
+                            cur.execute(query_for_get_c_text_list, (audio_diary_info["user_id"], int(audio_diary_info['limit']),
+                                                                    int(audio_diary_info['offset'])))
                         else:
-                            query_for_get_c_text_list += " ORDER BY m.timestamp DESC LIMIT %s"
-                            cur.execute(query_for_get_c_text_list, (diary_info["user_id"], int(diary_info['limit'])))
+                            query_for_get_c_text_list += " ORDER BY m.created_date DESC LIMIT %s"
+                            cur.execute(query_for_get_c_text_list, (audio_diary_info["user_id"], int(audio_diary_info['limit'])))
                     else:
-                        query_for_get_c_text_list += " ORDER BY m.timestamp DESC"
-                        cur.execute(query_for_get_c_text_list, diary_info["user_id"])
+                        query_for_get_c_text_list += " ORDER BY m.created_date DESC"
+                        cur.execute(query_for_get_c_text_list, audio_diary_info["user_id"])
                 result = cur.fetchall()
                 # END : for calculating execution time
                 stop = timeit.default_timer()
-                logger.debug("DB : get_converted_text_list() - Execution Time : %s", stop - start)
+                logger.debug("DB : get_text_diary_list() - Execution Time : %s", stop - start)
                 if result:
                     logger.debug('DB RESULT : %s', result) 
                     return result
                 else:
-                    return None
+                    logger.debug('DB RESULT : %s', result)
+                    return []
         except pymysql.MySQLError as exp:
             logger.error(">>>MYSQL ERROR<<<")
-            logger.error("At get_converted_text_list()")
+            logger.error("At get_text_diary_list()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+            return False
+
+    def delete_text_diary_by_audio_diary_id(self, audio_diary_id):
+        """retrieving new user from H.I.S DB
+        Usually, this method be called
+        When User Information need to be display
+
+        :param user_id: id of user of Retrieving Target
+        :rtype: dict contains user's inforamtion
+        """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+        assert self.connected  # Connection Check Flag
+        query_for_delete_text_diary = "DELETE FROM text_diary WHERE audio_diary_id = %s "
+        try:
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                cur.execute(query_for_delete_text_diary, audio_diary_id)
+                self.conn.commit()
+                # END : for calculating execution time
+                stop = timeit.default_timer()
+                logger.debug("DB : delete_text_diary_by_audio_diary_id() - Execution Time : %s", stop - start)
+                return True
+
+        except Exception as exp:
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At delete_text_diary_by_audio_diary_id()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+            return False
+
+
+class DiaryContextManager(DBManager):
+    def __init__(self):
+        """DB Model Class for smartaudio_diary.sentence table
+
+        """
+        DBManager.__init__(self)
+
+    def create_diary_context(self, audio_diary_id, diary_context_info):
+        """Adding new audio_diary to SD DB
+            Usually, this method be called
+            converted text has been parsed
+
+            :rtype None:
+            """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+
+        assert self.connected
+        if type(diary_context_info) is list:
+            query_for_create_diary_context = "INSERT INTO diary_context " \
+                                        "(audio_diary_id, type, subtype, value, date_added) " \
+                                        "VALUES"
+            for d_item in diary_context_info:
+                query_for_create_diary_context += " (%s, '%s', '%s', '%s', %s)," % (
+                    audio_diary_id, d_item['type'], d_item['subtype'], d_item['value'], int(d_item['date_added']))
+            query_for_create_diary_context = query_for_create_diary_context[:-1]
+            try:
+                with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                    cur.execute(query_for_create_diary_context)
+                    cur.execute("SELECT LAST_INSERT_ID()")
+                    self.conn.commit()
+
+                    diary_context_id = cur.fetchone()['LAST_INSERT_ID()']
+
+                    # END : for calculating execution time
+                    stop = timeit.default_timer()
+                    logger.debug("DB : create_diary_context() - Execution Time : %s", stop - start)
+
+                return diary_context_id
+            except pymysql.MySQLError as exp:
+                logger.error(">>>MYSQL ERROR<<<")
+                logger.error("At create_diary_context()")
+                num, error_msg = exp.args
+                logger.error("ERROR NO : %s", num)
+                logger.error("ERROR MSG : %s", error_msg)
+                return False
+        else:
+            query_for_create_analytics = "INSERT INTO diary_context " \
+                                     "(audio_diary_id, type, subtype, value, date_added) " \
+                                     "VALUES (%s, %s, %s, %s, %s)"
+            try:
+                with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                    cur.execute(query_for_create_analytics, (diary_context_info['audio_diary_id'],
+                                                             diary_context_info['type'],
+                                                             diary_context_info['subtype'],
+                                                             diary_context_info['value'],
+                                                             diary_context_info['date_added']))
+                    self.conn.commit()
+
+                    diary_context_id = cur.fetchone()['LAST_INSERT_ID()']
+
+                    # END : for calculating execution time
+                    stop = timeit.default_timer()
+                    logger.debug("DB : create_analytics() - Execution Time : %s", stop - start)
+                return diary_context_id
+            except pymysql.MySQLError as exp:
+                logger.error(">>>MYSQL ERROR<<<")
+                logger.error("At create_analytics()")
+                num, error_msg = exp.args
+                logger.error("ERROR NO : %s", num)
+                logger.error("ERROR MSG : %s", error_msg)
+                return False
+
+    def retrieve_diary_context_by_audio_diary_id(self, audio_diary_id):
+        """Creating new audio_diary to SD DB
+            Usually, this method be called
+            When User retrieving audio_diary
+
+
+            :param audio_diary_info:
+            :rtype None:
+            """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+
+        assert self.connected
+        try:
+            query_for_retrieve_audio_diary = "SELECT diary_context_id, type, subtype, value, date_added FROM diary_context WHERE audio_diary_id = %s  "
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                cur.execute(query_for_retrieve_audio_diary, audio_diary_id)
+                result = cur.fetchall()
+                if result:
+                    # END : for calculating execution time
+                    stop = timeit.default_timer()
+                    logger.debug("DB : retrieve_diary_context_by_audio_diary_id() - Execution Time : %s", stop - start)
+                    logger.debug('DB RESULT : %s', result)
+                    return result
+                else:
+                    return []
+
+        except Exception as exp:
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At retrieve_diary_context_by_audio_diary_id()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+            return False
+
+    def delete_diary_context_by_audio_diary_id(self, audio_diary_id):
+        """Creating new audio_diary to SD DB
+            Usually, this method be called
+            When User retrieving audio_diary
+
+
+            :param audio_diary_info:
+            :rtype None:
+            """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+
+        assert self.connected
+        try:
+            query_for_delete = "DELETE FROM diary_context WHERE audio_diary_id  = %s "
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                affected_rows = cur.execute(query_for_delete, int(audio_diary_id))
+                self.conn.commit()
+                # END : for calculating execution time
+                stop = timeit.default_timer()
+                logger.debug("DB : delete_diary_context_by_audio_diary_id() - Execution Time : %s", stop - start)
+                logger.debug("DB : AFFECTED ROWS : %s rows", affected_rows)
+                return True
+
+        except Exception as exp:
+            logger.exception(exp)
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At delete_diary_context_by_audio_diary_id()")
             num, error_msg = exp.args
             logger.error("ERROR NO : %s", num)
             logger.error("ERROR MSG : %s", error_msg)
@@ -668,13 +801,13 @@ class ConvertedTextManager(DBManager):
 
 class SentenceManager(DBManager):
     def __init__(self):
-        """DB Model Class for smartdiary.sentence table
+        """DB Model Class for smartaudio_diary.sentence table
 
         """
         DBManager.__init__(self)
 
-    def add_sentence(self, sentence_info):
-        """Adding new diary to SD DB
+    def create_sentence(self, sentence_info):
+        """Adding new audio_diary to SD DB
         Usually, this method be called
         converted text has been parsed
 
@@ -686,15 +819,15 @@ class SentenceManager(DBManager):
         assert self.connected
 
         if type(sentence_info['text']) is list:
-            query_for_add_sentence = "INSERT INTO sentence " \
-                                   "(c_text_id, text) " \
+            query_for_create_sentence = "INSERT INTO sentence " \
+                                   "(text_diary_id, text) " \
                                    "VALUES"
             for sentence_line in sentence_info['text']:
-                query_for_add_sentence += " ('%s', '%s')," % (sentence_info['c_text_id'], sentence_line.replace('\'','\\\''))
-            query_for_add_sentence = query_for_add_sentence[:-1]
+                query_for_create_sentence += " ('%s', '%s')," % (sentence_info['text_diary_id'], sentence_line.replace('\'','\\\''))
+            query_for_create_sentence = query_for_create_sentence[:-1]
             try:
                 with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                    cur.execute(query_for_add_sentence)
+                    cur.execute(query_for_create_sentence)
                     cur.execute("SELECT LAST_INSERT_ID()")
                     self.conn.commit()
 
@@ -702,24 +835,24 @@ class SentenceManager(DBManager):
 
                     # END : for calculating execution time
                     stop = timeit.default_timer()
-                    logger.debug("DB : add_sentence() - Execution Time : %s", stop - start)
+                    logger.debug("DB : create_sentence() - Execution Time : %s", stop - start)
 
                 return sentence_id
             except pymysql.MySQLError as exp:
                 logger.error(">>>MYSQL ERROR<<<")
-                logger.error("At add_sentence()")
+                logger.error("At create_sentence()")
                 num, error_msg = exp.args
                 logger.error("ERROR NO : %s", num)
                 logger.error("ERROR MSG : %s", error_msg)
                 return False
 
         else:
-            query_for_add_sentence = "INSERT INTO sentence " \
-                                   "(c_text_id, text) " \
+            query_for_create_sentence = "INSERT INTO sentence " \
+                                   "(text_diary_id, text) " \
                                    "VALUES (%s, %s)"
             try:
                 with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                    cur.execute(query_for_add_sentence, (sentence_info['c_text_id'], sentence_info['text'].replace('\'','\\\'')))
+                    cur.execute(query_for_create_sentence, (sentence_info['text_diary_id'], sentence_info['text'].replace('\'','\\\'')))
                     cur.execute("SELECT LAST_INSERT_ID()")
                     self.conn.commit()
 
@@ -727,26 +860,26 @@ class SentenceManager(DBManager):
 
                     # END : for calculating execution time
                     stop = timeit.default_timer()
-                    logger.debug("DB : add_sentence() - Execution Time : %s", stop - start)
+                    logger.debug("DB : create_sentence() - Execution Time : %s", stop - start)
                 return sentence_id
             except pymysql.MySQLError as exp:
                 logger.error(">>>MYSQL ERROR<<<")
-                logger.error("At add_sentence()")
+                logger.error("At create_sentence()")
                 num, error_msg = exp.args
                 logger.error("ERROR NO : %s", num)
                 logger.error("ERROR MSG : %s", error_msg)
                 return False
 
 
-class SentElementManager(DBManager):
+class SentenceElementManager(DBManager):
     def __init__(self):
-        """DB Model Class for smartdiary.sentence table
+        """DB Model Class for smartaudio_diary.sentence table
 
         """
         DBManager.__init__(self)
 
-    def add_s_element(self, s_element_info):
-        """Adding new diary to SD DB
+    def create_s_element(self, s_element_info):
+        """Adding new audio_diary to SD DB
             Usually, this method be called
             converted text has been parsed
 
@@ -758,19 +891,19 @@ class SentElementManager(DBManager):
         assert self.connected
 
         if type(s_element_info) is list:
-            query_for_add_s_element = "INSERT INTO s_element " \
+            query_for_create_s_element = "INSERT INTO s_element " \
                                      "(sentence_id, text, pos, role, element_no, ne) " \
                                      "VALUES"
             for s_element_line in s_element_info:
-                query_for_add_s_element += " (%s, '%s', '%s', '%s', %s)," \
+                query_for_create_s_element += " (%s, '%s', '%s', '%s', %s, '%s')," \
                                           % (s_element_line['sentence_id'],
                                              s_element_line['text'].replace('\'', '\\\''),
                                              s_element_line['pos'], s_element_line['role'],
                                              s_element_line['element_no'], s_element_line['ne'])
-            query_for_add_s_element = query_for_add_s_element[:-1]
+            query_for_create_s_element = query_for_create_s_element[:-1]
             try:
                 with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                    cur.execute(query_for_add_s_element)
+                    cur.execute(query_for_create_s_element)
                     cur.execute("SELECT LAST_INSERT_ID()")
                     self.conn.commit()
 
@@ -778,62 +911,59 @@ class SentElementManager(DBManager):
 
                     # END : for calculating execution time
                     stop = timeit.default_timer()
-                    logger.debug("DB : add_s_element(list) - Execution Time : %s", stop - start)
+                    logger.debug("DB : create_s_element(list) - Execution Time : %s", stop - start)
                 return s_element_id
             except pymysql.MySQLError as exp:
                 logger.error(">>>MYSQL ERROR<<<")
-                logger.error("At add_s_element()")
+                logger.error("At create_s_element()")
                 num, error_msg = exp.args
                 logger.error("ERROR NO : %s", num)
                 logger.error("ERROR MSG : %s", error_msg)
                 return False
 
 
-class NLPkoDictManager(DBManager):
+class AnalyticsManager(DBManager):
     def __init__(self):
-        """DB Model Class for smartdiary.nlp_ko_dict & nlp_ko_dict_net table
+        """DB Model Class for smartaudio_diary.sentence table
 
         """
         DBManager.__init__(self)
 
-    def retrieve_collection_dic(self, word):
-        """Creating new diary to SD DB
-        Usually, this method be called
-        When User creating new diary
+    def create_analytics(self, user_id, audio_diary_id, t_type, value, created_date):
+        """Adding new audio_diary to SD DB
+            Usually, this method be called
+            converted text has been parsed
 
-        :type diary_info: dict contains user_id, timestamp_from, timestamp_to
-        :rtype query result[list] or false:
-        """
+            :rtype None:
+            """
         # START : for calculating execution time
         start = timeit.default_timer()
+
         assert self.connected
-
-        query = "SELECT DISTINCT means, idx from nlp_ko_dict as F INNER  JOIN (" \
-                "SELECT stddicidx from nlp_ko_dict_net as B INNER JOIN (SELECT m.wordnetidx from nlp_ko_dict AS d " \
-                "INNER JOIN nlp_ko_dict_net as m " \
-                "ON d.idx = m.stddicidx WHERE means = %s) as R " \
-                "ON B.wordnetidx = R.wordnetidx ) as SF " \
-                "ON F.idx = SF.stddicidx "
-
-
+        query_for_create_analytics = "INSERT INTO analytics " \
+                                 "(user_id, audio_diary_id, type, value, created_date) " \
+                                 "VALUES (%s, %s, %s, %s, %s)"
         try:
             with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                cur.execute(query, word)
-                result = cur.fetchall()
+                cur.execute(query_for_create_analytics,
+                            (user_id, audio_diary_id, t_type, value, created_date))
+                self.conn.commit()
+
+                sentence_id = cur.fetchone()['LAST_INSERT_ID()']
 
                 # END : for calculating execution time
                 stop = timeit.default_timer()
-                logger.debug("DB : retrieve_collection_dic() - Execution Time : %s", stop - start)
-                if result:
-                    logger.debug('DB RESULT : %s', result) 
-                    return result
-                else:
-                    return None
+                logger.debug("DB : create_analytics() - Execution Time : %s", stop - start)
+            return sentence_id
         except pymysql.MySQLError as exp:
             logger.error(">>>MYSQL ERROR<<<")
-            logger.error("At retrieve_collection_dic()")
+            logger.error("At create_analytics()")
             num, error_msg = exp.args
             logger.error("ERROR NO : %s", num)
             logger.error("ERROR MSG : %s", error_msg)
             return False
+
+    def retrieve_analytics(self, user_id, audio_diary_id, t_type=None):
+        pass
+
 
