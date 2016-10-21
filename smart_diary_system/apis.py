@@ -98,7 +98,6 @@ def manage_user(request, option=None):
             try:
                 # Update info from APP
                 put = json.loads(request.body.decode('utf-8'))
-                print(put)
                 logger.debug("INPUT : %s", put)
 
                 # Encrypting Password
@@ -163,6 +162,29 @@ def manage_diary(request, option=None):
                 logger.exception(exp)
                 logger.debug("RETURN : FALSE - EXCEPTION")
                 return JsonResponse({'create_diary': False})
+        if option == 'delete':
+            try:
+                # input From APP
+                data = json.loads(request.body.decode('utf-8'))
+                logger.debug("INPUT : %s", data)
+                audio_diary_id = data.get('audio_diary_id')
+                user_id = data.get('user_id')
+
+                # Delete Diary
+                audio_diary_manager = database.AudioDiaryManager()
+                audio_diary_manager.delete_audio_diary(audio_diary_id)
+
+                # Delete Diary Attachment Files
+                ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+                dest_path = os.path.join(ROOT_DIR,'uploaded',user_id,str(audio_diary_id))
+                if os.path.isdir(dest_path):
+                    shutil.rmtree(dest_path)
+
+                return JsonResponse({'delete_diary': True})
+
+            except Exception as exp:
+                logger.exception(exp)
+                return JsonResponse({'delete_diary': False})
 
     elif request.method == 'GET':  # retrieve diary
         try:

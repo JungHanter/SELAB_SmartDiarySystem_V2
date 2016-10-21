@@ -413,12 +413,12 @@ class AudioDiaryManager(DBManager):
         try:
             query_for_delete = "DELETE FROM audio_diary WHERE audio_diary_id  = %s "
             with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                cur.execute(query_for_delete, int(audio_diary_id))
+                affected_rows = cur.execute(query_for_delete, int(audio_diary_id))
                 self.conn.commit()
                 # END : for calculating execution time
                 stop = timeit.default_timer()
                 logger.debug("DB : delete_audio_diary() - Execution Time : %s", stop - start)
-                print(cur.fetchone())
+                logger.debug("DB : AFFECTED ROWS : %s rows", affected_rows)
             return True
 
         except Exception as exp:
