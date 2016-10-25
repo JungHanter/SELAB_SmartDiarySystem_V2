@@ -12,11 +12,14 @@ class HyponymThingsCollector(object):
     IDX_LEVEL = 1
     IDX_LEMMA_WORDS = 2
 
-    def __init__(self, root_synset, max_level=1):   # if max level < 0, only find leaf
+    def __init__(self, *root_synsets, max_level=1):   # if max level < 0, only find leaf
+        self.hyponym_list = list()
         if max_level < 0:
-            self.hyponym_list = self._collect_hyponyms_leaf(root_synset)
+            for synset in root_synsets:
+                self.hyponym_list += self._collect_hyponyms_leaf(synset)
         else:
-            self.hyponym_list = self._collect_hyponyms(root_synset, max_level)
+            for synset in root_synsets:
+                self.hyponym_list += self._collect_hyponyms(synset, max_level)
 
     def _collect_hyponyms(self, root_synset, max_level=1):
         if max_level == 0: return []
@@ -114,8 +117,13 @@ class LifeStylesAnalyzer(object):
                         # print(count_sum, count_for_synset, word_freq_weight, '\n')
 
                         sentiment = 1 * word_freq_weight
-                        synset_name = str(found_synset.name())
+                        synset_name = found_synset.name()
                         score_sentiments[synset_name] += sentiment
+
+                        # score to hypornyms
+
+                        # self._score_to_hyponyms(found_synset, sentiment, score_sentiments, False)
+
                     prev_word_list.clear()
 
                 elif (word[TAG_POS_WORD_ROLE].startswith('JJ') and word[TAG_POS_MORPHEME] == 'amod') or \
@@ -124,6 +132,21 @@ class LifeStylesAnalyzer(object):
                 else:
                     prev_word_list.clear()
         return score_sentiments
+
+    def _score_to_hyponyms(self, hypernym_synset, hypernym_score, score_sentiments, continue_hyponyms=False):
+        hyponyms = hypernym_synset.hyponyms()
+        length = len(hyponyms)
+        if hypernym_score == 0 or length ==0:
+            return
+        subscore = hypernym_score / length
+        for hyponym in hyponyms:
+            synset_name = hyponym.name()
+            score_sentiments[synset_name] += subscore
+            if continue_hyponyms:
+                self._score_to_hyponyms(hyponym, subscore, score_sentiments)
+
+
+
 
     def analyze_food(self, diary_tags):
         return self._analyze_thing(self.food_collect, diary_tags)
@@ -183,8 +206,9 @@ def _lemmas_to_name_list(lemmas, include_count=False):
         return names
 
 
-foods = HyponymThingsCollector(wn.synset('food.n.02'), 8)
-analyzer = LifeStylesAnalyzer(food_collect=foods)
+foods = HyponymThingsCollector(wn.synset('food.n.02'), max_level=8)
+sports = HyponymThingsCollector(wn.synset('sport.n.01'), wn.synset('exercise.n.01'), max_level=7)
+analyzer = LifeStylesAnalyzer(food_collect=foods, sport_collect=sports)
 
 
 if __name__ == "__main__":
@@ -234,22 +258,20 @@ if __name__ == "__main__":
     # print()
 
     # foods = HyponymThingsCollector(wn.synset('food.n.02'), 8)
-    sports = HyponymThingsCollector(wn.synset('sport.n.01'), 8)
-    exercise = HyponymThingsCollector(wn.synset('exercise.n.01'), 5)
 
     # pprint(foods.get_list())
+    # print()
+    # print()
+    # print()
+    # pprint(sports.get_list())
+    # print()
+    # print()
     print()
-    print()
-    print()
-    pprint(sports.get_list())
-    print()
-    print()
-    print()
-    pprint(exercise.get_list())
 
     TEST_DIARY = """I like tomato pasta and bread. I usually have eaten sweet potatoes with sugar since childhood.
                     However, today I dated with my girlfriend and
-                    ate them without sugar. It was very delicious more thant I thought!"""
+                    ate them without sugar. It was very delicious more thant I thought!
+                    Then at the midnight, I did stretch."""
     # for synset in wn.synsets('potatoes'):
     #     print(synset, synset.pos(), synset.offset(), synset.frame_ids(), synset.definition(),
     #           synset.examples(), synset.lexname(), sep=' | ')
@@ -265,17 +287,24 @@ if __name__ == "__main__":
     # print()
 
 
-    # from diary_analyzer import sample_diaries
+    from diary_analyzer import sample_diaries
     diaries = []
-    # for diary_text in sample_diaries.NICOLEXLOVE13:
-    #     diary_tags = tagger.tag_pos_doc(diary_text)
-    #     diaries.append(diary_tags)
-    #     pprint(diary_tags)
+    for diary_text in sample_diaries.NICOLEXLOVE13:
+        diary_tags = tagger.tag_pos_doc(diary_text)
+        diaries.append(diary_tags)
+        pprint(diary_tags)
+    tags = tagger.tag_pos_doc(TEST_DIARY)
     diaries.append(tagger.tag_pos_doc(TEST_DIARY))
     #
+    pprint(tags)
+    print()
     for diary_tags in diaries:
         result = analyzer.analyze_food(diary_tags[1])
         print(result)
+    print()
+    # for diary_tags in diaries:
+    #     result = analyzer.analyze_sport(diary_tags[1])
+    #     print(result)
 
     # pprint(LifeStylesAnalyzer._count_word_in_corpus('bread'))
     # pprint(LifeStylesAnalyzer._count_word_in_corpus('bread', 'n'))
