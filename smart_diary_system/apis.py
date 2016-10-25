@@ -1,15 +1,18 @@
 import json
+import timeit
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 from smart_diary_system import database
 from smart_diary_system import security
 import logging
 from django.http import Http404
+from diary_analyzer import tagger
 
 # from diary_nlp import nlp_en
 from langdetect import detect
 import os
 import shutil
+import threading
 
 from django.http import QueryDict
 from django.conf import settings
@@ -55,6 +58,7 @@ def manage_user(request, option=None):
                     if result:
                         ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
                         os.mkdir(os.path.join(ROOT_DIR, 'uploaded', str(data.get('user_id'))))
+                        os.mkdir(os.path.join(ROOT_DIR, 'pickles', str(data.get('user_id'))))
                         return JsonResponse({'register': True})
                     else:
                         return JsonResponse({'register': False})
@@ -128,6 +132,7 @@ def manage_user(request, option=None):
                 # delete Files
                 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
                 shutil.rmtree(os.path.join(ROOT_DIR, 'uploaded', user_id))
+                shutil.rmtree(os.path.join(ROOT_DIR, 'pickles', user_id))
 
                 if result:
                     return JsonResponse({'delete_user': True})
@@ -162,6 +167,7 @@ def manage_diary(request, option=None):
                 logger.exception(exp)
                 logger.debug("RETURN : FALSE - EXCEPTION")
                 return JsonResponse({'create_diary': False})
+
         if option == 'delete':
             try:
                 # input From APP
@@ -175,10 +181,14 @@ def manage_diary(request, option=None):
                 audio_diary_manager.delete_audio_diary(audio_diary_id)
 
                 # Delete Diary Attachment Files
+                # Delete Diary Attachment Files
                 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-                dest_path = os.path.join(ROOT_DIR,'uploaded',user_id,str(audio_diary_id))
-                if os.path.isdir(dest_path):
-                    shutil.rmtree(dest_path)
+                audio_path = os.path.join(ROOT_DIR, 'uploaded', user_id, str(audio_diary_id))
+                pickle_path = os.path.join(ROOT_DIR, 'pickles', user_id, str(audio_diary_id))
+                if os.path.isdir(audio_path):
+                    shutil.rmtree(audio_path)
+                if os.path.isdir(pickle_path):
+                    shutil.rmtree(pickle_path)
 
                 return JsonResponse({'delete_diary': True})
 
@@ -234,6 +244,28 @@ def manage_diary(request, option=None):
                         result_context = []
                     return JsonResponse({'retrieve_diary': True, 'result_detail': result, 'result_context': result_context})
 
+            if option == 'pickle':
+                data = json.loads(json.dumps(request.GET))
+                logger.debug("INPUT :%s", data)
+
+                audio_diary_manager = database.AudioDiaryManager()
+                state = audio_diary_manager.retrieve_pickle_state(data['audio_diary_id'])
+                if state is None:
+                    return JsonResponse({'retrieve_diary': False, 'reason': 'NOT EXIST. CHECK AUDIO_DIARY_ID'})
+                if state == 0:
+                    return JsonResponse({'retrieve_diary': False, 'reason': 'NO PICKLE'})
+                elif state == 1:
+                    return JsonResponse({'retrieve_diary': False, 'reason': 'MAKING'})
+                else:
+                    ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+                    PICKLE_DIR = os.path.join(ROOT_DIR, 'pickles', str(data['user_id']), str(data['audio_diary_id']))
+                    PICKLE_PATH = os.path.join(PICKLE_DIR, "pos_texts.pkl")
+                    if os.path.isfile(PICKLE_PATH):
+                        pickle = tagger.pickle_to_tags(PICKLE_PATH)
+                        return JsonResponse({'retrieve_diary': True, 'pickle': pickle})
+
+
+
         except Exception as exp:
             logger.exception(exp)
             logger.debug("RETURN : FALSE - EXCEPTION")
@@ -267,29 +299,91 @@ def manage_diary(request, option=None):
             logger.exception(exp)
             return JsonResponse({'update_diary': False})
 
-    elif request.method == 'DELETE':  # delete diary
+    # elif request.method == 'DELETE':  # delete diary
+    #     try:
+    #         # input From APP
+    #         data = json.loads(request.body.decode('utf-8'))
+    #         logger.debug("INPUT : %s", data)
+    #         audio_diary_id = data.get('audio_diary_id')
+    #         user_id = data.get('user_id')
+    #
+    #         # Delete Diary
+    #         audio_diary_manager = database.AudioDiaryManager()
+    #         audio_diary_manager.delete_audio_diary(audio_diary_id)
+    #
+    #         # Delete Diary Attachment Files
+    #         ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+    #         audio_path = os.path.join(ROOT_DIR, 'uploaded', user_id, str(audio_diary_id))
+    #         pickle_path = os.path.join(ROOT_DIR, 'pickles', user_id, str(audio_diary_id))
+    #         if os.path.isdir(audio_path):
+    #             shutil.rmtree(audio_path)
+    #         if os.path.isdir(pickle_path):
+    #             shutil.rmtree(pickle_path)
+    #
+    #         return JsonResponse({'delete_diary': True})
+    #
+    #     except Exception as exp:
+    #         logger.exception(exp)
+    #         return JsonResponse({'delete_diary': False})
+
+
+@csrf_exempt
+def manage_analyze(request, option=None):
+    logger.debug(request)
+    if request.method == 'POST':  # create diary
+        if option == None:
+            try:
+                pass
+
+            except Exception as exp:
+                logger.exception(exp)
+                logger.debug("RETURN : FALSE - EXCEPTION")
+                return JsonResponse({'create_diary': False})
+
+        if option == 'delete':
+            try:
+                pass
+
+            except Exception as exp:
+                logger.exception(exp)
+                return JsonResponse({'delete_diary': False})
+
+    elif request.method == 'GET':
         try:
-            # input From APP
-            data = json.loads(request.body.decode('utf-8'))
-            logger.debug("INPUT : %s", data)
-            audio_diary_id = data.get('audio_diary_id')
-            user_id = data.get('user_id')
+            if option is None:
+                pass
 
-            # Delete Diary
-            audio_diary_manager = database.AudioDiaryManager()
-            audio_diary_manager.delete_audio_diary(audio_diary_id)
+            if option == 'check_pos_tagging':
+                data = json.loads(json.dumps(request.GET))
+                logger.debug("INPUT :%s", data)
 
-            # Delete Diary Attachment Files
-            ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-            dest_path = ROOT_DIR + '/uploaded/' + user_id + '/' + audio_diary_id
-            if os.path.isdir(dest_path):
-                shutil.rmtree(dest_path)
-
-            return JsonResponse({'delete_diary': True})
+                audio_diary_manager = database.AudioDiaryManager()
+                state = audio_diary_manager.retrieve_pickle_state(data['audio_diary_id'])
+                if state is None:
+                    return JsonResponse({'check_pos_tagging': False, 'reason': 'AUDIO_DIARY_NOT_EXIST'})
+                elif state == 0:
+                    return JsonResponse({'check_pos_tagging': False, 'reason': 'MAKING_FAILED'})
+                elif state == 1:
+                    return JsonResponse({'check_pos_tagging': False, 'reason': 'WORKING'})
+                else:
+                    return JsonResponse({'check_pos_tagging': True})
 
         except Exception as exp:
             logger.exception(exp)
-            return JsonResponse({'delete_diary': False})
+            logger.debug("RETURN : FALSE - EXCEPTION")
+            return JsonResponse({'parsing_is_done': False})
+
+    elif request.method == 'PUT':
+        try:
+            if option is None:
+                pass
+
+
+        except Exception as exp:
+            logger.exception(exp)
+            return JsonResponse({'update_diary': False})
+
+
 
 
 # @csrf_exempt
@@ -446,7 +540,8 @@ def insert_new_diary(data, request):
     text_diary_manager = database.TextDiaryManager()
     text_diary_id = text_diary_manager.create_text_diary(data['audio_diary_id'], data['content'], data['created_date'])
 
-    if 'diary_context' in data and data['diary_context'] is not None:
+    if 'diary_context' in data and data['diary_context']:
+        print(data['diary_context'])
         diary_context_manager.create_diary_context(audio_diary_id=data['audio_diary_id'], diary_context_info=data['diary_context'])
 
     # FILE UPLOAD LOGIC-------------------------------------------------------------------------------------------------
@@ -464,9 +559,13 @@ def insert_new_diary(data, request):
                 for chunck in request.FILES[key]:
                     destination.write(chunck)
 
-    # FILE UPLOAD LOGIC END-----------------------------------------------------------------------------------------
+    # FILE UPLOAD LOGIC END---------------------------------------------------------------------------------------------
 
+    # NLP PICKLING LOGIC------------------------------------------------------------------------------------------------
 
+    # pickling in thread
+    pickle_th = threading.Thread(target=pickling, args=(str(data['user_id']), audio_diary_id, data['content']))
+    pickle_th.start()
 
     # Parse INTO sentence, sent element LOGIC---------------------------------------------------------------------------
     # if data['content'] is '':
@@ -522,3 +621,42 @@ def insert_new_diary(data, request):
 
     return audio_diary_id, text_diary_id
 
+
+def pickling(user_id, audio_diary_id, content):
+    # START : for calculating execution time
+    start = timeit.default_timer()
+    logger.debug("PICKLE : START")
+    # init DB
+    # 0 for False, 1 for doing, 2 for complete
+    audio_diary_manager = database.AudioDiaryManager()
+    try:
+        # making pickles------------------------------------------------------------------------------------------------
+        # making path
+        ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+        PICKLE_DIR = os.path.join(ROOT_DIR, 'pickles', user_id, str(audio_diary_id))
+        if not (os.path.isdir(PICKLE_DIR)):
+            os.mkdir(PICKLE_DIR)
+
+        # set state
+        audio_diary_manager.update_pickle_state(audio_diary_id, 1)  # pickling is on going
+
+        # making pickles
+        pos_texts = tagger.tag_pos_doc(content, True)
+
+        # saving pickles
+        save_result = tagger.tags_to_pickle(pos_texts, os.path.join(PICKLE_DIR, "pos_texts.pkl"))
+
+        # update audio_diary.pickle
+        if save_result:
+            audio_diary_manager.update_pickle_state(audio_diary_id, 2)  # pickling is successfully finished
+            stop = timeit.default_timer()
+            logger.debug("PICKLE : SUCCESSFUL - Execution Time : %s", stop - start)
+            return True
+        else:
+            raise Exception('SAVING PICKLES FAILED')
+
+    except Exception as exp:
+        logger.exception(exp)
+        logger.debug("PICKLE : FAIL")
+        audio_diary_manager.update_pickle_state(audio_diary_id, 0)
+        return False

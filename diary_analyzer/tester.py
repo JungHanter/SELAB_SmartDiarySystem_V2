@@ -1,6 +1,7 @@
 import os;
 from pprint import pprint
 from diary_analyzer import tagger
+from diary_analyzer import _configure
 from diary_analyzer.tools import ner_tagger
 
 from nltk.tokenize import word_tokenize
@@ -11,9 +12,16 @@ from nltk.tokenize import word_tokenize
 
 # text = 'While in France, Christine Lagarde discussed short-term stimulus efforts in a recent interview with the Wall Street Journal.'
 # pos_texts = tagger.tag_pos_doc(text, True)
-# pprint(pos_text)
+# pprint(pos_texts)
+# tagger.tags_to_pickle(pos_texts, os.path.join(_configure.BASE_DIR, "test.pkl"))
 
-# tagger.tags_to_pickle(pos_texts, "/Users/hanter/SEL/Smart Diary System/smartdiarysystem/pickles/test.pkl")
-pickle = tagger.pickle_to_tags("/Users/hanter/SEL/Smart Diary System/smartdiarysystem/pickles/test.pkl")
-
+pickle = tagger.pickle_to_tags(os.path.join(_configure.BASE_DIR, "test.pkl"))
 pprint(pickle)
+
+# user_id = 'lhs'
+# audio_diary_id = 356
+# ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+# PICKLE_DIR = os.path.join(ROOT_DIR, 'pickles', user_id,str(audio_diary_id))
+# PICKLE_PATH = os.path.join(PICKLE_DIR, "pos_texts.pkl")
+# if os.path.isfile(PICKLE_PATH):
+#     pickle = tagger.pickle_to_tags(PICKLE_PATH)
