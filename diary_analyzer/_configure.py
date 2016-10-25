@@ -1,8 +1,9 @@
 import os
+from pathlib import Path
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# JAR_DIR = os.path.join(BASE_DIR, 'jars')
-JAR_DIR = "/Users/hanter/SEL/Smart Diary System/stanford_nlp/"
+JAR_DIR = os.path.join(str(Path(__file__).parents[1]), 'stanford-nlp')
+# JAR_DIR = "/Users/hanter/SEL/Smart Diary System/stanford_nlp/"
 
 STANFORD_CORE_BASE_PATH = os.path.join(JAR_DIR, "stanford-corenlp-full-2015-12-09")
 STANFORD_CORE_PATH = os.path.join(STANFORD_CORE_BASE_PATH, "stanford-corenlp-3.6.0.jar")

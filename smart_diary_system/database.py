@@ -462,6 +462,73 @@ class AudioDiaryManager(DBManager):
             logger.error("ERROR MSG : %s", error_msg)
             return False
 
+    def update_pickle_state(self, audio_diary_id, state):
+        """Creating new audio_diary to SD DB
+            Usually, this method be called
+            When User retrieving audio_diary
+
+
+            :param audio_diary_info:
+            :rtype None:
+            """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+
+        assert self.connected
+        try:
+            query_for_updated = "UPDATE audio_diary SET pickle= %s WHERE audio_diary_id = %s "
+
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                affected_rows = cur.execute(query_for_updated, (state, audio_diary_id))
+                self.conn.commit()
+                # END : for calculating execution time
+                stop = timeit.default_timer()
+                logger.debug("DB : update_pickle_state() - Execution Time : %s", stop - start)
+                logger.debug("DB : AFFECTED ROWS : %s rows", affected_rows)
+                return True
+
+        except Exception as exp:
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At update_audio_diary()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+            return False
+
+    def retrieve_pickle_state(self, audio_diary_id):
+        """Creating new audio_diary to SD DB
+        Usually, this method be called
+        When User retrieving audio_diary
+
+
+        :param audio_diary_info:
+        :rtype None:
+        """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+
+        assert self.connected
+        try:
+            query_for_retrieve_audio_diary = "SELECT pickle FROM audio_diary WHERE audio_diary_id = %s  "
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                cur.execute(query_for_retrieve_audio_diary, audio_diary_id)
+                result = cur.fetchone()
+                if result:
+                    # END : for calculating execution time
+                    stop = timeit.default_timer()
+                    logger.debug("DB : retrieve_pickle_state() - Execution Time : %s", stop - start)
+                    logger.debug('DB RESULT : %s', result)
+                    return result['pickle']
+                else:
+                    return None
+
+        except Exception as exp:
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At retrieve_pickle_state()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+            return False
 
 class TextDiaryManager(DBManager):
     def __init__(self):
