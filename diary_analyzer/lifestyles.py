@@ -12,49 +12,56 @@ class HyponymThingsCollector(object):
     IDX_LEVEL = 1
     IDX_LEMMA_WORDS = 2
 
-    def collect_hyponyms(self, synset, max_level=1):
+    def __init__(self, root_synset, max_level=1):   # if max level < 0, only find leaf
+        if max_level < 0:
+            self.hyponym_list = self._collect_hyponyms_leaf(root_synset)
+        else:
+            self.hyponym_list = self._collect_hyponyms(root_synset, max_level)
+
+    def _collect_hyponyms(self, root_synset, max_level=1):
         if max_level == 0: return []
         hyponym_list = list()
-        for hyponym in synset.hyponyms():
+        for hyponym in root_synset.hyponyms():
             # names, counts = _lemmas_to_name_list(hyponym.lemmas(), True)
             # hyponym_list.append((hyponym, max_level, names, counts))
+
+            # tuple (sysnet, level, lemma_words)
             hyponym_list.append((hyponym, max_level, _lemmas_to_name_list(hyponym.lemmas())))
-            hyponym_list = hyponym_list + self.collect_hyponyms(hyponym, max_level-1)
+            hyponym_list = hyponym_list + self._collect_hyponyms(hyponym, max_level-1)
         return hyponym_list
 
-    def collect_hyponyms_leaf(self, synset):
+    def _collect_hyponyms_leaf(self, root_synset):
         leaf_list = list()
-        for hyponym in synset.hyponyms():
+        for hyponym in root_synset.hyponyms():
             if len(hyponym.hyponyms()) == 0:     # is leaf hyponym
                 leaf_list.append(hyponym)
             else:
-                leaf_list = leaf_list + self.collect_hyponyms_leaf(hyponym)
+                leaf_list = leaf_list + self._collect_hyponyms_leaf(hyponym)
         return leaf_list
 
-    @classmethod
-    def _find_synset(cls, collect, synset):
-        for item in collect:
-            if synset.name() is item[0].name():
-                return item[0]
+    def get_list(self):
+        return self.hyponym_list
+
+    def find_synset(self, synset):
+        for item in self.hyponym_list:
+            if synset.name() is item[self.IDX_SYNSET].name():
+                return item[self.IDX_SYNSET]
         return None
 
-    @classmethod
-    def _check_synset_in(cls, collect, synset):
-        if cls.find_synset(collect, synset) is not None:
+    def check_synset_in(self, synset):
+        if self.find_synset(synset) is not None:
             return True
         else:
             return False
 
-    @classmethod
-    def _find_word_synset(cls, collect, word):
-        for item in collect:
-            if word in item[2]:  # lemma list
-                return item[0]  # synset
+    def find_word(self, word):
+        for item in self.hyponym_list:
+            if word in item[self.IDX_LEMMA_WORDS]:  # lemma list
+                return item[self.IDX_SYNSET]  # synset
         return None
 
-    @classmethod
-    def _check_word_in(cls, collect, word):
-        if cls.find_word_synset(collect, word) is not None:
+    def check_word_in(self, word):
+        if self.find_word_synset(word) is not None:
             return True
         else:
             return False
@@ -69,8 +76,13 @@ class Finder(object):
 class LifeStylesAnalyzer(object):
     """Perform life style analysis"""
 
-    def analyze_food(self, food_collect, diary_tags):
-        food_sentiments = defaultdict(float)
+    def __init__(self, food_collect=None, hobby_collect=None, sport_collect=None):
+        self.food_collect = food_collect
+        self.hobby_collect = hobby_collect
+        self.sport_collect = sport_collect
+
+    def _analyze_thing(self, collect, diary_tags):
+        score_sentiments = defaultdict(float)
         for sentence in diary_tags:
             prev_word_list = []
             for word in sentence:
@@ -86,8 +98,8 @@ class LifeStylesAnalyzer(object):
                         plural = True
 
                     #find the word
-                    found_synset, lemma_word = LifeStylesAnalyzer._find_synset_by_word_list(food_collect,
-                                                                                            prev_word_list, plural)
+                    found_synset, lemma_word \
+                        = LifeStylesAnalyzer._find_synset_by_word_list(collect, prev_word_list, plural)
                     if found_synset:
                         # print(found_synset, ' ', lemma_word)
                         word_count = LifeStylesAnalyzer._count_word_in_corpus(lemma_word, pos='n')
@@ -103,7 +115,7 @@ class LifeStylesAnalyzer(object):
 
                         sentiment = 1 * word_freq_weight
                         synset_name = str(found_synset.name())
-                        food_sentiments[synset_name] += sentiment
+                        score_sentiments[synset_name] += sentiment
                     prev_word_list.clear()
 
                 elif (word[TAG_POS_WORD_ROLE].startswith('JJ') and word[TAG_POS_MORPHEME] == 'amod') or \
@@ -111,10 +123,16 @@ class LifeStylesAnalyzer(object):
                     prev_word_list.append(word[TAG_POS_WORD])
                 else:
                     prev_word_list.clear()
-        return food_sentiments
+        return score_sentiments
+
+    def analyze_food(self, diary_tags):
+        return self._analyze_thing(self.food_collect, diary_tags)
 
     def analyze_hobby(self, diary_tags):
-        pass
+        return self._analyze_thing(self.hobby_collect, diary_tags)
+
+    def analyze_sport(self, diary_tags):
+        return self._analyze_thing(self.sport_collect, diary_tags)
 
     @classmethod
     def _find_synset_by_word_list(cls, collect, word_list, plural=False):
@@ -126,7 +144,7 @@ class LifeStylesAnalyzer(object):
                     lemma_word += '_'
                 lemma_word += word_list[k]
             # print(lemma_word)
-            synset = cls._find_lemma(collect, lemma_word)
+            synset = collect.find_word(lemma_word)
             if synset is not None:
                 return synset, lemma_word
 
@@ -136,20 +154,6 @@ class LifeStylesAnalyzer(object):
             word_list[length-1] = plural_noun
             return cls._find_synset_by_word_list(collect, word_list, False)
         return None, None
-
-    @classmethod
-    def _find_lemma(cls, collect, lemma):
-        for item in collect:
-            if lemma in item[2]:  # lemma list
-                return item[0]  # synset
-        return None
-
-    @classmethod
-    def _check_lemma_in(cls, collect, lemma):
-        if cls.find_word_synset(collect, lemma) is not None:
-            return True
-        else:
-            return False
 
     @classmethod
     def _count_word_in_corpus(cls, word, pos=None):
@@ -179,9 +183,13 @@ def _lemmas_to_name_list(lemmas, include_count=False):
         return names
 
 
+foods = HyponymThingsCollector(wn.synset('food.n.02'), 8)
+analyzer = LifeStylesAnalyzer(food_collect=foods)
+
+
 if __name__ == "__main__":
-    htc = HyponymThingsCollector()
-    food_collect = htc.collect_hyponyms(wn.synset('food.n.02'), 4)
+    # htc = HyponymThingsCollector()
+    # food_collect = htc.collect_hyponyms(wn.synset('food.n.02'), 4)
     # pprint(food_collect)
     # print()
 
@@ -225,6 +233,20 @@ if __name__ == "__main__":
     #           synset.examples(), synset.lexname(), sep=' | ')
     # print()
 
+    # foods = HyponymThingsCollector(wn.synset('food.n.02'), 8)
+    sports = HyponymThingsCollector(wn.synset('sport.n.01'), 8)
+    exercise = HyponymThingsCollector(wn.synset('exercise.n.01'), 5)
+
+    # pprint(foods.get_list())
+    print()
+    print()
+    print()
+    pprint(sports.get_list())
+    print()
+    print()
+    print()
+    pprint(exercise.get_list())
+
     TEST_DIARY = """I like tomato pasta and bread. I usually have eaten sweet potatoes with sugar since childhood.
                     However, today I dated with my girlfriend and
                     ate them without sugar. It was very delicious more thant I thought!"""
@@ -243,17 +265,16 @@ if __name__ == "__main__":
     # print()
 
 
-    from diary_analyzer import sample_diaries
+    # from diary_analyzer import sample_diaries
     diaries = []
-    for diary_text in sample_diaries.NICOLEXLOVE13:
-        diary_tags = tagger.tag_pos_doc(diary_text)
-        diaries.append(diary_tags)
-        pprint(diary_tags)
+    # for diary_text in sample_diaries.NICOLEXLOVE13:
+    #     diary_tags = tagger.tag_pos_doc(diary_text)
+    #     diaries.append(diary_tags)
+    #     pprint(diary_tags)
     diaries.append(tagger.tag_pos_doc(TEST_DIARY))
     #
-    lsa = LifeStylesAnalyzer()
     for diary_tags in diaries:
-        result = lsa.analyze_food(food_collect, diary_tags[1])
+        result = analyzer.analyze_food(diary_tags[1])
         print(result)
 
     # pprint(LifeStylesAnalyzer._count_word_in_corpus('bread'))
