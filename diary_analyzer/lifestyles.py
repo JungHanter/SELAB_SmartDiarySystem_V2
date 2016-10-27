@@ -1,6 +1,7 @@
 from collections import defaultdict
 from nltk.corpus import wordnet as wn
 from pprint import pprint
+import csv
 
 from diary_analyzer import tagger
 from diary_analyzer.tagger import TAG_POS_WORD, TAG_POS_DEPENDENCY, \
@@ -70,6 +71,74 @@ class HyponymThingsCollector(object):
             return False
 
 
+class SentiWordNet(object):
+    """ Load SentiWordNet """
+
+    IDX_POS = 0
+    IDX_OFFSET_ID = 1
+    IDX_SCORE_POS = 2
+    IDX_SCORE_NEG = 3
+    IDX_SYNSETS = 4
+    IDX_GLOSS = 5
+
+    def __init__(self, filepath):
+        self._load_seni_wordnet(filepath)
+
+    def _load_seni_wordnet(self, filepath):
+        self.adjective_scores = dict()
+        self.noun_scores = dict()
+        self.adverb_scores = dict()
+        self.verb_scores = dict()
+        self.default_score = {
+            'score_pos': 0.5,
+            'score_neg': 0.5
+        }
+
+        with open(filepath, 'r') as sent_file:
+            csvReader = csv.reader(sent_file, delimiter='\t')
+            for row in csvReader:
+                if len(row) == 0 or row[0].startswith('#'):
+                    continue
+
+                score_pos = float(row[self.IDX_SCORE_POS])
+                score_neg = float(row[self.IDX_SCORE_NEG])
+                if score_pos == 0 and score_neg == 0:
+                    continue
+
+                score_dict = {
+                    'score_pos': score_pos + 0.5,
+                    'score_neg': score_neg + 0.5
+                }
+
+                if row[self.IDX_POS] == 'a':
+                    self.adjective_scores[int(row[self.IDX_OFFSET_ID])] = score_dict
+                elif row[self.IDX_POS] == 'n':
+                    self.noun_scores[int(row[self.IDX_OFFSET_ID])] = score_dict
+                elif row[self.IDX_POS] == 'r':
+                    self.adverb_scores[int(row[self.IDX_OFFSET_ID])] = score_dict
+                elif row[self.IDX_POS] == 'v':
+                    self.verb_scores[int(row[self.IDX_OFFSET_ID])] = score_dict
+            sent_file.close()
+
+    def get_score(self, offset_id, pos):
+        try:
+            if pos == 'a':
+                return self.adjective_scores[offset_id]
+            elif pos == 'n':
+                return self.noun_scores[offset_id]
+            elif pos == 'r':
+                return self.adverb_scores[offset_id]
+            elif pos == 'v':
+                return self.verb_scores[offset_id]
+        except:
+            pass
+        return self.default_score
+
+    def get_score_value(self, offset_id, pos):
+        score_dict = self.get_score(offset_id, pos)
+        return score_dict['score_pos'] - score_dict['score_neg']
+
+
 class Finder(object):
     def find_most_lemma(self, word):
         # for synset in wn.synset('health')
@@ -79,64 +148,140 @@ class Finder(object):
 class LifeStylesAnalyzer(object):
     """Perform life style analysis"""
 
-    def __init__(self, food_collect=None, hobby_collect=None, sport_collect=None):
+    def __init__(self, senti_wordnet=None,
+                 food_collect=None, hobby_collect=None, sport_collect=None):
+        self.senti_wordnet = senti_wordnet
         self.food_collect = food_collect
         self.hobby_collect = hobby_collect
         self.sport_collect = sport_collect
 
-    def _analyze_thing(self, collect, diary_tags):
+    def _analyze_noun_thing(self, collect, diary_tags):
         score_sentiments = defaultdict(float)
         for sentence in diary_tags:
+            flag_subj_intention_tfp = False
+            flag_neg = 1
+
             prev_word_list = []
+            score_sentence = defaultdict(float)
+            weight_sent = 0
+
             for word in sentence:
-                if word[TAG_POS_WORD_ROLE] is None:
-                    prev_word_list.clear()
-                elif word[TAG_POS_WORD_ROLE].startswith('NN') and \
-                        ('subj' in word[TAG_POS_MORPHEME] or 'obj' in word[TAG_POS_MORPHEME] or
-                         word[TAG_POS_MORPHEME is 'conj']):
-                    prev_word_list.append(word[TAG_POS_WORD])
+                if word[TAG_POS_MORPHEME] is not None and word[TAG_POS_WORD_ROLE] is not None:
+                    # check morphemes
+                    if 'I' == word[TAG_POS_WORD] and 'subj' in word[TAG_POS_MORPHEME]:  # subj is I
+                        flag_subj_intention_tfp = True
+                        prev_word_list.clear()
 
-                    plural = False
-                    if word[TAG_POS_WORD_ROLE].endswith('S'):
-                        plural = True
+                    elif 'neg' in word[TAG_POS_MORPHEME]:
+                        flag_neg = -0.8
+                        prev_word_list.clear()
 
-                    #find the word
-                    found_synset, lemma_word \
-                        = LifeStylesAnalyzer._find_synset_by_word_list(collect, prev_word_list, plural)
-                    if found_synset:
-                        # print(found_synset, ' ', lemma_word)
-                        word_count = LifeStylesAnalyzer._count_word_in_corpus(lemma_word, pos='n')
-                        # print(word_count)
-                        count_sum = 0
-                        count_for_synset = 0
-                        for synset_word, count in word_count.items():
-                            count_sum += count+1
-                            if found_synset.name() == synset_word:
-                                count_for_synset = count+1
-                        word_freq_weight = count_for_synset / count_sum
-                        # print(count_sum, count_for_synset, word_freq_weight, '\n')
+                    elif word[TAG_POS_WORD_ROLE].startswith('RB'):
+                        word_score = 0
+                        offsets = _find_offsets_from_word(word[TAG_POS_WORD], 'r')
+                        for offset in offsets:
+                            word_score += senti_wordnet.get_score_value(offset, 'r')
+                        if len(offsets) == 0: word_score = 0.125
+                        else: word_score = word_score / len(offsets)
+                        weight_sent += 0.75 * word_score
+                        prev_word_list.clear()
 
-                        sentiment = 1 * word_freq_weight
-                        synset_name = found_synset.name()
-                        score_sentiments[synset_name] += sentiment
+                    elif 'VB' in word[TAG_POS_WORD_ROLE]:
+                        word_weight = 1
+                        word_score = 0
+                        if word[TAG_POS_MORPHEME] == 'root':  # main complement
+                            word_weight = 1.5
+                        offsets = _find_offsets_from_word(word[TAG_POS_WORD], 'v')
+                        for offset in offsets:
+                            word_score += senti_wordnet.get_score_value(offset, 'v')
+                        if len(offsets) == 0: word_score = 0.125
+                        else: word_score = word_score / len(offsets)
+                        weight_sent += word_weight * word_score
+                        prev_word_list.clear()
 
-                        # score to hypornyms
+                    # check things and their score
+                    elif word[TAG_POS_WORD_ROLE].startswith('NN') and \
+                            ('subj' in word[TAG_POS_MORPHEME] or 'obj' in word[TAG_POS_MORPHEME] or
+                             word[TAG_POS_MORPHEME is 'conj']):
+                        prev_word_list.append(word[TAG_POS_WORD])
 
-                        # self._score_to_hyponyms(found_synset, sentiment, score_sentiments, False)
+                        plural = False
+                        if word[TAG_POS_WORD_ROLE].endswith('S'):
+                            plural = True
 
-                    prev_word_list.clear()
+                        # find the word
+                        found_synset, lemma_word \
+                            = LifeStylesAnalyzer._find_synset_by_word_list(collect, prev_word_list, plural)
+                        if found_synset:
+                            # Frequency Weight
+                            # print(found_synset, ' ', lemma_word)
+                            word_count = LifeStylesAnalyzer._count_word_in_corpus(lemma_word, pos='n')
+                            # print(word_count)
+                            count_sum = 0
+                            count_for_synset = 0
+                            for synset_word, count in word_count.items():
+                                count_sum += count+1
+                                if found_synset.name() == synset_word:
+                                    count_for_synset = count+1
+                            word_freq_weight = count_for_synset / count_sum
+                            # print(count_sum, count_for_synset, word_freq_weight, '\n')
 
-                elif (word[TAG_POS_WORD_ROLE].startswith('JJ') and word[TAG_POS_MORPHEME] == 'amod') or \
-                        (word[TAG_POS_WORD_ROLE].startswith('NN') and word[TAG_POS_MORPHEME] == 'compound'):
-                    prev_word_list.append(word[TAG_POS_WORD])
-                else:
-                    prev_word_list.clear()
+                            # sentiment = 1 * word_freq_weight
+                            sentiment = word_freq_weight
+                            synset_name = found_synset.name()
+                            score_sentence[synset_name] += sentiment
+
+                            # score to hypornyms
+                            # self._score_to_hyponyms(found_synset, sentiment, score_sentiments, False)
+                        prev_word_list.clear()
+
+                    elif (word[TAG_POS_WORD_ROLE].startswith('JJ') and word[TAG_POS_MORPHEME] == 'amod') or \
+                            (word[TAG_POS_WORD_ROLE].startswith('NN') and word[TAG_POS_MORPHEME] == 'compound'):
+                        prev_word_list.append(word[TAG_POS_WORD])
+
+                        if 'JJ' in word[TAG_POS_WORD_ROLE]:
+                            word_weight = 1
+                            word_score = 0
+                            offsets = _find_offsets_from_word(word[TAG_POS_WORD], 'a')
+                            for offset in offsets:
+                                word_score += senti_wordnet.get_score_value(offset, 'a')
+                            if len(offsets) == 0: word_score = 0.125
+                            else: word_score = word_score / len(offsets)
+                            weight_sent += word_weight * word_score
+
+                    elif 'JJ' in word[TAG_POS_WORD_ROLE] and word[TAG_POS_MORPHEME] == 'root':
+                        word_weight = 2
+                        word_score = 0
+                        offsets = _find_offsets_from_word(word[TAG_POS_WORD], 'a')
+                        for offset in offsets:
+                            word_score += senti_wordnet.get_score_value(offset, 'a')
+                        if len(offsets) == 0: word_score = 0.125
+                        else: word_score = word_score / len(offsets)
+                        weight_sent += word_weight * word_score
+                        # prev_word_list.clear()
+
+                    else:
+                        prev_word_list.clear()
+                print(word[TAG_POS_WORD], ' -> ', weight_sent)
+
+            # apply to score sentiemnt
+            print('=== scoring: ', '===')
+            pprint(score_sentence)
+            print(flag_subj_intention_tfp, weight_sent, flag_neg, sep=' | ')
+            print('============================================')
+            for synset_name, sentiment in score_sentence.items():
+                value = weight_sent * sentiment * flag_neg
+                if flag_subj_intention_tfp:
+                    value *= 2
+                score_sentiments[synset_name] += value
+                # score_sentiments[synset_name] += sentiment
+
         return score_sentiments
 
     def _score_to_hyponyms(self, hypernym_synset, hypernym_score, score_sentiments, continue_hyponyms=False):
         hyponyms = hypernym_synset.hyponyms()
         length = len(hyponyms)
-        if hypernym_score == 0 or length ==0:
+        if hypernym_score == 0 or length == 0:
             return
         subscore = hypernym_score / length
         for hyponym in hyponyms:
@@ -145,17 +290,14 @@ class LifeStylesAnalyzer(object):
             if continue_hyponyms:
                 self._score_to_hyponyms(hyponym, subscore, score_sentiments)
 
-
-
-
     def analyze_food(self, diary_tags):
-        return self._analyze_thing(self.food_collect, diary_tags)
+        return self._analyze_noun_thing(self.food_collect, diary_tags)
 
     def analyze_hobby(self, diary_tags):
-        return self._analyze_thing(self.hobby_collect, diary_tags)
+        return self._analyze_noun_thing(self.hobby_collect, diary_tags)
 
     def analyze_sport(self, diary_tags):
-        return self._analyze_thing(self.sport_collect, diary_tags)
+        return self._analyze_noun_thing(self.sport_collect, diary_tags)
 
     @classmethod
     def _find_synset_by_word_list(cls, collect, word_list, plural=False):
@@ -206,9 +348,26 @@ def _lemmas_to_name_list(lemmas, include_count=False):
         return names
 
 
+def _find_original_form(word, pos):
+    for synset in wn.synsets(word):
+        if synset.pos() == pos:
+            return synset.lemmas()[0].name()
+    return word
+
+
+def _find_offsets_from_word(word, pos):
+    offsets = []
+    for synset in wn.synsets(word):
+        if synset.pos() == pos or (pos == 'a' and synset.pos() == 's'):
+            offsets.append(synset.offset())
+    return offsets
+
+
+senti_wordnet = SentiWordNet('wordset/SentiWordNet_3.0.0_20130122.txt')
 foods = HyponymThingsCollector(wn.synset('food.n.02'), max_level=8)
 sports = HyponymThingsCollector(wn.synset('sport.n.01'), wn.synset('exercise.n.01'), max_level=7)
-analyzer = LifeStylesAnalyzer(food_collect=foods, sport_collect=sports)
+analyzer = LifeStylesAnalyzer(senti_wordnet=senti_wordnet,
+                              food_collect=foods, sport_collect=sports)
 
 
 if __name__ == "__main__":
@@ -266,12 +425,10 @@ if __name__ == "__main__":
     # pprint(sports.get_list())
     # print()
     # print()
-    print()
+    # print()
 
-    TEST_DIARY = """I like tomato pasta and bread. I usually have eaten sweet potatoes with sugar since childhood.
-                    However, today I dated with my girlfriend and
-                    ate them without sugar. It was very delicious more thant I thought!
-                    Then at the midnight, I did stretch."""
+    TEST_DIARY = """I very hate tomato pasta and bread. I usually have eaten sweet potatoes with sugar since childhood. However, today I dated with my girlfriend and ate them without sugar. It was very delicious more thant I thought! Then at the midnight, I did stretch."""
+    TEST_DIARY = """I usually have eaten apples with sugar since childhood."""
     # for synset in wn.synsets('potatoes'):
     #     print(synset, synset.pos(), synset.offset(), synset.frame_ids(), synset.definition(),
     #           synset.examples(), synset.lexname(), sep=' | ')
@@ -287,24 +444,42 @@ if __name__ == "__main__":
     # print()
 
 
-    from diary_analyzer import sample_diaries
+    # from diary_analyzer import sample_diaries
     diaries = []
-    for diary_text in sample_diaries.NICOLEXLOVE13:
-        diary_tags = tagger.tag_pos_doc(diary_text)
-        diaries.append(diary_tags)
-        pprint(diary_tags)
-    tags = tagger.tag_pos_doc(TEST_DIARY)
-    diaries.append(tagger.tag_pos_doc(TEST_DIARY))
-    #
-    pprint(tags)
+    # diaries.append(tagger.tag_pos_doc("The apple is delicious."))
+    # diaries.append(tagger.tag_pos_doc("I like apple."))
+    # diaries.append(tagger.tag_pos_doc("I've liked apple."))
+    # diaries.append(tagger.tag_pos_doc("I liked apple."))
+    # diaries.append(tagger.tag_pos_doc("I don't like apple."))
+    # diaries.append(tagger.tag_pos_doc("I like tomato pasta."))
+    # diaries.append(tagger.tag_pos_doc("I hate tomato pasta."))
+    # diaries.append(tagger.tag_pos_doc("I ate bread."))
+    # diaries.append(tagger.tag_pos_doc("I like bread."))
+    # diaries.append(tagger.tag_pos_doc("I don't like bread."))
+    # diaries.append(tagger.tag_pos_doc("I love bread."))
+    # diaries.append(tagger.tag_pos_doc("I really love bread."))
+    # diaries.append(tagger.tag_pos_doc("I hate bread."))
+    # diaries.append(tagger.tag_pos_doc("I did not like apple and pineapple."))
+    # for diary_text in sample_diaries.NICOLEXLOVE13:
+    #     diary_tags = tagger.tag_pos_doc(diary_text)
+    #     diaries.append(diary_tags)
+        # pprint(diary_tags)
+    test_tags = tagger.tag_pos_doc(TEST_DIARY)
+    diaries.append(test_tags)
+
+    # pprint(tags)
     print()
     for diary_tags in diaries:
+        print(diary_tags[0])
+        print(diary_tags[1])
         result = analyzer.analyze_food(diary_tags[1])
         print(result)
+        print()
     print()
     # for diary_tags in diaries:
     #     result = analyzer.analyze_sport(diary_tags[1])
     #     print(result)
+    # print()
 
     # pprint(LifeStylesAnalyzer._count_word_in_corpus('bread'))
     # pprint(LifeStylesAnalyzer._count_word_in_corpus('bread', 'n'))

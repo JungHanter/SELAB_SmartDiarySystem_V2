@@ -5,6 +5,7 @@ from diary_analyzer.tools import ner_tagger
 
 from nltk.tokenize import word_tokenize
 from nltk.corpus import wordnet as wn
+import csv
 
 # SAMPLE_DIARY = """I had to rush my mom to the hospital today, and it was the scariest thing ever. It really made me realize how much I love my mom. I cried so much before going into the hospital. Turns out she has a kidney stone on each kidney, and that's nothing good, but it's better than some things that it could have been. We went in not knowing what was wrong, and i'm so glad it wasn't something that could result in death. I have never been that scared before and I will never again take my moms name in vain."""
 # pprint(pos_tagger.tag_pos_doc(SAMPLE_DIARY))
@@ -121,8 +122,26 @@ from nltk.corpus import wordnet as wn
 #               lemma.frame_strings(), lemma.count(), sep=' | ')
 #     print()
 # print()
+#
+# for synset in wn.synsets('act'):
+#     print(synset, synset.pos(), synset.offset(), synset.frame_ids(), synset.definition(),
+#           synset.examples(), synset.lexname(), sep=' | ')
+#     for lemma in synset.lemmas():
+#         print('\t', lemma, lemma.name(), lemma.syntactic_marker(), lemma.frame_ids(),
+#               lemma.frame_strings(), lemma.count(), sep=' | ')
+#     print()
+# print()
+#
+# for synset in wn.synsets('activity'):
+#     print(synset, synset.pos(), synset.offset(), synset.frame_ids(), synset.definition(),
+#           synset.examples(), synset.lexname(), sep=' | ')
+#     for lemma in synset.lemmas():
+#         print('\t', lemma, lemma.name(), lemma.syntactic_marker(), lemma.frame_ids(),
+#               lemma.frame_strings(), lemma.count(), sep=' | ')
+#     print()
+# print()
 
-for synset in wn.synsets('exercise'):
+for synset in wn.synsets('delicious'):
     print(synset, synset.pos(), synset.offset(), synset.frame_ids(), synset.definition(),
           synset.examples(), synset.lexname(), sep=' | ')
     for lemma in synset.lemmas():
@@ -131,11 +150,3 @@ for synset in wn.synsets('exercise'):
     print()
 print()
 
-for synset in wn.synsets('workout'):
-    print(synset, synset.pos(), synset.offset(), synset.frame_ids(), synset.definition(),
-          synset.examples(), synset.lexname(), sep=' | ')
-    for lemma in synset.lemmas():
-        print('\t', lemma, lemma.name(), lemma.syntactic_marker(), lemma.frame_ids(),
-              lemma.frame_strings(), lemma.count(), sep=' | ')
-    print()
-print()
