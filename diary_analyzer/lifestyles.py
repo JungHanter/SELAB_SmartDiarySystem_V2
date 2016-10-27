@@ -427,8 +427,8 @@ if __name__ == "__main__":
     # print()
     # print()
 
-    TEST_DIARY = """I very hate tomato pasta and bread. I usually have eaten sweet potatoes with sugar since childhood. However, today I dated with my girlfriend and ate them without sugar. It was very delicious more thant I thought! Then at the midnight, I did stretch."""
-    TEST_DIARY = """I usually have eaten apples with sugar since childhood."""
+    TEST_DIARY = """I like eating potato as a snack. I usually have eaten potatoes with sugar since childhood. However, today I ate them without sugar because of my girlfriend's suggestion. It was very delicious more than I thought!"""
+    # TEST_DIARY = """I usually have eaten apples with sugar since childhood."""
     # for synset in wn.synsets('potatoes'):
     #     print(synset, synset.pos(), synset.offset(), synset.frame_ids(), synset.definition(),
     #           synset.examples(), synset.lexname(), sep=' | ')
@@ -465,10 +465,16 @@ if __name__ == "__main__":
     #     diaries.append(diary_tags)
         # pprint(diary_tags)
     test_tags = tagger.tag_pos_doc(TEST_DIARY)
+    #
+    # pprint (test_tags)
     diaries.append(test_tags)
 
+    # test_tags = tagger.tag_pos_doc("Today I went Soongsil Univerity with James.", True)
+    # pprint(test_tags)
+
+
     # pprint(tags)
-    print()
+    # print()
     for diary_tags in diaries:
         print(diary_tags[0])
         print(diary_tags[1])
