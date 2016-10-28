@@ -2,6 +2,8 @@ from collections import defaultdict
 from nltk.corpus import wordnet as wn
 from pprint import pprint
 import csv
+import os
+import operator
 
 from diary_analyzer import tagger
 from diary_analyzer.tagger import TAG_POS_WORD, TAG_POS_DEPENDENCY, \
@@ -390,7 +392,31 @@ def _find_offsets_from_word(word, pos):
     return offsets
 
 
-senti_wordnet = SentiWordNet('wordset/SentiWordNet_3.0.0_20130122.txt')
+def ranking_lifestyle(lifestyle_list, like):
+    calculated_list = {}
+    for lifestyle_item in lifestyle_list:
+        if not (lifestyle_item['thing'] in calculated_list):
+            calculated_list[lifestyle_item['thing']] = lifestyle_item['score']
+        else:
+            calculated_list[lifestyle_item['thing']] = calculated_list[lifestyle_item['thing']] + lifestyle_item['score']
+
+    # sort by value
+    ranked_list = sorted(calculated_list.items(), key=operator.itemgetter(1), reverse=like)
+
+    # Cutting MOST 3 things
+    final_result = []
+    cnt = 0
+    for item in ranked_list:
+        tmp_dict = {item[0]: item[1]}
+        final_result.append(tmp_dict)
+        cnt += 1
+        if cnt == 3:
+            break
+
+    return final_result
+
+mpath = os.path.join(os.path.dirname(os.path.abspath(__file__)),'wordset','SentiWordNet_3.0.0_20130122.txt')
+senti_wordnet = SentiWordNet(mpath)
 foods = HyponymThingsCollector(wn.synset('food.n.02'), max_level=8)
 sports = HyponymThingsCollector(wn.synset('sport.n.01'), wn.synset('exercise.n.01'), max_level=7)
 analyzer = LifeStylesAnalyzer(senti_wordnet=senti_wordnet,

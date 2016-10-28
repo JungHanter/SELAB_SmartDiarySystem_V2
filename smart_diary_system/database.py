@@ -237,7 +237,62 @@ class AudioDiaryManager(DBManager):
             logger.error("ERROR MSG : %s", error_msg)
             return False
 
-    def retrieve_audio_diary_detail_by_audio_diary_id(self, user_id, audio_diary_id):
+    def retrieve_audio_diary_list_by_timestamp(self, audio_diary_info):
+        """Creating new audio_diary to SD DB
+        Usually, this method be called
+        When User creating new audio_diary
+                                    "ON m.audio_diary_id = d.audio_diary_id " \
+
+
+
+        :type audio_diary_info: dict contains user_id, timestamp_from, timestamp_to
+        :rtype query result[list] or false:
+        """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+        assert self.connected
+        query_for_get_c_text_list = "SELECT d.content, m.* FROM audio_diary as m " \
+                                    "INNER JOIN text_diary AS d USING(audio_diary_id)" \
+                                    "WHERE m.user_id = %s"
+        try:
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                if 'timestamp_from' in audio_diary_info and 'timestamp_to' in audio_diary_info:
+                    query_for_get_c_text_list += " AND m.created_date>=%s AND m.created_date<=%s ORDER BY m.created_date DESC"
+                    cur.execute(query_for_get_c_text_list,
+                                (audio_diary_info["user_id"], audio_diary_info["timestamp_from"],
+                                 audio_diary_info["timestamp_to"]))
+
+                elif 'timestamp_from' in audio_diary_info:
+                    query_for_get_c_text_list += " AND m.created_date>=%s ORDER BY m.created_date DESC"
+                    cur.execute(query_for_get_c_text_list,
+                                (audio_diary_info["user_id"], audio_diary_info["timestamp_from"]))
+
+                elif 'timestamp_to' in audio_diary_info:
+                    query_for_get_c_text_list += " AND m.created_date<=%s ORDER BY m.created_date DESC"
+                    cur.execute(query_for_get_c_text_list,
+                                (audio_diary_info["user_id"], audio_diary_info["timestamp_to"]))
+                else:
+                    query_for_get_c_text_list += " ORDER BY m.created_date DESC"
+                    cur.execute(query_for_get_c_text_list, audio_diary_info["user_id"])
+                result = cur.fetchall()
+                # END : for calculating execution time
+                stop = timeit.default_timer()
+                logger.debug("DB : get_text_diary_list() - Execution Time : %s", stop - start)
+                if result:
+                    logger.debug('DB RESULT : %s', result)
+                    return result
+                else:
+                    logger.debug('DB RESULT : %s', result)
+                    return []
+        except pymysql.MySQLError as exp:
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At get_text_diary_list()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+            return False
+
+    def retrieve_audio_diary_detail_by_audio_diary_id(self, user_id, audio_diary_id, timestamp_from=None, timestamp_to=None):
         """Creating new audio_diary to SD DB
         Usually, this method be called
         When User retrieving audio_diary
@@ -495,7 +550,57 @@ class AudioDiaryManager(DBManager):
             logger.error("ERROR MSG : %s", error_msg)
             return False
 
-    def retrieve_pickle_state(self, audio_diary_id):
+    def update_lifestyle_analyzed_state(self, audio_diary_id, state):
+        """Creating new audio_diary to SD DB
+            Usually, this method be called
+            When User retrieving audio_diary
+
+
+            :param audio_diary_info:
+            :rtype None:
+            """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+
+        assert self.connected
+        try:
+            query_for_updated = "UPDATE audio_diary SET lifestyle_analyzed= %s WHERE audio_diary_id "
+            if type(audio_diary_id) is list:
+                query_for_updated = query_for_updated + ' IN ('
+                for adi in audio_diary_id:
+                    query_for_updated = query_for_updated + str(adi) + ','
+                query_for_updated = query_for_updated[:-1]
+                query_for_updated = query_for_updated + ')'
+
+                with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                    affected_rows = cur.execute(query_for_updated, state)
+                    self.conn.commit()
+                    # END : for calculating execution time
+                    stop = timeit.default_timer()
+                    logger.debug("DB : update_lifstyle_analyze_state() - Execution Time : %s", stop - start)
+                    logger.debug("DB : AFFECTED ROWS : %s rows", affected_rows)
+                    return True
+
+            else:
+                query_for_updated = query_for_updated + '= %s '
+                with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                    affected_rows = cur.execute(query_for_updated, (state, audio_diary_id))
+                    self.conn.commit()
+                    # END : for calculating execution time
+                    stop = timeit.default_timer()
+                    logger.debug("DB : update_lifstyle_analyze_state() - Execution Time : %s", stop - start)
+                    logger.debug("DB : AFFECTED ROWS : %s rows", affected_rows)
+                    return True
+
+        except Exception as exp:
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At update_lifstyle_analyze_state()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+            return False
+
+    def retrieve_state_flags(self, audio_diary_id):
         """Creating new audio_diary to SD DB
         Usually, this method be called
         When User retrieving audio_diary
@@ -509,7 +614,7 @@ class AudioDiaryManager(DBManager):
 
         assert self.connected
         try:
-            query_for_retrieve_audio_diary = "SELECT pickle FROM audio_diary WHERE audio_diary_id = %s  "
+            query_for_retrieve_audio_diary = "SELECT pickle, lifestyle_analyze FROM audio_diary WHERE audio_diary_id = %s  "
             with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
                 cur.execute(query_for_retrieve_audio_diary, audio_diary_id)
                 result = cur.fetchone()
@@ -518,7 +623,7 @@ class AudioDiaryManager(DBManager):
                     stop = timeit.default_timer()
                     logger.debug("DB : retrieve_pickle_state() - Execution Time : %s", stop - start)
                     logger.debug('DB RESULT : %s', result)
-                    return result['pickle']
+                    return result
                 else:
                     return None
 
@@ -529,6 +634,7 @@ class AudioDiaryManager(DBManager):
             logger.error("ERROR NO : %s", num)
             logger.error("ERROR MSG : %s", error_msg)
             return False
+
 
 class TextDiaryManager(DBManager):
     def __init__(self):
@@ -947,11 +1053,11 @@ class SentenceElementManager(DBManager):
 
     def create_s_element(self, s_element_info):
         """Adding new audio_diary to SD DB
-            Usually, this method be called
-            converted text has been parsed
+        Usually, this method be called
+        converted text has been parsed
 
-            :rtype None:
-            """
+        :rtype None:
+        """
         # START : for calculating execution time
         start = timeit.default_timer()
 
@@ -1032,5 +1138,144 @@ class AnalyticsManager(DBManager):
 
     def retrieve_analytics(self, user_id, audio_diary_id, t_type=None):
         pass
+
+
+class LifeStyleManager(DBManager):
+    def __init__(self):
+        """DB Model Class for smartaudio_diary.sentence table
+
+        """
+        DBManager.__init__(self)
+
+    def create_lifestyle(self, audio_diary_id, thing_type, thing, score):
+        """Adding new audio_diary to SD DB
+            Usually, this method be called
+            converted text has been parsed
+
+            :rtype None:
+            """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+
+        assert self.connected
+        query_for_create_lifestyle = "INSERT INTO lifestyle " \
+                                     "(audio_diary_id, thing_type, thing, score) " \
+                                     "VALUES (%s, %s, %s, %s)"
+        try:
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                cur.execute(query_for_create_lifestyle,
+                            (audio_diary_id, thing_type, thing, score))
+                self.conn.commit()
+
+                sentence_id = cur.fetchone()['LAST_INSERT_ID()']
+
+                # END : for calculating execution time
+                stop = timeit.default_timer()
+                logger.debug("DB : create_lifestyle() - Execution Time : %s", stop - start)
+            return sentence_id
+        except pymysql.MySQLError as exp:
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At create_lifestyle()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+            return False
+
+    def create_lifestyle_by_list(self, ls_list):
+        """Adding new audio_diary to SD DB
+        Usually, this method be called
+        converted text has been parsed
+
+        :rtype None:
+        """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+
+        assert self.connected
+
+        if type(ls_list) is list:
+            query_for_ls = "INSERT INTO lifestyle " \
+                                         "(audio_diary_id, thing_type, thing, score) " \
+                                         "VALUES"
+            for ls in ls_list:
+                query_for_ls += " (%s, '%s', '%s', %s)," \
+                                              % (ls['audio_diary_id'],
+                                                 ls['thing_type'],
+                                                 ls['thing'], ls['score'])
+            query_for_ls = query_for_ls[:-1]
+            try:
+                with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                    cur.execute(query_for_ls)
+                    cur.execute("SELECT LAST_INSERT_ID()")
+                    self.conn.commit()
+
+                    s_element_id = cur.fetchone()['LAST_INSERT_ID()']
+
+                    # END : for calculating execution time
+                    stop = timeit.default_timer()
+                    logger.debug("DB : create_lifestyle_by_list(list) - Execution Time : %s", stop - start)
+                return s_element_id
+            except pymysql.MySQLError as exp:
+                logger.error(">>>MYSQL ERROR<<<")
+                logger.error("At create_lifestyle_by_list()")
+                num, error_msg = exp.args
+                logger.error("ERROR NO : %s", num)
+                logger.error("ERROR MSG : %s", error_msg)
+                return False
+
+    def retrieve_lifestyle_with_period(self, thing_type, timestamp_from, timestamp_to):
+        pass
+
+    def retrieve_lifestyle(self, audio_diary_id, thing_type):
+        """retrieving converted text from SD DB
+        Usually, this method be called
+        When ...
+
+        :param text_diary_id:
+        :rtype: dict contains user's inforamtion
+        """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+        assert self.connected  # Connection Check Flag
+        query_for_lifestyle = "SELECT * FROM lifestyle WHERE audio_diary_id "
+        try:
+            if type(audio_diary_id) is list:
+                query_for_lifestyle = query_for_lifestyle + 'IN('
+                for a_d_id in audio_diary_id:
+                    query_for_lifestyle = query_for_lifestyle + str(a_d_id) + ','
+                query_for_lifestyle = query_for_lifestyle[:-1]
+                query_for_lifestyle = query_for_lifestyle + ')'
+                query_for_lifestyle = query_for_lifestyle + ' AND thing_type = %s'
+                with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                    cur.execute(query_for_lifestyle, thing_type)
+                    stop = timeit.default_timer()
+                    logger.debug("DB : retrieve_lifestyle() - Execution Time : %s", stop - start)
+                    result = cur.fetchall()
+                    if result:
+                        logger.debug('DB RESULT : %s', result)
+                        return result
+                    else:
+                        return None
+            else:
+                with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                    query_for_lifestyle = query_for_lifestyle + ' = %s AND thing_type = %s'
+                    cur.execute(query_for_lifestyle, (audio_diary_id, thing_type))
+                    # END : for calculating execution time
+                    stop = timeit.default_timer()
+                    logger.debug("DB : retrieve_lifestyle() - Execution Time : %s", stop - start)
+                    result = cur.fetchall()
+                    if result:
+                        logger.debug('DB RESULT : %s', result)
+                        return result
+                    else:
+                        return None
+        except pymysql.MySQLError as exp:
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At retrieve_lifestyle()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+            return False
+
 
 

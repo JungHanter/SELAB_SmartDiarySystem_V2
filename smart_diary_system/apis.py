@@ -7,6 +7,8 @@ from smart_diary_system import security
 import logging
 from django.http import Http404
 from diary_analyzer import tagger
+from diary_analyzer import lifestyles
+import operator
 
 # from diary_nlp import nlp_en
 from langdetect import detect
@@ -244,28 +246,6 @@ def manage_diary(request, option=None):
                         result_context = []
                     return JsonResponse({'retrieve_diary': True, 'result_detail': result, 'result_context': result_context})
 
-            if option == 'pickle':
-                data = json.loads(json.dumps(request.GET))
-                logger.debug("INPUT :%s", data)
-
-                audio_diary_manager = database.AudioDiaryManager()
-                state = audio_diary_manager.retrieve_pickle_state(data['audio_diary_id'])
-                if state is None:
-                    return JsonResponse({'retrieve_diary': False, 'reason': 'NOT EXIST. CHECK AUDIO_DIARY_ID'})
-                if state == 0:
-                    return JsonResponse({'retrieve_diary': False, 'reason': 'NO PICKLE'})
-                elif state == 1:
-                    return JsonResponse({'retrieve_diary': False, 'reason': 'MAKING'})
-                else:
-                    ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-                    PICKLE_DIR = os.path.join(ROOT_DIR, 'pickles', str(data['user_id']), str(data['audio_diary_id']))
-                    PICKLE_PATH = os.path.join(PICKLE_DIR, "pos_texts.pkl")
-                    if os.path.isfile(PICKLE_PATH):
-                        pickle = tagger.pickle_to_tags(PICKLE_PATH)
-                        return JsonResponse({'retrieve_diary': True, 'pickle': pickle})
-
-
-
         except Exception as exp:
             logger.exception(exp)
             logger.debug("RETURN : FALSE - EXCEPTION")
@@ -349,42 +329,120 @@ def manage_analyze(request, option=None):
                 return JsonResponse({'delete_diary': False})
 
     elif request.method == 'GET':
-        try:
+
             if option is None:
                 pass
 
             if option == 'check_pos_tagging':
-                data = json.loads(json.dumps(request.GET))
-                logger.debug("INPUT :%s", data)
+                try:
+                    data = json.loads(json.dumps(request.GET))
+                    logger.debug("INPUT :%s", data)
 
-                audio_diary_manager = database.AudioDiaryManager()
-                state = audio_diary_manager.retrieve_pickle_state(data['audio_diary_id'])
-                if state is None:
-                    return JsonResponse({'check_pos_tagging': False, 'reason': 'AUDIO_DIARY_NOT_EXIST'})
-                elif state == 0:
-                    return JsonResponse({'check_pos_tagging': False, 'reason': 'MAKING_FAILED'})
-                elif state == 1:
-                    return JsonResponse({'check_pos_tagging': False, 'reason': 'WORKING'})
-                else:
-                    return JsonResponse({'check_pos_tagging': True})
+                    audio_diary_manager = database.AudioDiaryManager()
+                    audio_diary_list = audio_diary_manager.retrieve_state_flags(data['audio_diary_id'])
 
-        except Exception as exp:
-            logger.exception(exp)
-            logger.debug("RETURN : FALSE - EXCEPTION")
-            return JsonResponse({'parsing_is_done': False})
+                    if audio_diary_list is None:
+                        return JsonResponse({'check_pos_tagging': False, 'reason': 'AUDIO_DIARY_NOT_EXIST'})
+                    else:
+                        state = audio_diary_list['pickle']
+                        if state == 0:
+                            return JsonResponse({'check_pos_tagging': False, 'reason': 'MAKING_FAILED'})
+                        elif state == 1:
+                            return JsonResponse({'check_pos_tagging': False, 'reason': 'WORKING'})
+                        else:
+                            return JsonResponse({'check_pos_tagging': True})
+
+                except Exception as exp:
+                    logger.exception(exp)
+                    logger.debug("RETURN : FALSE - EXCEPTION")
+                    return JsonResponse({'parsing_is_done': False})
+
+            if option == 'lifestyle':
+                try:
+                    data = json.loads(json.dumps(request.GET))
+                    logger.debug("INPUT :%s", data)
+
+                    thing_type = data['thing_type']
+                    thing_type = 'food'
+
+                    # init DB Mangagers
+                    audio_diary_manager = database.AudioDiaryManager()
+                    life_style_manager = database.LifeStyleManager()
+
+                    # retrieve audio diarys which will be analyzed
+                    audio_diary_list = audio_diary_manager.retrieve_audio_diary_list_by_timestamp(data)  # user_id, timestamp_from, timestamp_to
+                    if audio_diary_list is None:
+                        # Nothing to show
+                        logger.debug("RETURN : TRUE - NO DIARY AVAILABLE")
+                        return JsonResponse({'lifestyle': True, 'result': []})
+                        pass
+                    else:
+                        diary_tag_list = []
+                        analyzed_audio_diary_id_list = []
+                        ranking_audio_diary_id_list = []
+                        for audio_diary in audio_diary_list:  # load pickles
+                            ranking_audio_diary_id_list.append(audio_diary['audio_diary_id'])
+                            if audio_diary['lifestyle_analyzed'] == 0:
+                                logger.debug('lifestyle : id(%s) Will be Analyzed & INSERT INTO DB', audio_diary['audio_diary_id'])
+                                # load pickles
+                                ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+                                PICKLE_DIR = os.path.join(ROOT_DIR, 'pickles', audio_diary['user_id'],
+                                                          str(audio_diary['audio_diary_id']), 'pos_texts.pkl')
+                                diary_tag_list.append(tagger.pickle_to_tags(PICKLE_DIR))
+                                analyzed_audio_diary_id_list.append(audio_diary['audio_diary_id'])
+                            else:
+                                logger.debug('lifestyle : id(%s) already Analyzed', audio_diary['audio_diary_id'])
+
+                        if not diary_tag_list and not analyzed_audio_diary_id_list:
+                            logger.debug('lifestyle : NOTHING TO INSERT INTO DB')
+
+                        # making lifestyle DB record
+                        lifestyles_dict_list = []
+                        for audio_diary_id, diary_tags in zip(analyzed_audio_diary_id_list, diary_tag_list):
+                            # analyze lifestyle
+                            if thing_type == 'food':
+                                lifestyle_analyze_result = lifestyles.analyzer.analyze_food(diary_tags[1])
+                            elif thing_type == 'hobby':
+                                pass
+                            elif thing_type == 'sport':
+                                pass
+
+                            for lifestyle_item in lifestyle_analyze_result.keys():
+                                lifestyles_dict = {'audio_diary_id': audio_diary_id, 'thing_type': thing_type,
+                                                   'thing': lifestyle_item, 'score': lifestyle_analyze_result[lifestyle_item]}
+                                lifestyles_dict_list.append(lifestyles_dict)
+
+                        if lifestyles_dict_list:  # insert lifestyle record into DB
+                            life_style_manager.create_lifestyle_by_list(lifestyles_dict_list)
+                            if analyzed_audio_diary_id_list:  # updating lifestyle_analyzed flag in audio_diary table
+                                audio_diary_manager.update_lifestyle_analyzed_state(analyzed_audio_diary_id_list, 1)
+
+                        # statistic analyze
+                        lifestyle_item_list = life_style_manager.retrieve_lifestyle(ranking_audio_diary_id_list, thing_type)
+                        if str(data['option']).lower() == 'like':
+                            like = True
+                        elif str(data['option']).lower() == 'dislike':
+                            like = False
+                        else:
+                            logger.debug("RETURN : FALSE - INVALID OPTION TYPE")
+                            return JsonResponse({'lifestyle': False, 'reason': 'INVALID OPTION TYPE'})
+                        final_result = lifestyles.ranking_lifestyle(lifestyle_list=lifestyle_item_list, like=like)
+
+                        logger.debug("RETURN : %s", final_result)
+                        return JsonResponse({'lifestyle': True, 'result': final_result})
+                except Exception as exp:
+                    logger.exception(exp)
+                    logger.debug("RETURN : FALSE - EXCEPTION")
+                    return JsonResponse({'lifestyle': False, 'reason': 'INTERNAL SERVER ERROR'})
 
     elif request.method == 'PUT':
         try:
             if option is None:
                 pass
 
-
         except Exception as exp:
             logger.exception(exp)
             return JsonResponse({'update_diary': False})
-
-
-
 
 # @csrf_exempt
 # def analyze_semantic(request, option=None):
