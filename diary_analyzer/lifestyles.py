@@ -407,13 +407,20 @@ def ranking_lifestyle(lifestyle_list, like):
     final_result = []
     cnt = 0
     for item in ranked_list:
-        tmp_dict = {item[0]: item[1]}
-        final_result.append(tmp_dict)
+        # tmp_dict = {item[0]: item[1]}
+        # final_result.append(tmp_dict)
+        result_lemma = _get_default_lemma(item[0])
+        final_result.append(result_lemma)
         cnt += 1
         if cnt == 3:
             break
 
     return final_result
+
+
+def _get_default_lemma(synset_name):
+    return wn.synset(synset_name).lemmas()[0].name()
+
 
 mpath = os.path.join(os.path.dirname(os.path.abspath(__file__)),'wordset','SentiWordNet_3.0.0_20130122.txt')
 senti_wordnet = SentiWordNet(mpath)
@@ -482,6 +489,7 @@ if __name__ == "__main__":
 
     TEST_DIARY = """I like eating potato as a snack. I usually have eaten potatoes with sugar since childhood. However, today I ate them without sugar because of my girlfriend's suggestion. It was very delicious more than I thought!"""
     # TEST_DIARY = """I usually have eaten apples with sugar since childhood."""
+    TEST_DIARY2 = """My main course was a half the dishes. Cumbul Ackard Cornish card little gym lettuce. Fresh Peas Mousser on mushrooms, Cocles and a cream sauce finished with a drizzle of olive oil wonderfully tender, and moist card. But I'm really intensify the flavor of the card there by providing a nice flavor contrast to the rich cream sauce. Lovely freshness, and texture from the little gym lettuce. A well executed dish with bags of flavour. Next, a very elegant vanilla, yogurt and strawberries and Candy Basil different strawberry preparations delivered a wonderful variety of flavor. Intensities is there was a sweet and tart lemon curd and yogurt sorbet buttery, Pepper Pastry Cramble Candied Lemons. Testing broken mrang the lemon curd had a wonderfully creamy texture and then ring was perfectly light and Chrissy and wonderful dessert with a great balance of flavors and textures. It's got sweetness. It's got scrunch. It's got acidity. It's got freshness."""
     # for synset in wn.synsets('potatoes'):
     #     print(synset, synset.pos(), synset.offset(), synset.frame_ids(), synset.definition(),
     #           synset.examples(), synset.lexname(), sep=' | ')
@@ -517,7 +525,8 @@ if __name__ == "__main__":
     #     diary_tags = tagger.tag_pos_doc(diary_text)
     #     diaries.append(diary_tags)
         # pprint(diary_tags)
-    test_tags = tagger.tag_pos_doc(TEST_DIARY)
+    # test_tags = tagger.tag_pos_doc(TEST_DIARY)
+    test_tags = tagger.tag_pos_doc(TEST_DIARY2)
     #
     # pprint (test_tags)
     diaries.append(test_tags)
@@ -525,16 +534,15 @@ if __name__ == "__main__":
     # test_tags = tagger.tag_pos_doc("Today I went Soongsil Univerity with James.", True)
     # pprint(test_tags)
 
-
     # pprint(tags)
     # print()
-    for diary_tags in diaries:
-        print(diary_tags[0])
-        print(diary_tags[1])
-        result = analyzer.analyze_food(diary_tags[1])
-        print(result)
-        print()
-    print()
+    # for diary_tags in diaries:
+    #     print(diary_tags[0])
+    #     print(diary_tags[1])
+    #     result = analyzer.analyze_food(diary_tags[1])
+    #     print(result)
+    #     print()
+    # print()
     # for diary_tags in diaries:
     #     result = analyzer.analyze_sport(diary_tags[1])
     #     print(result)
@@ -542,3 +550,8 @@ if __name__ == "__main__":
 
     # pprint(LifeStylesAnalyzer._count_word_in_corpus('bread'))
     # pprint(LifeStylesAnalyzer._count_word_in_corpus('bread', 'n'))
+
+    # pprint(tagger.tag_pos_doc("There is an apple."))
+
+    pprint(wn.synset("cheese.n.01").lemmas()[0]);
+    pprint(wn.synset("cheese.n.01").lemmas()[0].name());
