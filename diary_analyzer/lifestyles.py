@@ -179,10 +179,16 @@ class LifeStylesAnalyzer(object):
                     elif word[TAG_POS_WORD_ROLE].startswith('RB'):
                         word_score = 0
                         offsets = _find_offsets_from_word(word[TAG_POS_WORD], 'r')
+                        word_cnt = 0
                         for offset in offsets:
-                            word_score += senti_wordnet.get_score_value(offset, 'r')
-                        if len(offsets) == 0: word_score = 0.125
-                        else: word_score = word_score / len(offsets)
+                            now_score = senti_wordnet.get_score_value(offset, 'r')
+                            if now_score == 0:
+                                continue
+                            else:
+                                word_score += now_score
+                                word_cnt += 1
+                        if word_cnt == 0: word_score = 0.125
+                        else: word_score = word_score / word_cnt
                         weight_sent += 0.75 * word_score
                         prev_word_list.clear()
 
@@ -192,10 +198,16 @@ class LifeStylesAnalyzer(object):
                         if word[TAG_POS_MORPHEME] == 'root':  # main complement
                             word_weight = 1.5
                         offsets = _find_offsets_from_word(word[TAG_POS_WORD], 'v')
+                        word_cnt = 0
                         for offset in offsets:
-                            word_score += senti_wordnet.get_score_value(offset, 'v')
-                        if len(offsets) == 0: word_score = 0.125
-                        else: word_score = word_score / len(offsets)
+                            now_score = senti_wordnet.get_score_value(offset, 'v')
+                            if now_score == 0:
+                                continue
+                            else:
+                                word_score += now_score
+                                word_cnt += 1
+                        if word_cnt == 0: word_score = 0.125
+                        else: word_score = word_score / word_cnt
                         weight_sent += word_weight * word_score
                         prev_word_list.clear()
 
@@ -243,32 +255,44 @@ class LifeStylesAnalyzer(object):
                             word_weight = 1
                             word_score = 0
                             offsets = _find_offsets_from_word(word[TAG_POS_WORD], 'a')
+                            word_cnt = 0
                             for offset in offsets:
-                                word_score += senti_wordnet.get_score_value(offset, 'a')
-                            if len(offsets) == 0: word_score = 0.125
-                            else: word_score = word_score / len(offsets)
+                                now_score = senti_wordnet.get_score_value(offset, 'a')
+                                if now_score == 0:
+                                    continue
+                                else:
+                                    word_score += now_score
+                                    word_cnt += 1
+                            if word_cnt == 0: word_score = 0.125
+                            else: word_score = word_score / word_cnt
                             weight_sent += word_weight * word_score
 
                     elif 'JJ' in word[TAG_POS_WORD_ROLE] and word[TAG_POS_MORPHEME] == 'root':
                         word_weight = 2
                         word_score = 0
                         offsets = _find_offsets_from_word(word[TAG_POS_WORD], 'a')
+                        word_cnt = 0
                         for offset in offsets:
-                            word_score += senti_wordnet.get_score_value(offset, 'a')
-                        if len(offsets) == 0: word_score = 0.125
-                        else: word_score = word_score / len(offsets)
+                            now_score = senti_wordnet.get_score_value(offset, 'a')
+                            if now_score == 0:
+                                continue
+                            else:
+                                word_score += now_score
+                                word_cnt += 1
+                        if word_cnt == 0: word_score = 0.125
+                        else: word_score = word_score / word_cnt
                         weight_sent += word_weight * word_score
                         # prev_word_list.clear()
 
                     else:
                         prev_word_list.clear()
-                print(word[TAG_POS_WORD], ' -> ', weight_sent)
+                # print(word[TAG_POS_WORD], ' -> ', weight_sent)
 
             # apply to score sentiemnt
-            print('=== scoring: ', '===')
-            pprint(score_sentence)
-            print(flag_subj_intention_tfp, weight_sent, flag_neg, sep=' | ')
-            print('============================================')
+            # print('=== scoring: ', '===')
+            # pprint(score_sentence)
+            # print(flag_subj_intention_tfp, weight_sent, flag_neg, sep=' | ')
+            # print('============================================')
             for synset_name, sentiment in score_sentence.items():
                 value = weight_sent * sentiment * flag_neg
                 if flag_subj_intention_tfp:
@@ -315,9 +339,12 @@ class LifeStylesAnalyzer(object):
 
         # if lemma is not found, but the noun in lemma is plural
         if plural:
-            plural_noun = wn.synsets(word_list[length-1])[0].lemmas()[0].name()
-            word_list[length-1] = plural_noun
-            return cls._find_synset_by_word_list(collect, word_list, False)
+            try:
+                plural_noun = wn.synsets(word_list[length-1])[0].lemmas()[0].name()
+                word_list[length-1] = plural_noun
+                return cls._find_synset_by_word_list(collect, word_list, False)
+            except Exception as e:  # list index out of range exception -> no matching synset
+                return None, None
         return None, None
 
     @classmethod
