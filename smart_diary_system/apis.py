@@ -363,35 +363,48 @@ def manage_analyze(request, option=None):
                     logger.debug("INPUT :%s", data)
 
                     thing_type = data['thing_type']
-                    thing_type = 'food'
+                    defined_thing_type = ['food', 'sport']
+                    if not (thing_type in defined_thing_type):
+                        # Can not Anaylzed, THING TYPE is wrong, which is not defined
+                        logger.debug("RETURN : FALSE - INVALID THING TYPE")
+                        return JsonResponse({'lifestyle': False, 'reason': 'INVALID THING TYPE'})
 
                     # init DB Mangagers
                     audio_diary_manager = database.AudioDiaryManager()
                     life_style_manager = database.LifeStyleManager()
 
-                    # retrieve audio diarys which will be analyzed
+                    # retrieve audio diaries which will be analyzed
                     audio_diary_list = audio_diary_manager.retrieve_audio_diary_list_by_timestamp(data)  # user_id, timestamp_from, timestamp_to
                     if audio_diary_list is None:
                         # Nothing to show
                         logger.debug("RETURN : TRUE - NO DIARY AVAILABLE")
                         return JsonResponse({'lifestyle': True, 'result': []})
-                        pass
                     else:
                         diary_tag_list = []
                         analyzed_audio_diary_id_list = []
                         ranking_audio_diary_id_list = []
                         for audio_diary in audio_diary_list:  # load pickles
                             ranking_audio_diary_id_list.append(audio_diary['audio_diary_id'])
-                            if audio_diary['lifestyle_analyzed'] == 0:
-                                logger.debug('lifestyle : id(%s) Will be Analyzed & INSERT INTO DB', audio_diary['audio_diary_id'])
+
+                            # check if required thing_type already analyzed
+                            analyzed_types = parse_lifetype(audio_diary['lifestyle_analyzed'])
+                            if thing_type in analyzed_types:
+                                logger.debug('lifestyle : id(%s) already Analyzed', audio_diary['audio_diary_id'])
+                            else:
+                                logger.debug('lifestyle : id(%s) Will be Analyzed FOR %s',
+                                             audio_diary['audio_diary_id'], thing_type)
                                 # load pickles
                                 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
                                 PICKLE_DIR = os.path.join(ROOT_DIR, 'pickles', audio_diary['user_id'],
                                                           str(audio_diary['audio_diary_id']), 'pos_texts.pkl')
                                 diary_tag_list.append(tagger.pickle_to_tags(PICKLE_DIR))
-                                analyzed_audio_diary_id_list.append(audio_diary['audio_diary_id'])
-                            else:
-                                logger.debug('lifestyle : id(%s) already Analyzed', audio_diary['audio_diary_id'])
+
+                                if audio_diary['lifestyle_analyzed'] is None:
+                                    lifestyle_analyzed = thing_type + ','
+                                else:
+                                    lifestyle_analyzed = thing_type + ',' + audio_diary['lifestyle_analyzed']
+                                temp = {'audio_diary_id': audio_diary['audio_diary_id'], 'lifestyle_analyzed': lifestyle_analyzed}
+                                analyzed_audio_diary_id_list.append(temp)
 
                         if not diary_tag_list and not analyzed_audio_diary_id_list:
                             logger.debug('lifestyle : NOTHING TO INSERT INTO DB')
@@ -402,34 +415,38 @@ def manage_analyze(request, option=None):
                             # analyze lifestyle
                             if thing_type == 'food':
                                 lifestyle_analyze_result = lifestyles.analyzer.analyze_food(diary_tags[1])
-                            elif thing_type == 'hobby':
-                                pass
                             elif thing_type == 'sport':
-                                pass
+                                # lifestyle_analyze_result = lifestyles.analyzer.sport_collect(diary_tags[1])
+                                return JsonResponse({'lifestyle': False, 'reason': 'NOT YET IMPLEMENTED'})
 
                             for lifestyle_item in lifestyle_analyze_result.keys():
-                                lifestyles_dict = {'audio_diary_id': audio_diary_id, 'thing_type': thing_type,
+                                lifestyles_dict = {'audio_diary_id': audio_diary_id['audio_diary_id'], 'thing_type': thing_type,
                                                    'thing': lifestyle_item, 'score': lifestyle_analyze_result[lifestyle_item]}
                                 lifestyles_dict_list.append(lifestyles_dict)
 
                         if lifestyles_dict_list:  # insert lifestyle record into DB
                             life_style_manager.create_lifestyle_by_list(lifestyles_dict_list)
-                            if analyzed_audio_diary_id_list:  # updating lifestyle_analyzed flag in audio_diary table
-                                audio_diary_manager.update_lifestyle_analyzed_state(analyzed_audio_diary_id_list, 1)
 
                         # statistic analyze
                         lifestyle_item_list = life_style_manager.retrieve_lifestyle(ranking_audio_diary_id_list, thing_type)
-                        if str(data['option']).lower() == 'like':
-                            like = True
-                        elif str(data['option']).lower() == 'dislike':
-                            like = False
-                        else:
-                            logger.debug("RETURN : FALSE - INVALID OPTION TYPE")
-                            return JsonResponse({'lifestyle': False, 'reason': 'INVALID OPTION TYPE'})
-                        final_result = lifestyles.ranking_lifestyle(lifestyle_list=lifestyle_item_list, like=like)
+                        if lifestyle_item_list:
+                            if str(data['option']).lower() == 'like':
+                                like = True
+                            elif str(data['option']).lower() == 'dislike':
+                                like = False
+                            else:
+                                logger.debug("RETURN : FALSE - INVALID OPTION TYPE")
+                                return JsonResponse({'lifestyle': False, 'reason': 'INVALID OPTION TYPE'})
+                            final_result = lifestyles.ranking_lifestyle(lifestyle_list=lifestyle_item_list, like=like)
+                            logger.debug("RETURN : %s", final_result)
 
-                        logger.debug("RETURN : %s", final_result)
-                        return JsonResponse({'lifestyle': True, 'result': final_result})
+                            # updating lifestyle_analyzed flag in audio_diary table
+                            audio_diary_manager.update_lifestyle_analyzed_state(analyzed_audio_diary_id_list)
+                            return JsonResponse({'lifestyle': True, 'result': final_result})
+                        else:
+                            return JsonResponse({'lifestyle': True, 'result': []})
+
+
                 except Exception as exp:
                     logger.exception(exp)
                     logger.debug("RETURN : FALSE - EXCEPTION")
@@ -718,3 +735,11 @@ def pickling(user_id, audio_diary_id, content):
         logger.debug("PICKLE : FAIL")
         audio_diary_manager.update_pickle_state(audio_diary_id, 0)
         return False
+
+
+def parse_lifetype(lifetype):
+    parsed = str(lifetype).split(',')
+    return parsed
+
+
+

@@ -122,3 +122,5 @@ db.sqlite3
 *.log
 *.sqlite
 
+/smart_diary_system/uploaded/
+/smart_diary_system/pickles/

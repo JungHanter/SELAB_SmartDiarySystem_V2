@@ -550,7 +550,7 @@ class AudioDiaryManager(DBManager):
             logger.error("ERROR MSG : %s", error_msg)
             return False
 
-    def update_lifestyle_analyzed_state(self, audio_diary_id, state):
+    def update_lifestyle_analyzed_state(self, audio_diary_id, type_updated = None):
         """Creating new audio_diary to SD DB
             Usually, this method be called
             When User retrieving audio_diary
@@ -564,27 +564,30 @@ class AudioDiaryManager(DBManager):
 
         assert self.connected
         try:
-            query_for_updated = "UPDATE audio_diary SET lifestyle_analyzed= %s WHERE audio_diary_id "
+            query_for_updated = "UPDATE audio_diary SET lifestyle_analyzed= %s WHERE audio_diary_id =%s; "
             if type(audio_diary_id) is list:
-                query_for_updated = query_for_updated + ' IN ('
-                for adi in audio_diary_id:
-                    query_for_updated = query_for_updated + str(adi) + ','
-                query_for_updated = query_for_updated[:-1]
-                query_for_updated = query_for_updated + ')'
-
+                affected_rows = 0
                 with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                    affected_rows = cur.execute(query_for_updated, state)
+                    for adi in audio_diary_id:
+                        affected_rows = affected_rows + cur.execute(query_for_updated, (adi['lifestyle_analyzed'], adi['audio_diary_id']))
                     self.conn.commit()
                     # END : for calculating execution time
                     stop = timeit.default_timer()
                     logger.debug("DB : update_lifstyle_analyze_state() - Execution Time : %s", stop - start)
                     logger.debug("DB : AFFECTED ROWS : %s rows", affected_rows)
                     return True
+                # query_for_updated = query_for_updated + ' IN ('
+                # for adi in audio_diary_id:
+                #     query_for_updated = query_for_updated + str(adi['audio_diary_id']) + ','
+                # query_for_updated = query_for_updated[:-1]
+                # query_for_updated = query_for_updated + ')'
+
+
 
             else:
-                query_for_updated = query_for_updated + '= %s '
+                # query_for_updated = query_for_updated + '= %s '
                 with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                    affected_rows = cur.execute(query_for_updated, (state, audio_diary_id))
+                    affected_rows = cur.execute(query_for_updated, (type_updated, audio_diary_id))
                     self.conn.commit()
                     # END : for calculating execution time
                     stop = timeit.default_timer()
