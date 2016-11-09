@@ -551,13 +551,63 @@ def download(request):
             logger.debug("INPUT :%s", data)
             if data['user_id'] is not '' and data['audio_diary_id'] is not '':
                 file_path = os.path.join(settings.MEDIA_ROOT, data['user_id'], data['audio_diary_id'])
+                media_path = os.path.join(file_path, 'media')
                 file_list = os.listdir(file_path)
+                media_list = os.listdir(media_path)
+
                 if os.path.exists(file_path) and file_list:
-                    audio_file_path = os.path.join(file_path, file_list[0])
-                    with open(audio_file_path, 'rb') as fh:
-                        response = HttpResponse(fh.read(), content_type="audio/wav")
-                        response['Content-Disposition'] = 'inline; filename=' + file_list[0]
-                        return response
+                    if data['type'] == 'audio':
+                        for file in file_list:
+                            if '.wav' in file:
+                                file_path = os.path.join(file_path, file)
+                                with open(file_path, 'rb') as fh:
+                                    response = HttpResponse(fh.read(), content_type="audio/wav")
+                                    response['Content-Disposition'] = 'inline; filename=' + file
+                                    return response
+                            else:
+                                raise Http404
+
+                    elif data['type'] == 'picture':
+                        picture_extension_list = ['.ani', '.bmp', '.cal', '.fax', '.gif', '.img', '.jbg', '.jpe', '.jpeg', '.jpg', '.mac', '.pbm', '.pcd', '.pcx', '.pct', '.pgm', '.png', '.ppm', '.psd', '.ras', '.tga', '.tiff', '.wmf']
+                        for file in media_list:
+                            if any(tp in file for tp in picture_extension_list):
+                                media_path = os.path.join(media_path, file)
+                                with open(media_path, 'rb') as fh:
+                                    response = HttpResponse(fh.read(), content_type="image")
+                                    response['Content-Disposition'] = 'inline; filename=' + file
+                                    return response
+                            else:
+                                raise Http404
+
+                    elif data['type'] == 'video':
+                        video_extension_list = ['.webm',  '.mkv',  '.flv',  '.flv',  '.vob',  '.ogv',  '.ogg',  '.gif',  '.gifv',  '.mng',  '.avi',  '.mov',  '.qt',  '.wmv',  '.yuv',  '.rm',  '.rmvb',  '.asf',  '.amv',  '.mp4',  '.m4p',  '.m4v',  '.mpg',  '.mp2',  '.mpeg',  '.mpe',  '.mpv',  '.mpg',  '.mpeg',  '.m2v',  '.m4v',  '.svi',  '.3gp',  '.3g2',  '.flv',  '.f4v',  '.f4p',  '.f4a',  '.f4b' ]
+                        for file in media_list:
+                            if any(tp in file for tp in video_extension_list):
+                                media_path = os.path.join(media_path, file)
+                                with open(media_path, 'rb') as fh:
+                                    response = HttpResponse(fh.read(), content_type="video")
+                                    response['Content-Disposition'] = 'inline; filename=' + file
+                                    return response
+                            else:
+                                raise Http404
+
+                    elif data['type'] == 'music':
+                        music_extension_list = ['.3gp', '.aa', '.aac', '.aax', '.act', '.aiff', '.amr', '.ape', '.au', '.awb', '.dct', '.dss', '.dvf', '.flac', '.gsm', '.iklax', '.ivs', '.m4a', '.m4b', '.m4p', '.mmf', '.mp3', '.mpc', '.msv', '.ogg', '.oga', 'mogg', '.opus', '.ra', '.rm', '.raw', '.sln', '.tta', '.vox', '.wav', '.wma', '.wv', '.webm']
+                        for file in media_list:
+                            if any(tp in file for tp in music_extension_list):
+                                media_path = os.path.join(media_path, file)
+                                with open(media_path, 'rb') as fh:
+                                    response = HttpResponse(fh.read(), content_type="audio")
+                                    response['Content-Disposition'] = 'inline; filename=' + file
+                                    return response
+                            else:
+                                raise Http404
+
+                    elif data['type'] == 'handdrawn':
+                        pass
+                    else:
+                        raise Http404
+
                 else:
                     raise Http404
             else:
@@ -576,8 +626,8 @@ def download(request):
                 file_path = os.path.join(settings.MEDIA_ROOT, data['user_id'], str(data['audio_diary_id']))
                 file_list = os.listdir(file_path)
                 if os.path.exists(file_path) and file_list:
-                    audio_file_path = os.path.join(file_path, file_list[0])
-                    with open(audio_file_path, 'rb') as fh:
+                    file_path = os.path.join(file_path, file_list[0])
+                    with open(file_path, 'rb') as fh:
                         response = HttpResponse(fh.read(), content_type="audio/wav")
                         response['Content-Disposition'] = 'inline; filename=' + file_list[0]
                         return response
@@ -624,15 +674,40 @@ def insert_new_diary(data, request):
     if request.FILES.get('file0', False):  # file checking
         ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
         DIARY_DIR = os.path.join(ROOT_DIR, 'uploaded', str(data['user_id']), str(audio_diary_id))
+        MEDIA_DIR = os.path.join(DIARY_DIR, 'media')
         if not (os.path.isdir(DIARY_DIR)):
             os.mkdir(DIARY_DIR)
+        if not (os.path.isdir(MEDIA_DIR)):
+            os.mkdir(MEDIA_DIR)
 
+        picture = 'file1'
+        video = 'file2'
+        music = 'file3'
+
+        media_bit_list = []
         for key, value in request.FILES.items():
             # Saving UPLOADED Files
-            file_path = os.path.join(DIARY_DIR, str(request.FILES[key].name))
-            with open(file_path, 'wb') as destination:
-                for chunck in request.FILES[key]:
-                    destination.write(chunck)
+            if key == 'file0':
+                file_path = os.path.join(DIARY_DIR, str(request.FILES[key].name))
+                with open(file_path, 'wb') as destination:
+                    for chunck in request.FILES[key]:
+                        destination.write(chunck)
+            else:
+                if key == picture:
+                    tmp = {'audio_diary_id': audio_diary_id, 'media_type': 'picture', 'value': 1}
+                    media_bit_list.append(tmp)
+                elif key == video:
+                    tmp = {'audio_diary_id': audio_diary_id, 'media_type': 'video', 'value': 1}
+                    media_bit_list.append(tmp)
+                elif key == music:
+                    tmp = {'audio_diary_id': audio_diary_id, 'media_type': 'music', 'value': 1}
+                    media_bit_list.append(tmp)
+
+                file_path = os.path.join(MEDIA_DIR, str(request.FILES[key].name))
+                with open(file_path, 'wb') as destination:
+                    for chunck in request.FILES[key]:
+                        destination.write(chunck)
+        audio_diary_manager.update_media_bit(media_bit_list)
 
     # FILE UPLOAD LOGIC END---------------------------------------------------------------------------------------------
 

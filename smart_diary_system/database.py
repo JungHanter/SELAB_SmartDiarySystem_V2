@@ -603,6 +603,47 @@ class AudioDiaryManager(DBManager):
             logger.error("ERROR MSG : %s", error_msg)
             return False
 
+    def update_media_bit(self, value_list):
+        """Creating new audio_diary to SD DB
+            Usually, this method be called
+            When User retrieving audio_diary
+
+
+            :param audio_diary_info:
+            :rtype None:
+            """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+
+        assert self.connected
+        try:
+            if type(value_list) is list:
+                affected_rows = 0
+                with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                    for va in value_list:
+                        query_for_updated = "UPDATE audio_diary SET %s = %s WHERE audio_diary_id =%s; " % (va['media_type'])
+                        affected_rows = affected_rows + cur.execute(query_for_updated,
+                                                                    (va['value'], va['audio_diary_id']))
+                    self.conn.commit()
+                    # END : for calculating execution time
+                    stop = timeit.default_timer()
+                    logger.debug("DB : update_media_bit() - Execution Time : %s", stop - start)
+                    logger.debug("DB : AFFECTED ROWS : %s rows", affected_rows)
+                    return True
+                    # query_for_updated = query_for_updated + ' IN ('
+                    # for adi in audio_diary_id:
+                    #     query_for_updated = query_for_updated + str(adi['audio_diary_id']) + ','
+                    # query_for_updated = query_for_updated[:-1]
+                    # query_for_updated = query_for_updated + ')'
+
+        except Exception as exp:
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At update_media_bit()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+            return False
+
     def retrieve_state_flags(self, audio_diary_id):
         """Creating new audio_diary to SD DB
         Usually, this method be called
