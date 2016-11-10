@@ -637,12 +637,43 @@ def download(request):
             if data['user_id'] is not '' and data['audio_diary_id'] is not '':
                 file_path = os.path.join(settings.MEDIA_ROOT, data['user_id'], str(data['audio_diary_id']))
                 file_list = os.listdir(file_path)
+
                 if os.path.exists(file_path) and file_list:
-                    file_path = os.path.join(file_path, file_list[0])
-                    with open(file_path, 'rb') as fh:
-                        response = HttpResponse(fh.read(), content_type="audio/wav")
-                        response['Content-Disposition'] = 'inline; filename=' + file_list[0]
-                        return response
+                    if not('media_context_id' in data):
+                        for file in file_list:
+                            if '.wav' in file:
+                                file_path = os.path.join(file_path, file)
+                                with open(file_path, 'rb') as fh:
+                                    response = HttpResponse(fh.read(), content_type="audio/wav")
+                                    response['Content-Disposition'] = 'inline; filename=' + file
+                                    return response
+                            else:
+                                raise Http404
+                    else:
+                        mc_manager = database.MediaContextManager()
+                        mc_info = mc_manager.retrieve_media_context_by_mc_id(data['media_context_id'])
+
+                        if mc_info['type'] == 'picture':
+                            with open(mc_info['path'], 'rb') as fh:
+                                response = HttpResponse(fh.read(), content_type="image")
+                                response['Content-Disposition'] = 'inline; filename=' + str(os.path.basename(mc_info['path']))
+                                return response
+                        elif mc_info['type'] == 'video':
+                            with open(mc_info['path'], 'rb') as fh:
+                                response = HttpResponse(fh.read(), content_type="video")
+                                response['Content-Disposition'] = 'inline; filename=' + str(
+                                    os.path.basename(mc_info['path']))
+                                return response
+                        elif mc_info['type'] == 'music':
+                            with open(mc_info['path'], 'rb') as fh:
+                                response = HttpResponse(fh.read(), content_type="audio")
+                                response['Content-Disposition'] = 'inline; filename=' + str(
+                                    os.path.basename(mc_info['path']))
+                                return response
+                        elif data['type'] == 'handdrawn':
+                            pass
+                        else:
+                            raise Http404
                 else:
                     raise Http404
             else:
