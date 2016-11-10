@@ -417,7 +417,7 @@ def ranking_lifestyle(lifestyle_list, like):
             msg = 'disliked'
         else:
             msg = 'very disliked'
-        tmp_dict = {'thing': item[0], 'value': item[1], 'message': msg}
+        tmp_dict = {'thing': _get_default_lemma(item[0]), 'value': item[1], 'message': msg}
         final_result.append(tmp_dict)
         # result_lemma = _get_default_lemma(item[0])
         # final_result.append(result_lemma)
