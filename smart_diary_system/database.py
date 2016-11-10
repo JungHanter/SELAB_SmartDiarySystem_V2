@@ -20,7 +20,7 @@ class DBManager(object):
         """
         try:
             self.conn = pymysql.connect(host='203.253.23.17', port=3306, user='root', passwd='lovejesus',
-                                        db='new_smartdiary', charset='utf8', use_unicode=True)
+                                        db='smartdiary2', charset='utf8', use_unicode=True)
             self.connected = True
         except pymysql.Error:
             self.connected = False
@@ -419,6 +419,49 @@ class AudioDiaryManager(DBManager):
             logger.error("ERROR MSG : %s", error_msg)
             return False
 
+    def retrieve_text_diary_list_by_keyword(self, audio_diary_info):
+        """Creating new audio_diary to SD DB
+            Usually, this method be called
+            When User creating new audio_diary
+
+
+
+            :type audio_diary_info: dict contains user_id, timestamp_from, timestamp_to
+            :rtype query result[list] or false:
+            """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+        assert self.connected
+        query_for_get_c_text_list = "SELECT d.content, d.audio_diary_id, m.created_date, m.title FROM text_diary AS d " \
+                                    "INNER JOIN audio_diary as m " \
+                                    "ON m.audio_diary_id = d.audio_diary_id " \
+                                    "WHERE m.user_id = %s " \
+                                    "AND d.content COLLATE UTF8_GENERAL_CI LIKE %s " \
+                                    "OR m.title COLLATE UTF8_GENERAL_CI LIKE %s"
+        try:
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                cur.execute(query_for_get_c_text_list,
+                            (audio_diary_info['user_id'], '%' + audio_diary_info['keyword'] + '%',
+                             '%' + audio_diary_info['keyword'] + '%'))
+                result = cur.fetchall()
+                # END : for calculating execution time
+                stop = timeit.default_timer()
+                logger.debug("DB : retrieve_text_diary_list_by_keyword() - Execution Time : %s", stop - start)
+                if result:
+                    logger.debug('DB RESULT : %s', result)
+                    return result
+                else:
+                    logger.debug('DB RESULT : %s', result)
+                    return []
+
+        except pymysql.MySQLError as exp:
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At retrieve_text_diary_list_by_keyword()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+            return False
+
     def update_audio_diary(self, audio_diary_info):
         """Creating new audio_diary to SD DB
             Usually, this method be called
@@ -598,47 +641,6 @@ class AudioDiaryManager(DBManager):
         except Exception as exp:
             logger.error(">>>MYSQL ERROR<<<")
             logger.error("At update_lifstyle_analyze_state()")
-            num, error_msg = exp.args
-            logger.error("ERROR NO : %s", num)
-            logger.error("ERROR MSG : %s", error_msg)
-            return False
-
-    def update_media_bit(self, value_list):
-        """Creating new audio_diary to SD DB
-            Usually, this method be called
-            When User retrieving audio_diary
-
-
-            :param audio_diary_info:
-            :rtype None:
-            """
-        # START : for calculating execution time
-        start = timeit.default_timer()
-
-        assert self.connected
-        try:
-            if type(value_list) is list:
-                affected_rows = 0
-                with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                    for va in value_list:
-                        query_for_updated = "UPDATE audio_diary SET %s = %s WHERE audio_diary_id =%s; " % (va['media_type'])
-                        affected_rows = affected_rows + cur.execute(query_for_updated,
-                                                                    (va['value'], va['audio_diary_id']))
-                    self.conn.commit()
-                    # END : for calculating execution time
-                    stop = timeit.default_timer()
-                    logger.debug("DB : update_media_bit() - Execution Time : %s", stop - start)
-                    logger.debug("DB : AFFECTED ROWS : %s rows", affected_rows)
-                    return True
-                    # query_for_updated = query_for_updated + ' IN ('
-                    # for adi in audio_diary_id:
-                    #     query_for_updated = query_for_updated + str(adi['audio_diary_id']) + ','
-                    # query_for_updated = query_for_updated[:-1]
-                    # query_for_updated = query_for_updated + ')'
-
-        except Exception as exp:
-            logger.error(">>>MYSQL ERROR<<<")
-            logger.error("At update_media_bit()")
             num, error_msg = exp.args
             logger.error("ERROR NO : %s", num)
             logger.error("ERROR MSG : %s", error_msg)
@@ -874,148 +876,6 @@ class TextDiaryManager(DBManager):
             return False
 
 
-class DiaryContextManager(DBManager):
-    def __init__(self):
-        """DB Model Class for smartaudio_diary.sentence table
-
-        """
-        DBManager.__init__(self)
-
-    def create_diary_context(self, audio_diary_id, diary_context_info):
-        """Adding new audio_diary to SD DB
-            Usually, this method be called
-            converted text has been parsed
-
-            :rtype None:
-            """
-        # START : for calculating execution time
-        start = timeit.default_timer()
-
-        assert self.connected
-        if type(diary_context_info) is list:
-            query_for_create_diary_context = "INSERT INTO diary_context " \
-                                        "(audio_diary_id, type, subtype, value, date_added) " \
-                                        "VALUES"
-            for d_item in diary_context_info:
-                query_for_create_diary_context += " (%s, '%s', '%s', '%s', %s)," % (
-                    audio_diary_id, d_item['type'], d_item['subtype'], d_item['value'], int(d_item['date_added']))
-            query_for_create_diary_context = query_for_create_diary_context[:-1]
-            try:
-                with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                    cur.execute(query_for_create_diary_context)
-                    cur.execute("SELECT LAST_INSERT_ID()")
-                    self.conn.commit()
-
-                    diary_context_id = cur.fetchone()['LAST_INSERT_ID()']
-
-                    # END : for calculating execution time
-                    stop = timeit.default_timer()
-                    logger.debug("DB : create_diary_context() - Execution Time : %s", stop - start)
-
-                return diary_context_id
-            except pymysql.MySQLError as exp:
-                logger.error(">>>MYSQL ERROR<<<")
-                logger.error("At create_diary_context()")
-                num, error_msg = exp.args
-                logger.error("ERROR NO : %s", num)
-                logger.error("ERROR MSG : %s", error_msg)
-                return False
-        else:
-            query_for_create_analytics = "INSERT INTO diary_context " \
-                                     "(audio_diary_id, type, subtype, value, date_added) " \
-                                     "VALUES (%s, %s, %s, %s, %s)"
-            try:
-                with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                    cur.execute(query_for_create_analytics, (diary_context_info['audio_diary_id'],
-                                                             diary_context_info['type'],
-                                                             diary_context_info['subtype'],
-                                                             diary_context_info['value'],
-                                                             diary_context_info['date_added']))
-                    self.conn.commit()
-
-                    diary_context_id = cur.fetchone()['LAST_INSERT_ID()']
-
-                    # END : for calculating execution time
-                    stop = timeit.default_timer()
-                    logger.debug("DB : create_analytics() - Execution Time : %s", stop - start)
-                return diary_context_id
-            except pymysql.MySQLError as exp:
-                logger.error(">>>MYSQL ERROR<<<")
-                logger.error("At create_analytics()")
-                num, error_msg = exp.args
-                logger.error("ERROR NO : %s", num)
-                logger.error("ERROR MSG : %s", error_msg)
-                return False
-
-    def retrieve_diary_context_by_audio_diary_id(self, audio_diary_id):
-        """Creating new audio_diary to SD DB
-            Usually, this method be called
-            When User retrieving audio_diary
-
-
-            :param audio_diary_info:
-            :rtype None:
-            """
-        # START : for calculating execution time
-        start = timeit.default_timer()
-
-        assert self.connected
-        try:
-            query_for_retrieve_audio_diary = "SELECT diary_context_id, type, subtype, value, date_added FROM diary_context WHERE audio_diary_id = %s  "
-            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                cur.execute(query_for_retrieve_audio_diary, audio_diary_id)
-                result = cur.fetchall()
-                if result:
-                    # END : for calculating execution time
-                    stop = timeit.default_timer()
-                    logger.debug("DB : retrieve_diary_context_by_audio_diary_id() - Execution Time : %s", stop - start)
-                    logger.debug('DB RESULT : %s', result)
-                    return result
-                else:
-                    return []
-
-        except Exception as exp:
-            logger.error(">>>MYSQL ERROR<<<")
-            logger.error("At retrieve_diary_context_by_audio_diary_id()")
-            num, error_msg = exp.args
-            logger.error("ERROR NO : %s", num)
-            logger.error("ERROR MSG : %s", error_msg)
-            return False
-
-    def delete_diary_context_by_audio_diary_id(self, audio_diary_id):
-        """Creating new audio_diary to SD DB
-            Usually, this method be called
-            When User retrieving audio_diary
-
-
-            :param audio_diary_info:
-            :rtype None:
-            """
-        # START : for calculating execution time
-        start = timeit.default_timer()
-
-        assert self.connected
-        try:
-            query_for_delete = "DELETE FROM diary_context WHERE audio_diary_id  = %s "
-            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                affected_rows = cur.execute(query_for_delete, int(audio_diary_id))
-                self.conn.commit()
-                # END : for calculating execution time
-                stop = timeit.default_timer()
-                logger.debug("DB : delete_diary_context_by_audio_diary_id() - Execution Time : %s", stop - start)
-                logger.debug("DB : AFFECTED ROWS : %s rows", affected_rows)
-                return True
-
-        except Exception as exp:
-            logger.exception(exp)
-            logger.error(">>>MYSQL ERROR<<<")
-            logger.error("At delete_diary_context_by_audio_diary_id()")
-            num, error_msg = exp.args
-            logger.error("ERROR NO : %s", num)
-            logger.error("ERROR MSG : %s", error_msg)
-            return False
-
-
 class SentenceManager(DBManager):
     def __init__(self):
         """DB Model Class for smartaudio_diary.sentence table
@@ -1088,55 +948,477 @@ class SentenceManager(DBManager):
                 return False
 
 
-class SentenceElementManager(DBManager):
+class EnvironmentalContextManager(DBManager):
     def __init__(self):
         """DB Model Class for smartaudio_diary.sentence table
 
         """
         DBManager.__init__(self)
 
-    def create_s_element(self, s_element_info):
+    def create_environmental_context(self, audio_diary_id, diary_context_info):
         """Adding new audio_diary to SD DB
-        Usually, this method be called
-        converted text has been parsed
+            Usually, this method be called
+            converted text has been parsed
 
-        :rtype None:
-        """
+            :rtype None:
+            """
         # START : for calculating execution time
         start = timeit.default_timer()
 
         assert self.connected
-
-        if type(s_element_info) is list:
-            query_for_create_s_element = "INSERT INTO s_element " \
-                                     "(sentence_id, text, pos, role, element_no, ne) " \
-                                     "VALUES"
-            for s_element_line in s_element_info:
-                query_for_create_s_element += " (%s, '%s', '%s', '%s', %s, '%s')," \
-                                          % (s_element_line['sentence_id'],
-                                             s_element_line['text'].replace('\'', '\\\''),
-                                             s_element_line['pos'], s_element_line['role'],
-                                             s_element_line['element_no'], s_element_line['ne'])
-            query_for_create_s_element = query_for_create_s_element[:-1]
+        if type(diary_context_info) is list:
+            query_for_create_diary_context = "INSERT INTO environmental_context " \
+                                        "(audio_diary_id, type, value) " \
+                                        "VALUES"
+            for d_item in diary_context_info:
+                query_for_create_diary_context += " (%s, '%s', '%s')," % (
+                    audio_diary_id, d_item['type'], d_item['value'])
+            query_for_create_diary_context = query_for_create_diary_context[:-1]
             try:
                 with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                    cur.execute(query_for_create_s_element)
+                    cur.execute(query_for_create_diary_context)
                     cur.execute("SELECT LAST_INSERT_ID()")
                     self.conn.commit()
 
-                    s_element_id = cur.fetchone()['LAST_INSERT_ID()']
+                    diary_context_id = cur.fetchone()['LAST_INSERT_ID()']
 
                     # END : for calculating execution time
                     stop = timeit.default_timer()
-                    logger.debug("DB : create_s_element(list) - Execution Time : %s", stop - start)
-                return s_element_id
+                    logger.debug("DB : create_environmental_context() - Execution Time : %s", stop - start)
+
+                return diary_context_id
             except pymysql.MySQLError as exp:
                 logger.error(">>>MYSQL ERROR<<<")
-                logger.error("At create_s_element()")
+                logger.error("At create_environmental_context()")
                 num, error_msg = exp.args
                 logger.error("ERROR NO : %s", num)
                 logger.error("ERROR MSG : %s", error_msg)
                 return False
+        else:
+            query_for_create_analytics = "INSERT INTO environmental_context " \
+                                     "(audio_diary_id, type, value) " \
+                                     "VALUES (%s, %s, %s, %s, %s)"
+            try:
+                with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                    cur.execute(query_for_create_analytics, (diary_context_info['audio_diary_id'],
+                                                             diary_context_info['type'],
+                                                             diary_context_info['value']))
+                    self.conn.commit()
+
+                    diary_context_id = cur.fetchone()['LAST_INSERT_ID()']
+
+                    # END : for calculating execution time
+                    stop = timeit.default_timer()
+                    logger.debug("DB : create_environmental_context() - Execution Time : %s", stop - start)
+                return diary_context_id
+            except pymysql.MySQLError as exp:
+                logger.error(">>>MYSQL ERROR<<<")
+                logger.error("At create_environmental_context()")
+                num, error_msg = exp.args
+                logger.error("ERROR NO : %s", num)
+                logger.error("ERROR MSG : %s", error_msg)
+                return False
+
+    def retrieve_environmental_context_by_audio_diary_id(self, audio_diary_id):
+        """Creating new audio_diary to SD DB
+            Usually, this method be called
+            When User retrieving audio_diary
+
+
+            :param audio_diary_info:
+            :rtype None:
+            """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+
+        assert self.connected
+        try:
+            query_for_retrieve_audio_diary = "SELECT * FROM environmental_context WHERE audio_diary_id = %s  "
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                cur.execute(query_for_retrieve_audio_diary, audio_diary_id)
+                result = cur.fetchall()
+                if result:
+                    # END : for calculating execution time
+                    stop = timeit.default_timer()
+                    logger.debug("DB : retrieve_environmental_context_by_audio_diary_id() - Execution Time : %s", stop - start)
+                    logger.debug('DB RESULT : %s', result)
+                    return result
+                else:
+                    return []
+
+        except Exception as exp:
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At retrieve_environmental_context_by_audio_diary_id()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+            return False
+
+    def delete_environmental_by_audio_diary_id(self, audio_diary_id):
+        """Creating new audio_diary to SD DB
+            Usually, this method be called
+            When User retrieving audio_diary
+
+
+            :param audio_diary_info:
+            :rtype None:
+            """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+
+        assert self.connected
+        try:
+            query_for_delete = "DELETE FROM environmental_context WHERE audio_diary_id  = %s "
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                affected_rows = cur.execute(query_for_delete, int(audio_diary_id))
+                self.conn.commit()
+                # END : for calculating execution time
+                stop = timeit.default_timer()
+                logger.debug("DB : delete_environmental_by_audio_diary_id() - Execution Time : %s", stop - start)
+                logger.debug("DB : AFFECTED ROWS : %s rows", affected_rows)
+                return True
+
+        except Exception as exp:
+            logger.exception(exp)
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At delete_environmental_by_audio_diary_id()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+            return False
+
+
+class TagManager(DBManager):
+    def __init__(self):
+        """DB Model Class for smartaudio_diary.sentence table
+
+        """
+        DBManager.__init__(self)
+
+    def create_tag(self, audio_diary_id, tag_info):
+        """Adding new audio_diary to SD DB
+            Usually, this method be called
+            converted text has been parsed
+
+            :rtype None:
+            """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+
+        assert self.connected
+        if type(tag_info) is list:
+            query_for_tag = "INSERT INTO tag " \
+                                             "(audio_diary_id, value) " \
+                                             "VALUES"
+            for d_item in tag_info:
+                query_for_tag += " (%s, '%s')," % (
+                    audio_diary_id, d_item['value'])
+            query_for_tag = query_for_tag[:-1]
+            try:
+                with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                    cur.execute(query_for_tag)
+                    cur.execute("SELECT LAST_INSERT_ID()")
+                    self.conn.commit()
+
+                    diary_context_id = cur.fetchone()['LAST_INSERT_ID()']
+
+                    # END : for calculating execution time
+                    stop = timeit.default_timer()
+                    logger.debug("DB : create_envirmental_context() - Execution Time : %s", stop - start)
+
+                return diary_context_id
+            except pymysql.MySQLError as exp:
+                logger.error(">>>MYSQL ERROR<<<")
+                logger.error("At create_envirmental_context()")
+                num, error_msg = exp.args
+                logger.error("ERROR NO : %s", num)
+                logger.error("ERROR MSG : %s", error_msg)
+                return False
+        else:
+            query_for_create_analytics = "INSERT INTO environmental_context " \
+                                         "(audio_diary_id, type, value) " \
+                                         "VALUES (%s, %s, %s, %s, %s)"
+            try:
+                with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                    cur.execute(query_for_create_analytics, (tag_info['audio_diary_id'],
+                                                             tag_info['type'],
+                                                             tag_info['value']))
+                    self.conn.commit()
+
+                    diary_context_id = cur.fetchone()['LAST_INSERT_ID()']
+
+                    # END : for calculating execution time
+                    stop = timeit.default_timer()
+                    logger.debug("DB : create_envirmental_context() - Execution Time : %s", stop - start)
+                return diary_context_id
+            except pymysql.MySQLError as exp:
+                logger.error(">>>MYSQL ERROR<<<")
+                logger.error("At create_envirmental_context()")
+                num, error_msg = exp.args
+                logger.error("ERROR NO : %s", num)
+                logger.error("ERROR MSG : %s", error_msg)
+                return False
+
+    def retrieve_tag_by_user_id(self, user_id):
+        """Creating new audio_diary to SD DB
+            Usually, this method be called
+            When User retrieving audio_diary
+
+
+            :param audio_diary_info:
+            :rtype None:
+            """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+
+        assert self.connected
+        try:
+            query_for_retrieve_audio_diary = "SELECT DISTINCT value " \
+                                             "FROM audio_diary INNER JOIN text_diary USING(audio_diary_id) INNER JOIN tag USING(audio_diary_id) " \
+                                             "WHERE user_id = %s "
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                cur.execute(query_for_retrieve_audio_diary, user_id)
+                result = cur.fetchall()
+                if result:
+                    # END : for calculating execution time
+                    stop = timeit.default_timer()
+                    logger.debug("DB : retrieve_tag_by_user_id() - Execution Time : %s",
+                                 stop - start)
+                    logger.debug('DB RESULT : %s', result)
+                    return result
+                else:
+                    return []
+
+        except Exception as exp:
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At retrieve_tag_by_user_id()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+            return False
+
+    def retrieve_tag_by_keyword(self, user_id, keyword):
+        """Creating new audio_diary to SD DB
+            Usually, this method be called
+            When User retrieving audio_diary
+
+
+            :param audio_diary_info:
+            :rtype None:
+            """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+
+        assert self.connected
+        try:
+            query_for_retrieve_audio_diary = "SELECT * " \
+                                             "FROM audio_diary INNER JOIN text_diary USING(audio_diary_id) INNER JOIN tag USING(audio_diary_id) " \
+                                             "WHERE user_id = %s " \
+                                             "AND tag.value LIKE %s "
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                cur.execute(query_for_retrieve_audio_diary, (user_id, '%'+keyword+'%'))
+                # cur.execute(query_for_retrieve_audio_diary, user_id)
+                result = cur.fetchall()
+                if result:
+                    # END : for calculating execution time
+                    stop = timeit.default_timer()
+                    logger.debug("DB : retrieve_tag_by_keyword() - Execution Time : %s",
+                                 stop - start)
+                    logger.debug('DB RESULT : %s', result)
+                    return result
+                else:
+                    return []
+
+        except Exception as exp:
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At retrieve_tag_by_keyword()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+            return False
+
+    def retrieve_tag_by_audio_diary_id(self, audio_diary):
+        """Creating new audio_diary to SD DB
+            Usually, this method be called
+            When User retrieving audio_diary
+
+
+            :param audio_diary_info:
+            :rtype None:
+            """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+
+        assert self.connected
+        try:
+            query_for_retrieve_audio_diary = "SELECT value " \
+                                             "FROM tag  " \
+                                             "WHERE audio_diary_id = %s "
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                cur.execute(query_for_retrieve_audio_diary, audio_diary)
+                # cur.execute(query_for_retrieve_audio_diary, user_id)
+                result = cur.fetchall()
+                if result:
+                    # END : for calculating execution time
+                    stop = timeit.default_timer()
+                    logger.debug("DB : retrieve_tag_by_keyword() - Execution Time : %s",
+                                 stop - start)
+                    logger.debug('DB RESULT : %s', result)
+                    return result
+                else:
+                    return []
+
+        except Exception as exp:
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At retrieve_tag_by_keyword()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+            return False
+
+    def delete_tag_by_audio_diary_id(self, audio_diary_id):
+        """Creating new audio_diary to SD DB
+            Usually, this method be called
+            When User retrieving audio_diary
+
+
+            :param audio_diary_info:
+            :rtype None:
+            """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+
+        assert self.connected
+        try:
+            query_for_delete = "DELETE FROM tag WHERE audio_diary_id  = %s "
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                affected_rows = cur.execute(query_for_delete, int(audio_diary_id))
+                self.conn.commit()
+                # END : for calculating execution time
+                stop = timeit.default_timer()
+                logger.debug("DB : delete_tag_by_audio_diary_id() - Execution Time : %s", stop - start)
+                logger.debug("DB : AFFECTED ROWS : %s rows", affected_rows)
+                return True
+
+        except Exception as exp:
+            logger.exception(exp)
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At delete_tag_by_audio_diary_id()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+            return False
+
+
+class MediaContextManager(DBManager):
+    def __init__(self):
+        """DB Model Class for smartaudio_diary.sentence table
+
+        """
+        DBManager.__init__(self)
+
+    def create_media_context(self, audio_diary_id, mc_info):
+        """Adding new audio_diary to SD DB
+            Usually, this method be called
+            converted text has been parsed
+
+            :rtype None:
+            """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+
+        assert self.connected
+        if type(mc_info) is list:
+            query_for_tag = "INSERT INTO media_context " \
+                            "(audio_diary_id, type, path) " \
+                            "VALUES"
+            for d_item in mc_info:
+                query_for_tag += " (%s, '%s', '%s')," % (
+                    audio_diary_id, d_item['type'], d_item['path'])
+            query_for_tag = query_for_tag[:-1]
+            try:
+                with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                    cur.execute(query_for_tag)
+                    cur.execute("SELECT LAST_INSERT_ID()")
+                    self.conn.commit()
+
+                    mc_id = cur.fetchone()['LAST_INSERT_ID()']
+
+                    # END : for calculating execution time
+                    stop = timeit.default_timer()
+                    logger.debug("DB : create_media_context() - Execution Time : %s", stop - start)
+
+                return mc_id
+            except pymysql.MySQLError as exp:
+                logger.error(">>>MYSQL ERROR<<<")
+                logger.error("At create_media_context()")
+                num, error_msg = exp.args
+                logger.error("ERROR NO : %s", num)
+                logger.error("ERROR MSG : %s", error_msg)
+                return False
+        else:
+            query_for_create_analytics = "INSERT INTO media_context " \
+                                         "(audio_diary_id, type, path) " \
+                                         "VALUES (%s, %s, %s)"
+            try:
+                with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                    cur.execute(query_for_create_analytics, (audio_diary_id,
+                                                             mc_info['type'],
+                                                             mc_info['path']))
+                    cur.execute("SELECT LAST_INSERT_ID()")
+                    self.conn.commit()
+
+                    mc_id = cur.fetchone()['LAST_INSERT_ID()']
+
+                    # END : for calculating execution time
+                    stop = timeit.default_timer()
+                    logger.debug("DB : create_media_context() - Execution Time : %s", stop - start)
+                return mc_id
+            except pymysql.MySQLError as exp:
+                logger.error(">>>MYSQL ERROR<<<")
+                logger.error("At create_media_context()")
+                num, error_msg = exp.args
+                logger.error("ERROR NO : %s", num)
+                logger.error("ERROR MSG : %s", error_msg)
+                return False
+
+    def retrieve_media_context_by_mc_id(self, mc_id):
+        """Creating new audio_diary to SD DB
+            Usually, this method be called
+            When User retrieving audio_diary
+
+
+            :param audio_diary_info:
+            :rtype None:
+            """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+
+        assert self.connected
+        try:
+            query_for_retrieve_audio_diary = "SELECT path " \
+                                             "FROM media_context " \
+                                             "WHERE media_context_id = %s "
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                cur.execute(query_for_retrieve_audio_diary, mc_id)
+                result = cur.fetchall()
+                if result:
+                    # END : for calculating execution time
+                    stop = timeit.default_timer()
+                    logger.debug("DB : retrieve_tag_by_user_id() - Execution Time : %s",
+                                 stop - start)
+                    logger.debug('DB RESULT : %s', result)
+                    return result
+                else:
+                    return []
+
+        except Exception as exp:
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At retrieve_tag_by_user_id()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+            return False
 
 
 class AnalyticsManager(DBManager):

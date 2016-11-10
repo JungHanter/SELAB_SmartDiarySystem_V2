@@ -30,6 +30,6 @@ urlpatterns = [
     # url(r'^api/sentence/(?P<option>\w+)$', apis.manage_sentence),
     url(r'^api/analyze$', apis.manage_analyze),
     url(r'^api/analyze/(?P<option>\w+)$', apis.manage_analyze),
-    # url(r'^api/upload$', apis.manage_file),
+    url(r'^api/upload$', apis.uploading_test),
     url(r'^api/download$', apis.download),
 ]

@@ -407,10 +407,20 @@ def ranking_lifestyle(lifestyle_list, like):
     final_result = []
     cnt = 0
     for item in ranked_list:
-        # tmp_dict = {item[0]: item[1]}
-        # final_result.append(tmp_dict)
-        result_lemma = _get_default_lemma(item[0])
-        final_result.append(result_lemma)
+        if item[1] > 3:
+            msg = 'very liked'
+        elif 0.5 < item[1] <= 3:
+            msg = 'liked'
+        elif 0 < item[1] <= 0.5:
+            msg = 'netural'
+        elif -0.5 < item[1] <= 0:
+            msg = 'disliked'
+        else:
+            msg = 'very disliked'
+        tmp_dict = {'thing': item[0], 'value': item[1], 'message': msg}
+        final_result.append(tmp_dict)
+        # result_lemma = _get_default_lemma(item[0])
+        # final_result.append(result_lemma)
         cnt += 1
         if cnt == 3:
             break

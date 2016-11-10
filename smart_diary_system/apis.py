@@ -87,9 +87,11 @@ def manage_user(request, option=None):
 
                         if password_from_user is not None:
                             if password_from_user == plain:
+                                tag_manager = database.TagManager()
+                                tag_list = tag_manager.retrieve_tag_by_user_id(user_info['user_id'])
                                 return JsonResponse({'login': True, 'name': user_info['name'],
                                                      'birthday': user_info['birthday'], 'gender': user_info['gender'],
-                                                     'email': user_info['email'], 'phone': user_info['phone']
+                                                     'email': user_info['email'], 'phone': user_info['phone'], 'tag_list': tag_list
                                                      })
                             else:
                                 return JsonResponse({'login': False})
@@ -157,14 +159,14 @@ def manage_diary(request, option=None):
                 # data = json.loads(request.body.decode('utf-8'))  # at BODY
                 logger.debug("INPUT : %s", data)
 
-                audio_diary_id, text_diary_id = insert_new_diary(data, request)
+                audio_diary_id, text_diary_id, mc_id_list = insert_new_diary(data, request)
 
                 if audio_diary_id is False:
                     logger.debug("RETURN : FALSE")
                     return JsonResponse({'create_diary': False})
                 else:
-                    logger.debug("RETURN : audio_diary_id : %s text_diary_id %s ", audio_diary_id,  text_diary_id)
-                    return JsonResponse({'create_diary': True, 'audio_diary_id': audio_diary_id, 'text_diary_id': text_diary_id})
+                    logger.debug("RETURN : audio_diary_id : %s text_diary_id %s mc_id_list %s", audio_diary_id,  text_diary_id, mc_id_list)
+                    return JsonResponse({'create_diary': True, 'audio_diary_id': audio_diary_id, 'text_diary_id': text_diary_id, 'media_context_id_list': mc_id_list})
             except Exception as exp:
                 logger.exception(exp)
                 logger.debug("RETURN : FALSE - EXCEPTION")
@@ -214,11 +216,24 @@ def manage_diary(request, option=None):
                     logger.debug("RETURN : result : %s", result)
                     return JsonResponse({'retrieve_diary': True, 'result': result})
 
-            if option == 'match':
+            if option == 'search':
                 data = json.loads(json.dumps(request.GET))
                 logger.debug("INPUT :%s", data)
                 audio_diary_manager = database.AudioDiaryManager()
-                result = audio_diary_manager.retri(data)
+                result = audio_diary_manager.retrieve_text_diary_list_by_keyword(data)
+
+                if result is None:
+                    logger.debug("RETURN : FALSE")
+                    return JsonResponse({'retrieve_diary': False})
+                else:
+                    logger.debug("RETURN : result : %s", result)
+                    return JsonResponse({'retrieve_diary': True, 'result': result})
+
+            if option == 'tag':
+                data = json.loads(json.dumps(request.GET))
+                logger.debug("INPUT :%s", data)
+                tag_manager = database.TagManager()
+                result = tag_manager.retrieve_tag_by_keyword(data['user_id'], data['tag'])
 
                 if result is None:
                     logger.debug("RETURN : FALSE")
@@ -232,19 +247,21 @@ def manage_diary(request, option=None):
                 logger.debug("INPUT :%s", data)
 
                 audio_diary_manager = database.AudioDiaryManager()
-                diary_context_manager = database.DiaryContextManager()
+                e_context_manager = database.EnvironmentalContextManager()
+                tag_manager = database.TagManager()
                 result = audio_diary_manager.retrieve_audio_diary_detail_by_audio_diary_id(data['user_id'], data['audio_diary_id'])
-
+                tag_result = tag_manager.retrieve_tag_by_audio_diary_id(data['audio_diary_id'])
                 if result is False:
                     logger.debug("RETURN : FALSE")
                     return JsonResponse({'retrieve_diary': False})
                 else:  # result is exist
                     logger.debug("RETURN : result : %s", result)
                     if result is not None:
-                        result_context = diary_context_manager.retrieve_diary_context_by_audio_diary_id(data['audio_diary_id'])
+                        result_context = e_context_manager.retrieve_environmental_context_by_audio_diary_id(data['audio_diary_id'])
                     else:
                         result_context = []
-                    return JsonResponse({'retrieve_diary': True, 'result_detail': result, 'result_context': result_context})
+                    return JsonResponse({'retrieve_diary': True, 'result_detail': result, 'result_environmental_context': result_context,
+                                         'result_tag_list': tag_result})
 
         except Exception as exp:
             logger.exception(exp)
@@ -551,12 +568,10 @@ def download(request):
             logger.debug("INPUT :%s", data)
             if data['user_id'] is not '' and data['audio_diary_id'] is not '':
                 file_path = os.path.join(settings.MEDIA_ROOT, data['user_id'], data['audio_diary_id'])
-                media_path = os.path.join(file_path, 'media')
                 file_list = os.listdir(file_path)
-                media_list = os.listdir(media_path)
 
                 if os.path.exists(file_path) and file_list:
-                    if data['type'] == 'audio':
+                    if not('media_context_id' in data):
                         for file in file_list:
                             if '.wav' in file:
                                 file_path = os.path.join(file_path, file)
@@ -566,48 +581,31 @@ def download(request):
                                     return response
                             else:
                                 raise Http404
-
-                    elif data['type'] == 'picture':
-                        picture_extension_list = ['.ani', '.bmp', '.cal', '.fax', '.gif', '.img', '.jbg', '.jpe', '.jpeg', '.jpg', '.mac', '.pbm', '.pcd', '.pcx', '.pct', '.pgm', '.png', '.ppm', '.psd', '.ras', '.tga', '.tiff', '.wmf']
-                        for file in media_list:
-                            if any(tp in file for tp in picture_extension_list):
-                                media_path = os.path.join(media_path, file)
-                                with open(media_path, 'rb') as fh:
-                                    response = HttpResponse(fh.read(), content_type="image")
-                                    response['Content-Disposition'] = 'inline; filename=' + file
-                                    return response
-                            else:
-                                raise Http404
-
-                    elif data['type'] == 'video':
-                        video_extension_list = ['.webm',  '.mkv',  '.flv',  '.flv',  '.vob',  '.ogv',  '.ogg',  '.gif',  '.gifv',  '.mng',  '.avi',  '.mov',  '.qt',  '.wmv',  '.yuv',  '.rm',  '.rmvb',  '.asf',  '.amv',  '.mp4',  '.m4p',  '.m4v',  '.mpg',  '.mp2',  '.mpeg',  '.mpe',  '.mpv',  '.mpg',  '.mpeg',  '.m2v',  '.m4v',  '.svi',  '.3gp',  '.3g2',  '.flv',  '.f4v',  '.f4p',  '.f4a',  '.f4b' ]
-                        for file in media_list:
-                            if any(tp in file for tp in video_extension_list):
-                                media_path = os.path.join(media_path, file)
-                                with open(media_path, 'rb') as fh:
-                                    response = HttpResponse(fh.read(), content_type="video")
-                                    response['Content-Disposition'] = 'inline; filename=' + file
-                                    return response
-                            else:
-                                raise Http404
-
-                    elif data['type'] == 'music':
-                        music_extension_list = ['.3gp', '.aa', '.aac', '.aax', '.act', '.aiff', '.amr', '.ape', '.au', '.awb', '.dct', '.dss', '.dvf', '.flac', '.gsm', '.iklax', '.ivs', '.m4a', '.m4b', '.m4p', '.mmf', '.mp3', '.mpc', '.msv', '.ogg', '.oga', 'mogg', '.opus', '.ra', '.rm', '.raw', '.sln', '.tta', '.vox', '.wav', '.wma', '.wv', '.webm']
-                        for file in media_list:
-                            if any(tp in file for tp in music_extension_list):
-                                media_path = os.path.join(media_path, file)
-                                with open(media_path, 'rb') as fh:
-                                    response = HttpResponse(fh.read(), content_type="audio")
-                                    response['Content-Disposition'] = 'inline; filename=' + file
-                                    return response
-                            else:
-                                raise Http404
-
-                    elif data['type'] == 'handdrawn':
-                        pass
                     else:
-                        raise Http404
+                        mc_manager = database.MediaContextManager()
+                        mc_info = mc_manager.retrieve_media_context_by_mc_id(data['media_context_id'])
 
+                        if mc_info['type'] == 'picture':
+                            with open(mc_info['path'], 'rb') as fh:
+                                response = HttpResponse(fh.read(), content_type="image")
+                                response['Content-Disposition'] = 'inline; filename=' + str(os.path.basename(mc_info['path']))
+                                return response
+                        elif mc_info['type'] == 'video':
+                            with open(mc_info['path'], 'rb') as fh:
+                                response = HttpResponse(fh.read(), content_type="video")
+                                response['Content-Disposition'] = 'inline; filename=' + str(
+                                    os.path.basename(mc_info['path']))
+                                return response
+                        elif mc_info['type'] == 'music':
+                            with open(mc_info['path'], 'rb') as fh:
+                                response = HttpResponse(fh.read(), content_type="audio")
+                                response['Content-Disposition'] = 'inline; filename=' + str(
+                                    os.path.basename(mc_info['path']))
+                                return response
+                        elif data['type'] == 'handdrawn':
+                            pass
+                        else:
+                            raise Http404
                 else:
                     raise Http404
             else:
@@ -641,12 +639,72 @@ def download(request):
             raise Http404
 
 
+@csrf_exempt
+def uploading_test(request):
+    if request.FILES.get('file0', False):  # file checking
+        audio_diary_id = 400
+        mc_id_list = []
+        ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+        DIARY_DIR = os.path.join(ROOT_DIR, 'uploaded', 'lhs', str(audio_diary_id))
+        MEDIA_DIR = os.path.join(DIARY_DIR, 'media')
+        if not (os.path.isdir(DIARY_DIR)):
+            os.mkdir(DIARY_DIR)
+        if not (os.path.isdir(MEDIA_DIR)):
+            os.mkdir(MEDIA_DIR)
+
+        picture_extension_list = ['.ani', '.bmp', '.cal', '.fax', '.gif', '.img', '.jbg', '.jpe', '.jpeg', '.jpg',
+                                  '.mac', '.pbm', '.pcd', '.pcx', '.pct', '.pgm', '.png', '.ppm', '.psd', '.ras',
+                                  '.tga', '.tiff', '.wmf']
+        music_extension_list = ['.3gp', '.aa', '.aac', '.aax', '.act', '.aiff', '.amr', '.ape', '.au', '.awb', '.dct',
+                                '.dss', '.dvf', '.flac', '.gsm', '.iklax', '.ivs', '.m4a', '.m4b', '.m4p', '.mmf',
+                                '.mp3', '.mpc', '.msv', '.ogg', '.oga', 'mogg', '.opus', '.ra', '.rm', '.raw', '.sln',
+                                '.tta', '.vox', '.wav', '.wma', '.wv', '.webm']
+        video_extension_list = ['.webm', '.mkv', '.flv', '.flv', '.vob', '.ogv', '.ogg', '.gif', '.gifv', '.mng',
+                                '.avi', '.mov', '.qt', '.wmv', '.yuv', '.rm', '.rmvb', '.asf', '.amv', '.mp4', '.m4p',
+                                '.m4v', '.mpg', '.mp2', '.mpeg', '.mpe', '.mpv', '.mpg', '.mpeg', '.m2v', '.m4v',
+                                '.svi', '.3gp', '.3g2', '.flv', '.f4v', '.f4p', '.f4a', '.f4b']
+
+        mc_manager = database.MediaContextManager()
+        for key, value in request.FILES.items():
+            # Saving UPLOADED Files
+            if key == 'file0':
+                file_path = os.path.join(DIARY_DIR, str(request.FILES[key].name))
+                with open(file_path, 'wb') as destination:
+                    for chunck in request.FILES[key]:
+                        destination.write(chunck)
+            else:
+                file_name = str(request.FILES[key].name)
+                file_path = os.path.join(MEDIA_DIR, file_name)
+                mc_data = {'audio_diary_id': audio_diary_id, 'path': file_path}
+                if any(tp in file_name for tp in picture_extension_list):
+                    mc_data['type'] = 'picture'
+
+                elif any(tp in file_name for tp in music_extension_list):
+                    mc_data['type'] = 'music'
+
+                elif any(tp in file_name for tp in video_extension_list):
+                    mc_data['type'] = 'video'
+
+                mc_id = mc_manager.create_media_context(audio_diary_id, mc_data)
+                tmp = {'file_name': file_name, 'media_context_id': mc_id}
+                mc_id_list.append(tmp)
+
+                with open(file_path, 'wb') as destination:
+                    for chunck in request.FILES[key]:
+                        destination.write(chunck)
+
+        return JsonResponse({'result': True})
+    else:
+        return JsonResponse({'result': False})
+
+
 def insert_new_diary(data, request):
     # init DB Modules
     audio_diary_manager = database.AudioDiaryManager()
     sentence_manager = database.SentenceManager()
-    s_element_manager = database.SentenceElementManager()
-    diary_context_manager = database.DiaryContextManager()
+    e_context_manager = database.EnvironmentalContextManager()
+    tag_manager = database.TagManager()
+    mc_id_list = []
 
     # DB Transaction
     # KerError Exception Handling
@@ -657,17 +715,19 @@ def insert_new_diary(data, request):
     if not ('audio_diary_id' in data):  # NEW NOTE
         audio_diary_id = audio_diary_manager.create_audio_diary(data['user_id'], data['title'], data['created_date'])
         data['audio_diary_id'] = audio_diary_id
+        if not('tag' in data):
+            data = {'tag': []}
+        tag_manager.create_tag(audio_diary_id, data['tag'])
     else:  # EDIT NOTE
         audio_diary_manager.update_audio_diary(data)
         audio_diary_id = data['audio_diary_id']
-        diary_context_manager.delete_diary_context_by_audio_diary_id(audio_diary_id)
+        e_context_manager.delete_environmental_by_audio_diary_id(audio_diary_id)
 
     text_diary_manager = database.TextDiaryManager()
     text_diary_id = text_diary_manager.create_text_diary(data['audio_diary_id'], data['content'], data['created_date'])
 
-    if 'diary_context' in data and data['diary_context']:
-        print(data['diary_context'])
-        diary_context_manager.create_diary_context(audio_diary_id=data['audio_diary_id'], diary_context_info=data['diary_context'])
+    if 'environmental _context' in data and data['environmental _context']:
+        e_context_manager.create_environmental_context(audio_diary_id=data['audio_diary_id'], diary_context_info=data['environmental _context'])
 
     # FILE UPLOAD LOGIC-------------------------------------------------------------------------------------------------
     # Audio File Uploading
@@ -680,11 +740,19 @@ def insert_new_diary(data, request):
         if not (os.path.isdir(MEDIA_DIR)):
             os.mkdir(MEDIA_DIR)
 
-        picture = 'file1'
-        video = 'file2'
-        music = 'file3'
+        picture_extension_list = ['.ani', '.bmp', '.cal', '.fax', '.gif', '.img', '.jbg', '.jpe', '.jpeg', '.jpg',
+                                  '.mac', '.pbm', '.pcd', '.pcx', '.pct', '.pgm', '.png', '.ppm', '.psd', '.ras',
+                                  '.tga', '.tiff', '.wmf']
+        music_extension_list = ['.3gp', '.aa', '.aac', '.aax', '.act', '.aiff', '.amr', '.ape', '.au', '.awb', '.dct',
+                                '.dss', '.dvf', '.flac', '.gsm', '.iklax', '.ivs', '.m4a', '.m4b', '.m4p', '.mmf',
+                                '.mp3', '.mpc', '.msv', '.ogg', '.oga', 'mogg', '.opus', '.ra', '.rm', '.raw', '.sln',
+                                '.tta', '.vox', '.wav', '.wma', '.wv', '.webm']
+        video_extension_list = ['.webm', '.mkv', '.flv', '.flv', '.vob', '.ogv', '.ogg', '.gif', '.gifv', '.mng',
+                                '.avi', '.mov', '.qt', '.wmv', '.yuv', '.rm', '.rmvb', '.asf', '.amv', '.mp4', '.m4p',
+                                '.m4v', '.mpg', '.mp2', '.mpeg', '.mpe', '.mpv', '.mpg', '.mpeg', '.m2v', '.m4v',
+                                '.svi', '.3gp', '.3g2', '.flv', '.f4v', '.f4p', '.f4a', '.f4b']
 
-        media_bit_list = []
+        mc_manager = database.MediaContextManager()
         for key, value in request.FILES.items():
             # Saving UPLOADED Files
             if key == 'file0':
@@ -693,21 +761,26 @@ def insert_new_diary(data, request):
                     for chunck in request.FILES[key]:
                         destination.write(chunck)
             else:
-                if key == picture:
-                    tmp = {'audio_diary_id': audio_diary_id, 'media_type': 'picture', 'value': 1}
-                    media_bit_list.append(tmp)
-                elif key == video:
-                    tmp = {'audio_diary_id': audio_diary_id, 'media_type': 'video', 'value': 1}
-                    media_bit_list.append(tmp)
-                elif key == music:
-                    tmp = {'audio_diary_id': audio_diary_id, 'media_type': 'music', 'value': 1}
-                    media_bit_list.append(tmp)
+                file_name = str(request.FILES[key].name)
+                file_path = os.path.join(MEDIA_DIR, file_name)
+                mc_data = {'audio_diary_id': audio_diary_id, 'path': file_path}
+                if any(tp in file_name for tp in picture_extension_list):
+                    mc_data['type'] = 'picture'
 
-                file_path = os.path.join(MEDIA_DIR, str(request.FILES[key].name))
+                elif any(tp in file_name for tp in music_extension_list):
+                    mc_data['type'] = 'music'
+
+                elif any(tp in file_name for tp in video_extension_list):
+                    mc_data['type'] = 'video'
+                mc_id = mc_manager.create_media_context(audio_diary_id, mc_data)
+                tmp = {'file_name': file_name, 'media_context_id': mc_id}
+                mc_id_list.append(tmp)
+
                 with open(file_path, 'wb') as destination:
                     for chunck in request.FILES[key]:
                         destination.write(chunck)
-        audio_diary_manager.update_media_bit(media_bit_list)
+
+
 
     # FILE UPLOAD LOGIC END---------------------------------------------------------------------------------------------
 
@@ -769,7 +842,7 @@ def insert_new_diary(data, request):
         # else:
         #     logger.debug('LANG ERROR')
 
-    return audio_diary_id, text_diary_id
+    return audio_diary_id, text_diary_id, mc_id_list
 
 
 def pickling(user_id, audio_diary_id, content):
