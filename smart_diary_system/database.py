@@ -1405,7 +1405,7 @@ class MediaContextManager(DBManager):
                 if result:
                     # END : for calculating execution time
                     stop = timeit.default_timer()
-                    logger.debug("DB : retrieve_tag_by_user_id() - Execution Time : %s",
+                    logger.debug("DB : retrieve_media_context_by_mc_id() - Execution Time : %s",
                                  stop - start)
                     logger.debug('DB RESULT : %s', result)
                     return result
@@ -1414,7 +1414,45 @@ class MediaContextManager(DBManager):
 
         except Exception as exp:
             logger.error(">>>MYSQL ERROR<<<")
-            logger.error("At retrieve_tag_by_user_id()")
+            logger.error("At retrieve_media_context_by_mc_id()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+            return False
+
+    def retrieve_media_context_by_audio_diary_id(self, audio_diary_id):
+        """Creating new audio_diary to SD DB
+            Usually, this method be called
+            When User retrieving audio_diary
+
+
+            :param audio_diary_info:
+            :rtype None:
+            """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+
+        assert self.connected
+        try:
+            query_for_retrieve_audio_diary = "SELECT * " \
+                                             "FROM media_context " \
+                                             "WHERE audio_diary_id = %s "
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                cur.execute(query_for_retrieve_audio_diary, audio_diary_id)
+                result = cur.fetchall()
+                if result:
+                    # END : for calculating execution time
+                    stop = timeit.default_timer()
+                    logger.debug("DB : retrieve_media_context_by_audio_diary_id() - Execution Time : %s",
+                                 stop - start)
+                    logger.debug('DB RESULT : %s', result)
+                    return result
+                else:
+                    return []
+
+        except Exception as exp:
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At retrieve_media_context_by_audio_diary_id()")
             num, error_msg = exp.args
             logger.error("ERROR NO : %s", num)
             logger.error("ERROR MSG : %s", error_msg)

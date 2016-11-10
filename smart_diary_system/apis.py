@@ -249,8 +249,22 @@ def manage_diary(request, option=None):
                 audio_diary_manager = database.AudioDiaryManager()
                 e_context_manager = database.EnvironmentalContextManager()
                 tag_manager = database.TagManager()
+                mc_manager = database.MediaContextManager()
+
+
                 result = audio_diary_manager.retrieve_audio_diary_detail_by_audio_diary_id(data['user_id'], data['audio_diary_id'])
                 tag_result = tag_manager.retrieve_tag_by_audio_diary_id(data['audio_diary_id'])
+                mc_result = mc_manager.retrieve_media_context_by_audio_diary_id(data['audio_diary_id'])
+
+                # cutting address
+                final_mc_result = []
+                for mc in mc_result:
+                    tmp = {}
+                    tmp['type'] = mc ['type']
+                    tmp['media_context_id'] = mc['media_context_id']
+                    tmp['file_name'] = os.path.basename(mc['path'])
+                    final_mc_result.append(tmp)
+
                 if result is False:
                     logger.debug("RETURN : FALSE")
                     return JsonResponse({'retrieve_diary': False})
@@ -261,7 +275,7 @@ def manage_diary(request, option=None):
                     else:
                         result_context = []
                     return JsonResponse({'retrieve_diary': True, 'result_detail': result, 'result_environmental_context': result_context,
-                                         'result_tag_list': tag_result})
+                                         'result_tag_list': tag_result, 'result_media_context_list': final_mc_result})
 
         except Exception as exp:
             logger.exception(exp)
