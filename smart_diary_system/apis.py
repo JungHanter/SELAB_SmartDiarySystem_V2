@@ -716,7 +716,7 @@ def insert_new_diary(data, request):
         audio_diary_id = audio_diary_manager.create_audio_diary(data['user_id'], data['title'], data['created_date'])
         data['audio_diary_id'] = audio_diary_id
         if not('tag' in data):
-            data = {'tag': []}
+            data['tag'] = []
         tag_manager.create_tag(audio_diary_id, data['tag'])
     else:  # EDIT NOTE
         audio_diary_manager.update_audio_diary(data)
@@ -753,6 +753,8 @@ def insert_new_diary(data, request):
                                 '.svi', '.3gp', '.3g2', '.flv', '.f4v', '.f4p', '.f4a', '.f4b']
 
         mc_manager = database.MediaContextManager()
+        import pprint
+        pprint.pprint(request.FILES)
         for key, value in request.FILES.items():
             # Saving UPLOADED Files
             if key == 'file0':
