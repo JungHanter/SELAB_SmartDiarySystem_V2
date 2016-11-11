@@ -269,11 +269,13 @@ def manage_diary(request, option=None):
                     logger.debug("RETURN : FALSE")
                     return JsonResponse({'retrieve_diary': False})
                 else:  # result is exist
-                    logger.debug("RETURN : result : %s", result)
                     if result is not None:
                         result_context = e_context_manager.retrieve_environmental_context_by_audio_diary_id(data['audio_diary_id'])
                     else:
                         result_context = []
+                    logger.debug(
+                        "RETURN : result_detail : %s \n result_environmental_context : %s \n result_tag_list : %s \n result_media_context_list %s" %
+                        (result, result_context, tag_result, final_mc_result))
                     return JsonResponse({'retrieve_diary': True, 'result_detail': result, 'result_environmental_context': result_context,
                                          'result_tag_list': tag_result, 'result_media_context_list': final_mc_result})
 
@@ -592,6 +594,7 @@ def download(request):
                                 with open(file_path, 'rb') as fh:
                                     response = HttpResponse(fh.read(), content_type="audio/wav")
                                     response['Content-Disposition'] = 'inline; filename=' + file
+                                    logger.debug("SENDING FILE : %s" & file)
                                     return response
                             else:
                                 raise Http404
@@ -602,19 +605,23 @@ def download(request):
                         if mc_info['type'] == 'picture':
                             with open(mc_info['path'], 'rb') as fh:
                                 response = HttpResponse(fh.read(), content_type="image")
-                                response['Content-Disposition'] = 'inline; filename=' + str(os.path.basename(mc_info['path']))
+                                response['Content-Disposition'] = 'inline; filename=' + str(
+                                    os.path.basename(mc_info['path']))
+                                logger.debug("SENDING FILE : %s" & fh.name)
                                 return response
                         elif mc_info['type'] == 'video':
                             with open(mc_info['path'], 'rb') as fh:
                                 response = HttpResponse(fh.read(), content_type="video")
                                 response['Content-Disposition'] = 'inline; filename=' + str(
                                     os.path.basename(mc_info['path']))
+                                logger.debug("SENDING FILE : %s" & fh.name)
                                 return response
                         elif mc_info['type'] == 'music':
                             with open(mc_info['path'], 'rb') as fh:
                                 response = HttpResponse(fh.read(), content_type="audio")
                                 response['Content-Disposition'] = 'inline; filename=' + str(
                                     os.path.basename(mc_info['path']))
+                                logger.debug("SENDING FILE : %s" & fh.name)
                                 return response
                         elif data['type'] == 'handdrawn':
                             pass
@@ -646,6 +653,7 @@ def download(request):
                                 with open(file_path, 'rb') as fh:
                                     response = HttpResponse(fh.read(), content_type="audio/wav")
                                     response['Content-Disposition'] = 'inline; filename=' + file
+                                    logger.debug("SENDING FILE : %s" % fh.name)
                                     return response
                     else:
                         mc_manager = database.MediaContextManager()
@@ -654,27 +662,34 @@ def download(request):
                         if mc_info['type'] == 'picture':
                             with open(mc_info['path'], 'rb') as fh:
                                 response = HttpResponse(fh.read(), content_type="image")
-                                response['Content-Disposition'] = 'inline; filename=' + str(os.path.basename(mc_info['path']))
+                                response['Content-Disposition'] = 'inline; filename=' + str(
+                                    os.path.basename(mc_info['path']))
+                                logger.debug("SENDING FILE : %s" % fh.name)
                                 return response
                         elif mc_info['type'] == 'video':
                             with open(mc_info['path'], 'rb') as fh:
                                 response = HttpResponse(fh.read(), content_type="video")
                                 response['Content-Disposition'] = 'inline; filename=' + str(
                                     os.path.basename(mc_info['path']))
+                                logger.debug("SENDING FILE : %s" % fh.name)
                                 return response
                         elif mc_info['type'] == 'music':
                             with open(mc_info['path'], 'rb') as fh:
                                 response = HttpResponse(fh.read(), content_type="audio")
                                 response['Content-Disposition'] = 'inline; filename=' + str(
                                     os.path.basename(mc_info['path']))
+                                logger.debug("SENDING FILE : %s" % fh.name)
                                 return response
                         elif data['type'] == 'handdrawn':
                             pass
                         else:
+                            logger.debug("NOT VAILD TYPE OF MEDIA CONTEXT")
                             raise Http404
                 else:
+                    logger.debug("NO FILE IN diary directory")
                     raise Http404
             else:
+                logger.debug("NO INPUT")
                 raise Http404
 
         except Exception as exp:
