@@ -1214,12 +1214,12 @@ class TagManager(DBManager):
 
         assert self.connected
         try:
-            query_for_retrieve_audio_diary = "SELECT * " \
+            query_for_retrieve_audio_diary = "SELECT text_diary.content, audio_diary.audio_diary_id, audio_diary.created_date, audio_diary.title  " \
                                              "FROM audio_diary INNER JOIN text_diary USING(audio_diary_id) INNER JOIN tag USING(audio_diary_id) " \
                                              "WHERE user_id = %s " \
                                              "AND tag.value LIKE %s "
             with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                cur.execute(query_for_retrieve_audio_diary, (user_id, '%'+keyword+'%'))
+                cur.execute(query_for_retrieve_audio_diary, (user_id, keyword))
                 # cur.execute(query_for_retrieve_audio_diary, user_id)
                 result = cur.fetchall()
                 if result:
