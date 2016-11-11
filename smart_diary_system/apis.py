@@ -402,7 +402,7 @@ def manage_analyze(request, option=None):
 
                     # init DB Mangagers
                     audio_diary_manager = database.AudioDiaryManager()
-                    life_style_manager = database.tendencyManager()
+                    life_style_manager = database.TendencyManager()
 
                     # retrieve audio diaries which will be analyzed
                     audio_diary_list = audio_diary_manager.retrieve_audio_diary_list_by_timestamp(data)  # user_id, timestamp_from, timestamp_to
@@ -468,7 +468,7 @@ def manage_analyze(request, option=None):
                             else:
                                 logger.debug("RETURN : FALSE - INVALID OPTION TYPE")
                                 return JsonResponse({'tendency': False, 'reason': 'INVALID OPTION TYPE'})
-                            final_result = lifestyles.ranking_tendency(tendency_list=tendency_item_list, like=like)
+                            final_result = lifestyles.ranking_lifestyle(lifestyle_list=tendency_item_list, like=like)
                             logger.debug("RETURN : %s", final_result)
 
                             # updating tendency_analyzed flag in audio_diary table
