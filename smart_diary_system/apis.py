@@ -779,12 +779,13 @@ def insert_new_diary(data, request):
     text_diary_manager = database.TextDiaryManager()
     text_diary_id = text_diary_manager.create_text_diary(data['audio_diary_id'], data['content'], data['created_date'])
 
-    if 'environmental _context' in data and data['environmental _context']:
+    if 'environmental _context' in data and data['environmental_context']:
+        logger.debug('ec_context : %s ' % data['environmental _context'])
         e_context_manager.create_environmental_context(audio_diary_id=data['audio_diary_id'], diary_context_info=data['environmental _context'])
 
     # FILE UPLOAD LOGIC-------------------------------------------------------------------------------------------------
     # Audio File Uploading
-    MAX_FILE_SIZE = 104857600
+    MAX_FILE_SIZE = 104857600  # 100MB in byte
     logger.debug('UPLOADED FILES')
     logger.debug(request.FILES)
     if request.FILES.get('file0', False):  # file checking

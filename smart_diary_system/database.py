@@ -967,33 +967,36 @@ class EnvironmentalContextManager(DBManager):
 
         assert self.connected
         if type(diary_context_info) is list:
-            query_for_create_diary_context = "INSERT INTO environmental_context " \
-                                        "(audio_diary_id, type, value) " \
-                                        "VALUES"
-            for d_item in diary_context_info:
-                query_for_create_diary_context += " (%s, '%s', '%s')," % (
-                    audio_diary_id, d_item['type'], d_item['value'])
-            query_for_create_diary_context = query_for_create_diary_context[:-1]
-            try:
-                with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                    cur.execute(query_for_create_diary_context)
-                    cur.execute("SELECT LAST_INSERT_ID()")
-                    self.conn.commit()
+            if diary_context_info:
+                query_for_create_diary_context = "INSERT INTO environmental_context " \
+                                            "(audio_diary_id, type, value) " \
+                                            "VALUES"
+                for d_item in diary_context_info:
+                    query_for_create_diary_context += " (%s, '%s', '%s')," % (
+                        audio_diary_id, d_item['type'], d_item['value'])
+                query_for_create_diary_context = query_for_create_diary_context[:-1]
+                try:
+                    with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                        cur.execute(query_for_create_diary_context)
+                        cur.execute("SELECT LAST_INSERT_ID()")
+                        self.conn.commit()
 
-                    diary_context_id = cur.fetchone()['LAST_INSERT_ID()']
+                        diary_context_id = cur.fetchone()['LAST_INSERT_ID()']
 
-                    # END : for calculating execution time
-                    stop = timeit.default_timer()
-                    logger.debug("DB : create_environmental_context() - Execution Time : %s", stop - start)
+                        # END : for calculating execution time
+                        stop = timeit.default_timer()
+                        logger.debug("DB : create_environmental_context() - Execution Time : %s", stop - start)
 
-                return diary_context_id
-            except pymysql.MySQLError as exp:
-                logger.error(">>>MYSQL ERROR<<<")
-                logger.error("At create_environmental_context()")
-                num, error_msg = exp.args
-                logger.error("ERROR NO : %s", num)
-                logger.error("ERROR MSG : %s", error_msg)
-                return False
+                    return diary_context_id
+                except pymysql.MySQLError as exp:
+                    logger.error(">>>MYSQL ERROR<<<")
+                    logger.error("At create_environmental_context()")
+                    num, error_msg = exp.args
+                    logger.error("ERROR NO : %s", num)
+                    logger.error("ERROR MSG : %s", error_msg)
+                    return False
+            else:
+                logger.debug('empty ec list')
         else:
             query_for_create_analytics = "INSERT INTO environmental_context " \
                                      "(audio_diary_id, type, value) " \
