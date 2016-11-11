@@ -451,9 +451,9 @@ def manage_analyze(request, option=None):
                                 return JsonResponse({'tendency': False, 'reason': 'NOT YET IMPLEMENTED'})
 
                             for tendency_item in tendency_analyze_result.keys():
-                                tendencys_dict = {'audio_diary_id': audio_diary_id['audio_diary_id'], 'thing_type': thing_type,
+                                tendency_dict = {'audio_diary_id': audio_diary_id['audio_diary_id'], 'thing_type': thing_type,
                                                    'thing': tendency_item, 'score': tendency_analyze_result[tendency_item]}
-                                tendencys_dict_list.append(tendencys_dict)
+                                tendencys_dict_list.append(tendency_dict)
 
                         if tendencys_dict_list:  # insert tendency record into DB
                             life_style_manager.create_tendency_by_list(tendencys_dict_list)
@@ -688,6 +688,7 @@ def download(request):
 def uploading_test(request):
     if request.FILES.get('file0', False):  # file checking
         MAX_FILE_SIZE = 104857600
+        # MAX_FILE_SIZE = 1048570
         audio_diary_id = 400
         mc_id_list = []
         ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -722,8 +723,9 @@ def uploading_test(request):
                 file = request.FILES[key]
                 file.seek(0, os.SEEK_END)
                 file_size = file.tell()
+                print(file_size)
                 if file_size > MAX_FILE_SIZE:
-                    logger.debug("FILE (", file.name, ") exceed 100MB")
+                    logger.debug("FILE ( %s ) exceed 100MB" % file.name)
                 else:
                     file_name = str(request.FILES[key].name)
                     file_path = os.path.join(MEDIA_DIR, file_name)
@@ -784,6 +786,7 @@ def insert_new_diary(data, request):
 
     # FILE UPLOAD LOGIC-------------------------------------------------------------------------------------------------
     # Audio File Uploading
+    MAX_FILE_SIZE = 104857600
     logger.debug('UPLOADED FILES')
     logger.debug(request.FILES)
     if request.FILES.get('file0', False):  # file checking
@@ -818,24 +821,31 @@ def insert_new_diary(data, request):
                     for chunck in request.FILES[key]:
                         destination.write(chunck)
             else:
-                file_name = str(request.FILES[key].name)
-                file_path = os.path.join(MEDIA_DIR, file_name)
-                mc_data = {'audio_diary_id': audio_diary_id, 'path': file_path}
-                if any(tp in file_name for tp in picture_extension_list):
-                    mc_data['type'] = 'picture'
+                # File Size Checking
+                file = request.FILES[key]
+                file.seek(0, os.SEEK_END)
+                file_size = file.tell()
+                if file_size > MAX_FILE_SIZE:
+                    logger.debug("FILE ( %s ) exceed 100MB" % file.name)
+                else:
+                    file_name = str(request.FILES[key].name)
+                    file_path = os.path.join(MEDIA_DIR, file_name)
+                    mc_data = {'audio_diary_id': audio_diary_id, 'path': file_path}
+                    if any(tp in file_name for tp in picture_extension_list):
+                        mc_data['type'] = 'picture'
 
-                elif any(tp in file_name for tp in music_extension_list):
-                    mc_data['type'] = 'music'
+                    elif any(tp in file_name for tp in music_extension_list):
+                        mc_data['type'] = 'music'
 
-                elif any(tp in file_name for tp in video_extension_list):
-                    mc_data['type'] = 'video'
-                mc_id = mc_manager.create_media_context(audio_diary_id, mc_data)
-                tmp = {'file_name': file_name, 'media_context_id': mc_id}
-                mc_id_list.append(tmp)
+                    elif any(tp in file_name for tp in video_extension_list):
+                        mc_data['type'] = 'video'
+                    mc_id = mc_manager.create_media_context(audio_diary_id, mc_data)
+                    tmp = {'file_name': file_name, 'media_context_id': mc_id}
+                    mc_id_list.append(tmp)
 
-                with open(file_path, 'wb') as destination:
-                    for chunck in request.FILES[key]:
-                        destination.write(chunck)
+                    with open(file_path, 'wb') as destination:
+                        for chunck in request.FILES[key]:
+                            destination.write(chunck)
 
 
 
