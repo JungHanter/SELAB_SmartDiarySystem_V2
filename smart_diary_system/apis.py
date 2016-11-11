@@ -388,7 +388,7 @@ def manage_analyze(request, option=None):
                     logger.debug("RETURN : FALSE - EXCEPTION")
                     return JsonResponse({'parsing_is_done': False})
 
-            if option == 'lifestyle':
+            if option == 'tendency':
                 try:
                     data = json.loads(json.dumps(request.GET))
                     logger.debug("INPUT :%s", data)
@@ -398,18 +398,18 @@ def manage_analyze(request, option=None):
                     if not (thing_type in defined_thing_type):
                         # Can not Anaylzed, THING TYPE is wrong, which is not defined
                         logger.debug("RETURN : FALSE - INVALID THING TYPE")
-                        return JsonResponse({'lifestyle': False, 'reason': 'INVALID THING TYPE'})
+                        return JsonResponse({'tendency': False, 'reason': 'INVALID THING TYPE'})
 
                     # init DB Mangagers
                     audio_diary_manager = database.AudioDiaryManager()
-                    life_style_manager = database.LifeStyleManager()
+                    life_style_manager = database.tendencyManager()
 
                     # retrieve audio diaries which will be analyzed
                     audio_diary_list = audio_diary_manager.retrieve_audio_diary_list_by_timestamp(data)  # user_id, timestamp_from, timestamp_to
                     if audio_diary_list is None:
                         # Nothing to show
                         logger.debug("RETURN : TRUE - NO DIARY AVAILABLE")
-                        return JsonResponse({'lifestyle': True, 'result': []})
+                        return JsonResponse({'tendency': True, 'result': []})
                     else:
                         diary_tag_list = []
                         analyzed_audio_diary_id_list = []
@@ -418,11 +418,11 @@ def manage_analyze(request, option=None):
                             ranking_audio_diary_id_list.append(audio_diary['audio_diary_id'])
 
                             # check if required thing_type already analyzed
-                            analyzed_types = parse_lifetype(audio_diary['lifestyle_analyzed'])
+                            analyzed_types = parse_lifetype(audio_diary['tendency_analyzed'])
                             if thing_type in analyzed_types:
-                                logger.debug('lifestyle : id(%s) already Analyzed', audio_diary['audio_diary_id'])
+                                logger.debug('tendency : id(%s) already Analyzed', audio_diary['audio_diary_id'])
                             else:
-                                logger.debug('lifestyle : id(%s) Will be Analyzed FOR %s',
+                                logger.debug('tendency : id(%s) Will be Analyzed FOR %s',
                                              audio_diary['audio_diary_id'], thing_type)
                                 # load pickles
                                 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -430,58 +430,58 @@ def manage_analyze(request, option=None):
                                                           str(audio_diary['audio_diary_id']), 'pos_texts.pkl')
                                 diary_tag_list.append(tagger.pickle_to_tags(PICKLE_DIR))
 
-                                if audio_diary['lifestyle_analyzed'] is None:
-                                    lifestyle_analyzed = thing_type + ','
+                                if audio_diary['tendency_analyzed'] is None:
+                                    tendency_analyzed = thing_type + ','
                                 else:
-                                    lifestyle_analyzed = thing_type + ',' + audio_diary['lifestyle_analyzed']
-                                temp = {'audio_diary_id': audio_diary['audio_diary_id'], 'lifestyle_analyzed': lifestyle_analyzed}
+                                    tendency_analyzed = thing_type + ',' + audio_diary['tendency_analyzed']
+                                temp = {'audio_diary_id': audio_diary['audio_diary_id'], 'tendency_analyzed': tendency_analyzed}
                                 analyzed_audio_diary_id_list.append(temp)
 
                         if not diary_tag_list and not analyzed_audio_diary_id_list:
-                            logger.debug('lifestyle : NOTHING TO INSERT INTO DB')
+                            logger.debug('tendency : NOTHING TO INSERT INTO DB')
 
-                        # making lifestyle DB record
-                        lifestyles_dict_list = []
+                        # making tendency DB record
+                        tendencys_dict_list = []
                         for audio_diary_id, diary_tags in zip(analyzed_audio_diary_id_list, diary_tag_list):
-                            # analyze lifestyle
+                            # analyze tendency
                             if thing_type == 'food':
-                                lifestyle_analyze_result = lifestyles.analyzer.analyze_food(diary_tags[1])
+                                tendency_analyze_result = lifestyles.analyzer.analyze_food(diary_tags[1])
                             elif thing_type == 'sport':
-                                # lifestyle_analyze_result = lifestyles.analyzer.sport_collect(diary_tags[1])
-                                return JsonResponse({'lifestyle': False, 'reason': 'NOT YET IMPLEMENTED'})
+                                # tendency_analyze_result = tendencys.analyzer.sport_collect(diary_tags[1])
+                                return JsonResponse({'tendency': False, 'reason': 'NOT YET IMPLEMENTED'})
 
-                            for lifestyle_item in lifestyle_analyze_result.keys():
-                                lifestyles_dict = {'audio_diary_id': audio_diary_id['audio_diary_id'], 'thing_type': thing_type,
-                                                   'thing': lifestyle_item, 'score': lifestyle_analyze_result[lifestyle_item]}
-                                lifestyles_dict_list.append(lifestyles_dict)
+                            for tendency_item in tendency_analyze_result.keys():
+                                tendencys_dict = {'audio_diary_id': audio_diary_id['audio_diary_id'], 'thing_type': thing_type,
+                                                   'thing': tendency_item, 'score': tendency_analyze_result[tendency_item]}
+                                tendencys_dict_list.append(tendencys_dict)
 
-                        if lifestyles_dict_list:  # insert lifestyle record into DB
-                            life_style_manager.create_lifestyle_by_list(lifestyles_dict_list)
+                        if tendencys_dict_list:  # insert tendency record into DB
+                            life_style_manager.create_tendency_by_list(tendencys_dict_list)
 
                         # statistic analyze
-                        lifestyle_item_list = life_style_manager.retrieve_lifestyle(ranking_audio_diary_id_list, thing_type)
-                        if lifestyle_item_list:
+                        tendency_item_list = life_style_manager.retrieve_tendency(ranking_audio_diary_id_list, thing_type)
+                        if tendency_item_list:
                             if str(data['option']).lower() == 'like':
                                 like = True
                             elif str(data['option']).lower() == 'dislike':
                                 like = False
                             else:
                                 logger.debug("RETURN : FALSE - INVALID OPTION TYPE")
-                                return JsonResponse({'lifestyle': False, 'reason': 'INVALID OPTION TYPE'})
-                            final_result = lifestyles.ranking_lifestyle(lifestyle_list=lifestyle_item_list, like=like)
+                                return JsonResponse({'tendency': False, 'reason': 'INVALID OPTION TYPE'})
+                            final_result = lifestyles.ranking_tendency(tendency_list=tendency_item_list, like=like)
                             logger.debug("RETURN : %s", final_result)
 
-                            # updating lifestyle_analyzed flag in audio_diary table
-                            audio_diary_manager.update_lifestyle_analyzed_state(analyzed_audio_diary_id_list)
-                            return JsonResponse({'lifestyle': True, 'result': final_result})
+                            # updating tendency_analyzed flag in audio_diary table
+                            audio_diary_manager.update_tendency_analyzed_state(analyzed_audio_diary_id_list)
+                            return JsonResponse({'tendency': True, 'result': final_result})
                         else:
-                            return JsonResponse({'lifestyle': True, 'result': []})
+                            return JsonResponse({'tendency': True, 'result': []})
 
 
                 except Exception as exp:
                     logger.exception(exp)
                     logger.debug("RETURN : FALSE - EXCEPTION")
-                    return JsonResponse({'lifestyle': False, 'reason': 'INTERNAL SERVER ERROR'})
+                    return JsonResponse({'tendency': False, 'reason': 'INTERNAL SERVER ERROR'})
 
     elif request.method == 'PUT':
         try:
@@ -687,6 +687,7 @@ def download(request):
 @csrf_exempt
 def uploading_test(request):
     if request.FILES.get('file0', False):  # file checking
+        MAX_FILE_SIZE = 104857600
         audio_diary_id = 400
         mc_id_list = []
         ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -718,25 +719,32 @@ def uploading_test(request):
                     for chunck in request.FILES[key]:
                         destination.write(chunck)
             else:
-                file_name = str(request.FILES[key].name)
-                file_path = os.path.join(MEDIA_DIR, file_name)
-                mc_data = {'audio_diary_id': audio_diary_id, 'path': file_path}
-                if any(tp in file_name for tp in picture_extension_list):
-                    mc_data['type'] = 'picture'
+                file = request.FILES[key]
+                file.seek(0, os.SEEK_END)
+                file_size = file.tell()
+                if file_size > MAX_FILE_SIZE:
+                    logger.debug("FILE (", file.name, ") exceed 100MB")
+                else:
+                    file_name = str(request.FILES[key].name)
+                    file_path = os.path.join(MEDIA_DIR, file_name)
+                    mc_data = {'audio_diary_id': audio_diary_id, 'path': file_path}
+                    if any(tp in file_name for tp in picture_extension_list):
+                        mc_data['type'] = 'picture'
 
-                elif any(tp in file_name for tp in music_extension_list):
-                    mc_data['type'] = 'music'
+                    elif any(tp in file_name for tp in music_extension_list):
+                        mc_data['type'] = 'music'
 
-                elif any(tp in file_name for tp in video_extension_list):
-                    mc_data['type'] = 'video'
+                    elif any(tp in file_name for tp in video_extension_list):
+                        mc_data['type'] = 'video'
 
-                mc_id = mc_manager.create_media_context(audio_diary_id, mc_data)
-                tmp = {'file_name': file_name, 'media_context_id': mc_id}
-                mc_id_list.append(tmp)
+                    mc_id = mc_manager.create_media_context(audio_diary_id, mc_data)
+                    tmp = {'file_name': file_name, 'media_context_id': mc_id}
+                    mc_id_list.append(tmp)
 
-                with open(file_path, 'wb') as destination:
-                    for chunck in request.FILES[key]:
-                        destination.write(chunck)
+
+                    with open(file_path, 'wb') as destination:
+                        for chunck in request.FILES[key]:
+                            destination.write(chunck)
 
         return JsonResponse({'result': True})
     else:
@@ -776,6 +784,8 @@ def insert_new_diary(data, request):
 
     # FILE UPLOAD LOGIC-------------------------------------------------------------------------------------------------
     # Audio File Uploading
+    logger.debug('UPLOADED FILES')
+    logger.debug(request.FILES)
     if request.FILES.get('file0', False):  # file checking
         ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
         DIARY_DIR = os.path.join(ROOT_DIR, 'uploaded', str(data['user_id']), str(audio_diary_id))
