@@ -1396,12 +1396,12 @@ class MediaContextManager(DBManager):
 
         assert self.connected
         try:
-            query_for_retrieve_audio_diary = "SELECT path " \
+            query_for_retrieve_audio_diary = "SELECT * " \
                                              "FROM media_context " \
                                              "WHERE media_context_id = %s "
             with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
                 cur.execute(query_for_retrieve_audio_diary, mc_id)
-                result = cur.fetchall()
+                result = cur.fetchone()
                 if result:
                     # END : for calculating execution time
                     stop = timeit.default_timer()
@@ -1410,7 +1410,7 @@ class MediaContextManager(DBManager):
                     logger.debug('DB RESULT : %s', result)
                     return result
                 else:
-                    return []
+                    return {}
 
         except Exception as exp:
             logger.error(">>>MYSQL ERROR<<<")

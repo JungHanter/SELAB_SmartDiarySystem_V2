@@ -647,8 +647,6 @@ def download(request):
                                     response = HttpResponse(fh.read(), content_type="audio/wav")
                                     response['Content-Disposition'] = 'inline; filename=' + file
                                     return response
-                            else:
-                                raise Http404
                     else:
                         mc_manager = database.MediaContextManager()
                         mc_info = mc_manager.retrieve_media_context_by_mc_id(data['media_context_id'])
