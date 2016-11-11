@@ -593,7 +593,7 @@ class AudioDiaryManager(DBManager):
             logger.error("ERROR MSG : %s", error_msg)
             return False
 
-    def update_lifestyle_analyzed_state(self, audio_diary_id, type_updated = None):
+    def update_tendency_analyzed_state(self, audio_diary_id, type_updated = None):
         """Creating new audio_diary to SD DB
             Usually, this method be called
             When User retrieving audio_diary
@@ -607,12 +607,12 @@ class AudioDiaryManager(DBManager):
 
         assert self.connected
         try:
-            query_for_updated = "UPDATE audio_diary SET lifestyle_analyzed= %s WHERE audio_diary_id =%s; "
+            query_for_updated = "UPDATE audio_diary SET tendency_analyzed= %s WHERE audio_diary_id =%s; "
             if type(audio_diary_id) is list:
                 affected_rows = 0
                 with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
                     for adi in audio_diary_id:
-                        affected_rows = affected_rows + cur.execute(query_for_updated, (adi['lifestyle_analyzed'], adi['audio_diary_id']))
+                        affected_rows = affected_rows + cur.execute(query_for_updated, (adi['tendency_analyzed'], adi['audio_diary_id']))
                     self.conn.commit()
                     # END : for calculating execution time
                     stop = timeit.default_timer()
@@ -660,7 +660,7 @@ class AudioDiaryManager(DBManager):
 
         assert self.connected
         try:
-            query_for_retrieve_audio_diary = "SELECT pickle, lifestyle_analyze FROM audio_diary WHERE audio_diary_id = %s  "
+            query_for_retrieve_audio_diary = "SELECT pickle, tendency_analyze FROM audio_diary WHERE audio_diary_id = %s  "
             with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
                 cur.execute(query_for_retrieve_audio_diary, audio_diary_id)
                 result = cur.fetchone()
@@ -1504,14 +1504,14 @@ class AnalyticsManager(DBManager):
         pass
 
 
-class LifeStyleManager(DBManager):
+class TendencyManager(DBManager):
     def __init__(self):
         """DB Model Class for smartaudio_diary.sentence table
 
         """
         DBManager.__init__(self)
 
-    def create_lifestyle(self, audio_diary_id, thing_type, thing, score):
+    def create_tendency(self, audio_diary_id, thing_type, thing, score):
         """Adding new audio_diary to SD DB
             Usually, this method be called
             converted text has been parsed
@@ -1522,12 +1522,12 @@ class LifeStyleManager(DBManager):
         start = timeit.default_timer()
 
         assert self.connected
-        query_for_create_lifestyle = "INSERT INTO lifestyle " \
+        query_for_create_tendency = "INSERT INTO tendency " \
                                      "(audio_diary_id, thing_type, thing, score) " \
                                      "VALUES (%s, %s, %s, %s)"
         try:
             with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                cur.execute(query_for_create_lifestyle,
+                cur.execute(query_for_create_tendency,
                             (audio_diary_id, thing_type, thing, score))
                 self.conn.commit()
 
@@ -1535,17 +1535,17 @@ class LifeStyleManager(DBManager):
 
                 # END : for calculating execution time
                 stop = timeit.default_timer()
-                logger.debug("DB : create_lifestyle() - Execution Time : %s", stop - start)
+                logger.debug("DB : create_tendency() - Execution Time : %s", stop - start)
             return sentence_id
         except pymysql.MySQLError as exp:
             logger.error(">>>MYSQL ERROR<<<")
-            logger.error("At create_lifestyle()")
+            logger.error("At create_tendency()")
             num, error_msg = exp.args
             logger.error("ERROR NO : %s", num)
             logger.error("ERROR MSG : %s", error_msg)
             return False
 
-    def create_lifestyle_by_list(self, ls_list):
+    def create_tendency_by_list(self, ls_list):
         """Adding new audio_diary to SD DB
         Usually, this method be called
         converted text has been parsed
@@ -1558,7 +1558,7 @@ class LifeStyleManager(DBManager):
         assert self.connected
 
         if type(ls_list) is list:
-            query_for_ls = "INSERT INTO lifestyle " \
+            query_for_ls = "INSERT INTO tendency " \
                                          "(audio_diary_id, thing_type, thing, score) " \
                                          "VALUES"
             for ls in ls_list:
@@ -1577,20 +1577,20 @@ class LifeStyleManager(DBManager):
 
                     # END : for calculating execution time
                     stop = timeit.default_timer()
-                    logger.debug("DB : create_lifestyle_by_list(list) - Execution Time : %s", stop - start)
+                    logger.debug("DB : create_tendency_by_list(list) - Execution Time : %s", stop - start)
                 return s_element_id
             except pymysql.MySQLError as exp:
                 logger.error(">>>MYSQL ERROR<<<")
-                logger.error("At create_lifestyle_by_list()")
+                logger.error("At create_tendency_by_list()")
                 num, error_msg = exp.args
                 logger.error("ERROR NO : %s", num)
                 logger.error("ERROR MSG : %s", error_msg)
                 return False
 
-    def retrieve_lifestyle_with_period(self, thing_type, timestamp_from, timestamp_to):
+    def retrieve_tendency_with_period(self, thing_type, timestamp_from, timestamp_to):
         pass
 
-    def retrieve_lifestyle(self, audio_diary_id, thing_type):
+    def retrieve_tendency(self, audio_diary_id, thing_type):
         """retrieving converted text from SD DB
         Usually, this method be called
         When ...
@@ -1601,19 +1601,19 @@ class LifeStyleManager(DBManager):
         # START : for calculating execution time
         start = timeit.default_timer()
         assert self.connected  # Connection Check Flag
-        query_for_lifestyle = "SELECT * FROM lifestyle WHERE audio_diary_id "
+        query_for_tendency = "SELECT * FROM tendency WHERE audio_diary_id "
         try:
             if type(audio_diary_id) is list:
-                query_for_lifestyle = query_for_lifestyle + 'IN('
+                query_for_tendency = query_for_tendency + 'IN('
                 for a_d_id in audio_diary_id:
-                    query_for_lifestyle = query_for_lifestyle + str(a_d_id) + ','
-                query_for_lifestyle = query_for_lifestyle[:-1]
-                query_for_lifestyle = query_for_lifestyle + ')'
-                query_for_lifestyle = query_for_lifestyle + ' AND thing_type = %s'
+                    query_for_tendency = query_for_tendency + str(a_d_id) + ','
+                query_for_tendency = query_for_tendency[:-1]
+                query_for_tendency = query_for_tendency + ')'
+                query_for_tendency = query_for_tendency + ' AND thing_type = %s'
                 with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                    cur.execute(query_for_lifestyle, thing_type)
+                    cur.execute(query_for_tendency, thing_type)
                     stop = timeit.default_timer()
-                    logger.debug("DB : retrieve_lifestyle() - Execution Time : %s", stop - start)
+                    logger.debug("DB : retrieve_tendency() - Execution Time : %s", stop - start)
                     result = cur.fetchall()
                     if result:
                         logger.debug('DB RESULT : %s', result)
@@ -1622,11 +1622,11 @@ class LifeStyleManager(DBManager):
                         return None
             else:
                 with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                    query_for_lifestyle = query_for_lifestyle + ' = %s AND thing_type = %s'
-                    cur.execute(query_for_lifestyle, (audio_diary_id, thing_type))
+                    query_for_tendency = query_for_tendency + ' = %s AND thing_type = %s'
+                    cur.execute(query_for_tendency, (audio_diary_id, thing_type))
                     # END : for calculating execution time
                     stop = timeit.default_timer()
-                    logger.debug("DB : retrieve_lifestyle() - Execution Time : %s", stop - start)
+                    logger.debug("DB : retrieve_tendency() - Execution Time : %s", stop - start)
                     result = cur.fetchall()
                     if result:
                         logger.debug('DB RESULT : %s', result)
@@ -1635,7 +1635,7 @@ class LifeStyleManager(DBManager):
                         return None
         except pymysql.MySQLError as exp:
             logger.error(">>>MYSQL ERROR<<<")
-            logger.error("At retrieve_lifestyle()")
+            logger.error("At retrieve_tendency()")
             num, error_msg = exp.args
             logger.error("ERROR NO : %s", num)
             logger.error("ERROR MSG : %s", error_msg)
