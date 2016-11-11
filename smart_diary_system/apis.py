@@ -792,7 +792,7 @@ def insert_new_diary(data, request):
         e_context_manager.delete_environmental_by_audio_diary_id(audio_diary_id)
 
     text_diary_manager = database.TextDiaryManager()
-    text_diary_id = text_diary_manager.create_text_diary(data['audio_diary_id'], data['content'], data['created_date'])
+    text_diary_id = text_diary_manager.create_text_diary(data['audio_diary_id'], data['content'])
 
     if 'environmental _context' in data and data['environmental_context']:
         logger.debug('ec_context : %s ' % data['environmental _context'])

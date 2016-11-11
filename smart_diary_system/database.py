@@ -689,7 +689,7 @@ class TextDiaryManager(DBManager):
         """
         DBManager.__init__(self)
 
-    def create_text_diary(self, audio_diary_id, content, created_date):
+    def create_text_diary(self, audio_diary_id, content):
         """Adding new audio_diary to SD DB
         Usually, this method be called
         When User creating new audio_diary
@@ -700,11 +700,11 @@ class TextDiaryManager(DBManager):
         start = timeit.default_timer()
         assert self.connected
         query_for_create_c_text = "INSERT INTO text_diary " \
-                             "(audio_diary_id, content, created_date) " \
-                             "VALUES (%s, %s, %s) "
+                             "(audio_diary_id, content) " \
+                             "VALUES (%s, %s) "
         try:
             with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                cur.execute(query_for_create_c_text, (audio_diary_id, content, created_date))
+                cur.execute(query_for_create_c_text, (audio_diary_id, content))
                 cur.execute("SELECT LAST_INSERT_ID()")
                 self.conn.commit()
 
