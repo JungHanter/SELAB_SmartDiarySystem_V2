@@ -9,6 +9,12 @@ TAG_POS_DEPENDENCY = 2
 TAG_POS_MORPHEME = 3
 TAG_POS_NAMED_ENTITY = 4
 
+TAG_WORD = 0
+TAG_WORD_POS = 1
+TAG_DEPENDENCY = 2
+TAG_WORD_ROLE = 3
+TAG_NAMED_ENTITY = 4
+
 
 def tag_pos_doc(document, ne_tag=False):
     document_lines = document.splitlines()
