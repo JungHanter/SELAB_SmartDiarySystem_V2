@@ -811,7 +811,6 @@ def insert_new_diary(data, request):
     MAX_FILE_SIZE = 104857600  # 100MB in byte
     logger.debug('UPLOADED FILES')
     logger.debug(pprint.pformat(request.FILES))
-    logger.debug(request.FILES)
     if request.FILES.get('file0', False):  # file checking
         ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
         DIARY_DIR = os.path.join(ROOT_DIR, 'uploaded', str(data['user_id']), str(audio_diary_id))

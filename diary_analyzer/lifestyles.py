@@ -392,6 +392,7 @@ def _find_offsets_from_word(word, pos):
     return offsets
 
 
+
 def ranking_lifestyle(lifestyle_list, like):
     calculated_list = {}
     for lifestyle_item in lifestyle_list:
