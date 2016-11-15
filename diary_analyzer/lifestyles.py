@@ -9,7 +9,8 @@ from diary_analyzer import tagger
 from diary_analyzer.tagger import TAG_POS_WORD, TAG_POS_DEPENDENCY, \
     TAG_POS_MORPHEME, TAG_POS_NAMED_ENTITY, TAG_POS_WORD_ROLE
 
-class HyponymThingsCollector(object):
+
+class HyponymThingsRetriever(object):
     """For Synsets Retriever from Hyponyms of a Word"""
     IDX_SYNSET = 0
     IDX_LEVEL = 1
@@ -71,6 +72,42 @@ class HyponymThingsCollector(object):
             return True
         else:
             return False
+
+
+class HobbyList(object):
+    IDX_WORD = 0
+    IDX_LEMMA_WORDS = 1
+    IDX_SYNSET = 2
+
+    def __init__(self, filepath):
+        self.hobby_synset_list = list()
+        self.hobby_nosynset_list = list()
+        self._collect_hobbies(filepath)
+
+    def _collect_hobbies(self, filepath):
+        with open(filepath, 'r') as hobby_file:
+            while True:
+                hobby = hobby_file.readline().rstrip('\r\n')
+                if not hobby: break
+
+                synsets = wn.synsets(_text_to_lemma_format(hobby))
+
+                if len(synsets) > 0:
+                    lemma_list = list()
+                    for synset in synsets:
+                        lemma_list += _lemmas_to_name_list(synset.lemmas())
+                    self.hobby_synset_list.append([hobby, lemma_list, synsets[0].name()])
+                else:
+                    self.hobby_nosynset_list.append([hobby])    # for compatibility and expandability
+                    pass
+                # hobby
+            hobby_file.close()
+
+    def get_synset_list(self):
+        return self.hobby_synset_list
+
+    def get_nosynset_list(self):
+        return self.hobby_nosynset_list
 
 
 class SentiWordNet(object):
@@ -363,6 +400,31 @@ class LifeStylesAnalyzer(object):
         return word_count
 
 
+class CorrelationAnalyzer(object):
+    def __init__(self, category_1_synset_names, category_2_synset_names, dist_func):
+        self.category1 = category_1_synset_names
+        self.category2 = category_2_synset_names
+        self.dist_func = dist_func
+
+    def analyze(self, diary_scores):
+
+        pass
+
+    def _find_category(self, synset_name, category):
+        synset = wn.synset(synset_name)
+        hypernyms = synset.hypernyms()
+        for hypernym in hypernyms:
+            name = hypernym.name()
+            if name in category:
+                return name
+        for hypernym in hypernyms:
+            name = hypernym.name()
+            cat = self._find_category(name, category)
+            if cat:
+                return cat
+        return None
+
+
 def _lemmas_to_name_list(lemmas, include_count=False):
     names = list()
     if include_count:
@@ -391,6 +453,16 @@ def _find_offsets_from_word(word, pos):
             offsets.append(synset.offset())
     return offsets
 
+
+def _text_to_lemma_format(text):
+    lemma_form = ""
+    text = text.lower()
+    texts = text.split(' ')
+    for i in range(0, len(texts)):
+        if i > 0:
+            lemma_form += '_'
+        lemma_form += texts[i]
+    return lemma_form
 
 
 def ranking_lifestyle(lifestyle_list, like):
@@ -433,10 +505,20 @@ def _get_default_lemma(synset_name):
     return wn.synset(synset_name).lemmas()[0].name()
 
 
-mpath = os.path.join(os.path.dirname(os.path.abspath(__file__)),'wordset','SentiWordNet_3.0.0_20130122.txt')
-senti_wordnet = SentiWordNet(mpath)
-foods = HyponymThingsCollector(wn.synset('food.n.02'), max_level=8)
-sports = HyponymThingsCollector(wn.synset('sport.n.01'), wn.synset('exercise.n.01'), max_level=7)
+sw_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'wordset',
+                     'SentiWordNet_3.0.0_20130122.txt')
+senti_wordnet = SentiWordNet(sw_path)
+
+hbw_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'wordset',
+                        'hobbies_from_wikipedia.txt')
+hobbies = HobbyList(hbw_path)
+foods = HyponymThingsRetriever(wn.synset('food.n.02'), max_level=8)
+sports = HyponymThingsRetriever(wn.synset('sport.n.01'), max_level=7)
+exercise = HyponymThingsRetriever(wn.synset('exercise.n.01'), wn.synset('sport.n.01'), max_level=7)
+# people
+# location
+# day of week
+# season
 analyzer = LifeStylesAnalyzer(senti_wordnet=senti_wordnet,
                               food_collect=foods, sport_collect=sports)
 
@@ -537,10 +619,10 @@ if __name__ == "__main__":
     #     diaries.append(diary_tags)
         # pprint(diary_tags)
     # test_tags = tagger.tag_pos_doc(TEST_DIARY)
-    test_tags = tagger.tag_pos_doc(TEST_DIARY2)
+    # test_tags = tagger.tag_pos_doc(TEST_DIARY2)
     #
     # pprint (test_tags)
-    diaries.append(test_tags)
+    # diaries.append(test_tags)
 
     # test_tags = tagger.tag_pos_doc("Today I went Soongsil Univerity with James.", True)
     # pprint(test_tags)
@@ -564,5 +646,48 @@ if __name__ == "__main__":
 
     # pprint(tagger.tag_pos_doc("There is an apple."))
 
-    pprint(wn.synset("cheese.n.01").lemmas()[0]);
-    pprint(wn.synset("cheese.n.01").lemmas()[0].name());
+    # pprint(wn.synset("cheese.n.01").lemmas()[0])
+    # pprint(wn.synset("cheese.n.01").lemmas()[0].name())
+
+    # pprint(wn.synset("pasta.n.02").hyponyms())
+    # pprint(wn.synset("noodle.n.01").hypernyms())
+
+    # pprint (wn.synsets("semantics"))
+    # print()
+    # pprint(tagger.tag_pos_doc("I'm reading."))
+    # print()
+
+    # pprint(hobbies.get_synset_list())
+    # pprint(hobbies.get_nosynset_list())
+
+    wish = HyponymThingsRetriever(wn.synset('wish.v.02'), max_level=8)
+    like = HyponymThingsRetriever(wn.synset('like.v.02'), max_level=8)
+    good1 = HyponymThingsRetriever(wn.synset('good.a.01'), max_level=8)
+    good2 = HyponymThingsRetriever(wn.synset('good.s.06'), max_level=8)
+    good3 = HyponymThingsRetriever(wn.synset('good.s.07'), max_level=8)
+
+    pprint(wish.get_list())
+    print()
+    print()
+    print()
+    print()
+    print()
+    pprint(like.get_list())
+    print()
+    print()
+    print()
+    print()
+    print()
+    pprint(good1.get_list())
+    print()
+    print()
+    print()
+    print()
+    print()
+    pprint(good2.get_list())
+    print()
+    print()
+    print()
+    print()
+    print()
+    pprint(good3.get_list())
