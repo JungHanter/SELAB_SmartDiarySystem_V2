@@ -10,18 +10,50 @@ from diary_analyzer.tagger import TAG_WORD, TAG_WORD_POS, \
     TAG_DEPENDENCY, TAG_WORD_ROLE, TAG_NAMED_ENTITY
 
 
-class HyponymRetriever(object):
+class WordSetRetriever(object):
     IDX_SYNSET = 0
     IDX_LEVEL = 1
     IDX_LEMMA_WORDS = 2
     IDX_LEMMA_COUNT = 3
 
+    def __init__(self):
+        self.synset_list = list()
+
+    def get_list(self):
+        return self.synset_list
+
+    def find_synset(self, synset):
+        for item in self.synset_list:
+            if synset.name() is item[self.IDX_SYNSET].name():
+                return item[self.IDX_SYNSET]
+        return None
+
+    def check_synset_in(self, synset):
+        if self.find_synset(synset) is not None:
+            return True
+        else:
+            return False
+
+    def find_word(self, word):
+        for item in self.synset_list:
+            if word in item[self.IDX_LEMMA_WORDS]:  # lemma list
+                return item[self.IDX_SYNSET]  # synset
+        return None
+
+    def check_word_in(self, word):
+        if self.find_word(word) is not None:
+            return True
+        else:
+            return False
+
+
+class HyponymRetriever(WordSetRetriever):
     def __init__(self, *root_synsets, max_level=1):
         if type(root_synsets[0]) is list or type(root_synsets[0]) is tuple:
             root_synsets = root_synsets[0]
-        self.hyponym_list = list()
+        self.synset_list = list()
         for synset in root_synsets:
-            self.hyponym_list += self._collect_hyponyms(synset, max_level)
+            self.synset_list += self._collect_hyponyms(synset, max_level)
 
     def _collect_hyponyms(self, root_synset, max_level=1, now_level=0):
         if now_level == max_level: return []
@@ -36,32 +68,30 @@ class HyponymRetriever(object):
             hyponym_list = hyponym_list + self._collect_hyponyms(hyponym, max_level, now_level)
         return hyponym_list
 
+
+class HypernymRetriever(WordSetRetriever):
+    def __init__(self, *root_synsets, max_level=1):
+        if type(root_synsets[0]) is list or type(root_synsets[0]) is tuple:
+            root_synsets = root_synsets[0]
+        self.synset_list = list()
+        for synset in root_synsets:
+            self.synset_list += self._collect_hyponyms(synset, max_level)
+
+    def _collect_hyponyms(self, root_synset, max_level=1, now_level=0):
+        if now_level == max_level: return []
+        now_level += 1
+        hypernym_list = list()
+        for hypernym in root_synset.hypernyms():
+            # names, counts = _lemmas_to_name_list(hyponym.lemmas(), True)
+            # hyponym_list.append((hyponym, max_level, names, counts))
+
+            # tuple (sysnet, level, lemma_words)
+            hypernym_list.append((hypernym, now_level, _lemmas_to_name_list(hypernym.lemmas())))
+            hypernym_list = hypernym_list + self._collect_hyponyms(hypernym, max_level, now_level)
+        return hypernym_list
+
     def get_list(self):
-        return self.hyponym_list
-
-    def find_synset(self, synset):
-        for item in self.hyponym_list:
-            if synset.name() is item[self.IDX_SYNSET].name():
-                return item[self.IDX_SYNSET]
-        return None
-
-    def check_synset_in(self, synset):
-        if self.find_synset(synset) is not None:
-            return True
-        else:
-            return False
-
-    def find_word(self, word):
-        for item in self.hyponym_list:
-            if word in item[self.IDX_LEMMA_WORDS]:  # lemma list
-                return item[self.IDX_SYNSET]  # synset
-        return None
-
-    def check_word_in(self, word):
-        if self.find_word_synset(word) is not None:
-            return True
-        else:
-            return False
+        return self.synset_list
 
 
 class SentiWordNet(object):
@@ -137,39 +167,40 @@ class SentiWordNet(object):
 
 class TendencyAnalyzer(object):
     """Perform Tendency analysis"""
+    DEBUG = False
+
     TARGET_TYPE_THING = 'thing'
     TARGET_TYPE_ACTIVITY = 'activity'
 
     def __init__(self, senti_wordnet,
                  food_set=None, hobby_set=None, sport_set=None):
         self.senti_wordnet = senti_wordnet
-        self.food_set = food_set
-        self.hobby_set = hobby_set
-        self.sport_set = sport_set
-        self.other_sets = dict()
+        self.word_sets = defaultdict(None)
+        if food_set: self.word_sets[('food', 'thing')] = food_set
+        if hobby_set: self.word_sets[('hobby', 'activity')] = hobby_set
+        if sport_set: self.word_sets[('sport', 'activity')] = sport_set
 
-    def addWordSet(self, target, targetType, words_set):
-        pass
+    def addWordSet(self, target, target_type, words_set):
+        self.word_sets[(target, target_type)] = words_set
 
-    def scorePreferenceToDiary(self, diary_tags_list, target, targetType):
+    def scorePreferenceToDiary(self, diary_tags_list, target, target_type):
         words_set = None
-        if words_set == 'food' and self.food_set:
-            words_set = self.food_set
-        else:
-            if (target, targetType) in self.other_sets.keys():
-                words_set = self.other_sets[(target, targetType)]
+        if (target, target_type) in self.word_sets.keys():
+            print('get wordset %s(%s)' % (target, target_type))
+            words_set = self.word_sets[(target, target_type)]
+        if words_set is None:
+            print('add set %s(%s)' % (target, target_type))
+            if target_type == 'thing':
+                synsets = _get_synsets(target, ['n'])
+                words_set = HyponymRetriever(synsets, max_level=8)
+                # add loaded list
+                self.addWordSet(target, target_type, words_set)
+            elif target_type == 'activity':
+                synsets = _get_synsets(target, ['n', 'v'])
+                words_set = HyponymRetriever(synsets, max_level=8)
+                self.addWordSet(target, target_type, words_set)
             else:
-                if targetType == 'thing':
-                    synsets = _get_synsets(target, ['n'])
-                    words_set = HyponymRetriever(synsets, max_level=8)
-                    # add loaded list
-                    self.other_sets[(target, targetType)] = words_set
-                elif targetType == 'activity':
-                    synsets = _get_synsets(target, ['n', 'v'])
-                    words_set = HyponymRetriever(synsets, max_level=8)
-                    self.other_sets[(target, targetType)] = words_set
-                else:
-                    return None
+                return None
 
         score_pref = defaultdict(float)
         score_pref_sum = defaultdict(lambda: {'score': 0.0, 'count': 0})
@@ -296,9 +327,31 @@ class TendencyAnalyzer(object):
                                 is_sent_suj = True
                         prev_word_list.clear()
 
+                    # For the compound words
+                    elif (word[TAG_WORD_POS].startswith('JJ') and word[TAG_WORD_ROLE] == 'amod') or \
+                            (word[TAG_WORD_POS].startswith('NN') and word[TAG_WORD_ROLE] == 'compound'):
+                        prev_word_list.append(word[TAG_WORD])
+
+                        # the ajective may be just modifier
+                        if 'JJ' in word[TAG_WORD_POS]:
+                            adjective_weight = 0.75
+                            word_score = 0
+                            offsets = _find_offsets_from_word(word[TAG_WORD], 'a')
+                            word_cnt = 0
+                            for offset in offsets:
+                                now_score = senti_wordnet.get_score_value(offset, 'a')
+                                if now_score == 0:
+                                    continue
+                                else:
+                                    word_score += now_score
+                                    word_cnt += 1
+                            if word_cnt == 0: word_score = 0.125
+                            else: word_score = word_score / word_cnt
+                            weight_sent += adjective_weight * word_score
+
                     # Check a sentiment score of an adjective in the sentence
                     elif 'JJ' in word[TAG_WORD_POS] and word[TAG_WORD_ROLE] == 'root':
-                        adjective_weight = 2
+                        adjective_weight = 1
                         sent_score = 0
                         offsets = _find_offsets_from_word(word[TAG_WORD], 'a')
                         word_cnt = 0
@@ -323,27 +376,25 @@ class TendencyAnalyzer(object):
                         prev_word_list.clear()
 
             # apply to score sentiemnt
-            print('====== scoring ======')
-            pprint(scores_word)
-            # print(flag_subj_intention_tfp, weight_sent, flag_neg, sep=' | ')
-            # print('============================================')
             for synset_name, word_score in scores_word.items():
-                print('================')
-                print('word_name: %s' % synset_name)
-                print('word_score: %s' % word_score)
+                if TendencyAnalyzer.DEBUG:
+                    print('================')
+                    print('word_name: %s' % synset_name)
+                    print('word_score: %s' % word_score)
                 # calculate weight of subjectivity
                 weight_subj = 1 if is_sent_mine else (0.8 if is_sent_suj else 0.1)
                 weight_subj *= -0.8 if is_sent_neg else 1
-                print('weight_subj: %s' % weight_subj)
+                if TendencyAnalyzer.DEBUG: print('weight_subj: %s' % weight_subj)
 
                 # calculate average of weight of sentiment words
-                weight_sent = weight_sent / count_sent
+                if count_sent > 0:
+                    weight_sent = weight_sent / count_sent
                 if weight_sent < 0.25 and weight_sent >= 0:
                     weight_sent = 0.25  # the minimum neutral weight of sent
-                print('weight_sent: %s' % weight_sent)
+                if TendencyAnalyzer.DEBUG: print('weight_sent: %s' % weight_sent)
 
                 sent_score = weight_subj * weight_sent
-                print('sent_score: %s (subj*sent)' % sent_score)
+                if TendencyAnalyzer.DEBUG: print('sent_score: %s (subj*sent)' % sent_score)
 
                 adverb_score = 0
                 adverb_neg_score = 0
@@ -360,17 +411,17 @@ class TendencyAnalyzer(object):
                     if adverb_neg['count'] > 0 and adverb_neg['score'] > adverb_pos['score']:
                         adverb_neg_score = (adverb_score + sent_score) * (adverb_neg['score'] / adverb_neg['count']) * -1
                         adverb_neg_flag = True
-                print('adverb_score: %s' % adverb_score)
-                print('adverb_neg_score %s' % adverb_neg_score)
+                if TendencyAnalyzer.DEBUG: print('adverb_score: %s' % adverb_score)
+                if TendencyAnalyzer.DEBUG: print('adverb_neg_score %s' % adverb_neg_score)
 
                 score = 0
                 if sent_score >= 0:
                     score = (word_score * 0.5) + (sent_score * word_score * 0.5)
                 else:
                     score = -(word_score * 0.5) + (sent_score * word_score * 0.5)
-                print('word score with sent: %s' % score)
+                if TendencyAnalyzer.DEBUG: print('word score with sent: %s' % score)
                 score = (score + adverb_score) * (adverb_neg_score if adverb_neg_flag else 1)
-                print('result score: %s' % score)
+                if TendencyAnalyzer.DEBUG: print('result score applying adverb: %s' % score)
 
                 # scores_word[synset_name] = score
                 score_pref_sum[synset_name]['score'] += score
@@ -378,9 +429,22 @@ class TendencyAnalyzer(object):
 
         for synset_name, sum_dict in score_pref_sum.items():
             if sum_dict['count'] > 0:
+                # do average
                 score_pref[synset_name] = sum_dict['score'] / sum_dict['count']
 
+                # score to hypernym and hyponym
+                hypernyms = HypernymRetriever(wn.synset(synset_name), max_level=2).get_list()
+                for hypernym in hypernyms:
+                    score_pref[hypernym[0].name()] = score_pref[synset_name] / (hypernym[1]+1)  # divide by path len
+                hyponyms = HyponymRetriever(wn.synset(synset_name), max_level=1).get_list()
+                for hyponym in hyponyms:
+                    score_pref[hyponym[0].name()] = score_pref[synset_name] / (hyponym[1]+1)  # divide by path len
+
         return score_pref
+
+    def analyzeDiairesByClustering(self, pref_scores_dicts):
+        for pref_scores in pref_scores_dicts:
+            pass
 
     @classmethod
     def _score_to_hyponyms(cls, hypernym_synset, hypernym_score, score_sentiments, continue_hyponyms=False):
@@ -396,7 +460,7 @@ class TendencyAnalyzer(object):
                 cls._score_to_hyponyms(hyponym, subscore, score_sentiments)
 
     @classmethod
-    def _find_synset_by_word_list(cls, collect, word_list, plural=False):
+    def _find_synset_by_word_list(cls, words_set, word_list, plural=False):
         length = len(word_list)
         for i in range(0, length):
             lemma_word = ""
@@ -405,7 +469,7 @@ class TendencyAnalyzer(object):
                     lemma_word += '_'
                 lemma_word += word_list[k]
             # print(lemma_word)
-            synset = collect.find_word(lemma_word)
+            synset = words_set.find_word(lemma_word)
             if synset is not None:
                 return synset, lemma_word
 
@@ -414,7 +478,7 @@ class TendencyAnalyzer(object):
             try:
                 plural_noun = wn.synsets(word_list[length-1])[0].lemmas()[0].name()
                 word_list[length-1] = plural_noun
-                return cls._find_synset_by_word_list(collect, word_list, False)
+                return cls._find_synset_by_word_list(words_set, word_list, False)
             except Exception as e:  # list index out of range exception -> no matching synset
                 return None, None
         return None, None
@@ -489,14 +553,21 @@ if __name__ == "__main__":
                            'SentiWordNet_3.0.0_20130122.txt')
     senti_wordnet = SentiWordNet(sw_path)
 
-    foods = HyponymRetriever(wn.synset('food.n.01'), max_level=2)
+    foods = HyponymRetriever(wn.synset('food.n.01'), max_level=8)
     # pprint(foods.get_list())
 
     tend_analyzer = TendencyAnalyzer(senti_wordnet, food_set=foods)
 
-    DIARIY = "I like an apple. I really like a banana. I don't like a grape. I hate a sweet potato."
-    diary_tags = tagger.tag_pos_doc(DIARIY)
-    pprint(diary_tags)
+    TEST_DIARY = "I like a banana. I really like an apple. I don't like a grape. I hate a sweet potato."
+    TEST_DIARY2 = """My main course was a half the dishes. Cumbul Ackard Cornish card little gym lettuce. Fresh Peas Mousser on mushrooms, Cocles and a cream sauce finished with a drizzle of olive oil wonderfully tender, and moist card. But I'm really intensify the flavor of the card there by providing a nice flavor contrast to the rich cream sauce. Lovely freshness, and texture from the little gym lettuce. A well executed dish with bags of flavour. Next, a very elegant vanilla, yogurt and strawberries and Candy Basil different strawberry preparations delivered a wonderful variety of flavor. Intensities is there was a sweet and tart lemon curd and yogurt sorbet buttery, Pepper Pastry Cramble Candied Lemons. Testing broken mrang the lemon curd had a wonderfully creamy texture and then ring was perfectly light and Chrissy and wonderful dessert with a great balance of flavors and textures. It's got sweetness. It's got scrunch. It's got acidity. It's got freshness."""
+    diary_tags = tagger.tag_pos_doc(TEST_DIARY)
+    diary_tags2 = tagger.tag_pos_doc(TEST_DIARY2)
+    pprint(tend_analyzer.scorePreferenceToDiary(diary_tags[1], 'sport', 'activity'))
     print()
     print()
-    pprint(tend_analyzer.scorePreferenceToDiary(diary_tags[1], 'food', 'thing'))
+    pprint(tend_analyzer.scorePreferenceToDiary(diary_tags2[1], 'food', 'thing'))
+
+    # TEST_DIARY = "I hate a sweet potato."
+    # diary_tags = tagger.tag_pos_doc(TEST_DIARY)
+    # pprint(tend_analyzer.scorePreferenceToDiary(diary_tags[1], 'food', 'thing'))
+
