@@ -4,6 +4,10 @@ from pprint import pprint
 import csv
 import os
 import operator
+import numpy as np
+import scipy.cluster.hierarchy as hac
+from scipy.spatial import distance
+import matplotlib.pyplot as plt
 
 from diary_analyzer import tagger
 from diary_analyzer.tagger import TAG_WORD, TAG_WORD_POS, \
@@ -175,30 +179,33 @@ class TendencyAnalyzer(object):
     def __init__(self, senti_wordnet,
                  food_set=None, hobby_set=None, sport_set=None):
         self.senti_wordnet = senti_wordnet
-        self.word_sets = defaultdict(None)
-        if food_set: self.word_sets[('food', 'thing')] = food_set
-        if hobby_set: self.word_sets[('hobby', 'activity')] = hobby_set
-        if sport_set: self.word_sets[('sport', 'activity')] = sport_set
+        self.word_sets = dict()
+        self.add_word_set(food_set, 'food', 'thing')
+        self.add_word_set(hobby_set, 'hobby', 'activity')
+        self.add_word_set(sport_set, 'sport', 'activity')
 
-    def addWordSet(self, target, target_type, words_set):
-        self.word_sets[(target, target_type)] = words_set
+    def add_word_set(self, target, target_type, words_set):
+        if words_set:
+            self.word_sets[(target, target_type)] = words_set
 
-    def scorePreferenceToDiary(self, diary_tags_list, target, target_type):
+    def score_pref_to_diary(self, diary_tags_list, target, target_type):
         words_set = None
         if (target, target_type) in self.word_sets.keys():
-            print('get wordset %s(%s)' % (target, target_type))
             words_set = self.word_sets[(target, target_type)]
-        if words_set is None:
-            print('add set %s(%s)' % (target, target_type))
+            if TendencyAnalyzer.DEBUG:
+                print('get wordset %s(%s)' % (target, target_type))
+        else:
+            if TendencyAnalyzer.DEBUG:
+                print('add wordset %s(%s)' % (target, target_type))
             if target_type == 'thing':
                 synsets = _get_synsets(target, ['n'])
                 words_set = HyponymRetriever(synsets, max_level=8)
                 # add loaded list
-                self.addWordSet(target, target_type, words_set)
+                self.word_sets[(target, target_type)] = words_set
             elif target_type == 'activity':
                 synsets = _get_synsets(target, ['n', 'v'])
                 words_set = HyponymRetriever(synsets, max_level=8)
-                self.addWordSet(target, target_type, words_set)
+                self.word_sets[(target, target_type)] = words_set
             else:
                 return None
 
@@ -427,24 +434,77 @@ class TendencyAnalyzer(object):
                 score_pref_sum[synset_name]['score'] += score
                 score_pref_sum[synset_name]['count'] += 1
 
+        # score for relation (hyponyms and hypernyms)
+        score_pref_rel_sum = defaultdict(lambda: {'score': 0.0, 'count': 0})
+
+        for synset_name, sum_dict in score_pref_sum.items():
+            if sum_dict['count'] > 0:
+                # do average for relation
+                synset_pref = sum_dict['score'] / sum_dict['count']
+
+                # score to hypernym and hyponym
+                hypernyms = HypernymRetriever(wn.synset(synset_name), max_level=2).get_list()
+                for hypernym in hypernyms:
+                    # score to divide by path len
+                    score_pref_rel_sum[hypernym[0].name()]['score'] += synset_pref / (hypernym[1]+1)
+                    score_pref_rel_sum[hypernym[0].name()]['count'] += 1
+                hyponyms = HyponymRetriever(wn.synset(synset_name), max_level=1).get_list()
+                for hyponym in hyponyms:
+                    score_pref_rel_sum[hyponym[0].name()]['score'] += synset_pref / (hyponym[1]+1)
+                    score_pref_rel_sum[hyponym[0].name()]['count'] += 1
+        for synset_name, sum_dict in score_pref_rel_sum.items():
+            if sum_dict['count'] > 0:
+                # add to original pref sum
+                score_pref_sum[synset_name]['score'] += sum_dict['score']
+                score_pref_sum[synset_name]['count'] += sum_dict['count']
         for synset_name, sum_dict in score_pref_sum.items():
             if sum_dict['count'] > 0:
                 # do average
                 score_pref[synset_name] = sum_dict['score'] / sum_dict['count']
 
-                # score to hypernym and hyponym
-                hypernyms = HypernymRetriever(wn.synset(synset_name), max_level=2).get_list()
-                for hypernym in hypernyms:
-                    score_pref[hypernym[0].name()] = score_pref[synset_name] / (hypernym[1]+1)  # divide by path len
-                hyponyms = HyponymRetriever(wn.synset(synset_name), max_level=1).get_list()
-                for hyponym in hyponyms:
-                    score_pref[hyponym[0].name()] = score_pref[synset_name] / (hyponym[1]+1)  # divide by path len
+        # return score_pref
+        pref_list = list()
+        for synset_name, score in score_pref.items():
+            pref = (score, synset_name, target, target_type)
+            pref_list.append(pref)
+        return pref_list
 
-        return score_pref
+    def perform_clustering(self, pref_list):
+        def distance(u, v):
+            if u[3] == v[3]:    # is same type? (thing and activity)
+                if u[2] == v[2]:    # is same thing or activity?
+                    path_dist = 1 - wn.synset(u[1]).path_similarity(wn.synset(v[1]))
+                    pref_dist = abs(u[0] - v[0])
+                    return path_dist * pref_dist
+                else:
+                    return 3
+            else:
+                return 5
 
-    def analyzeDiairesByClustering(self, pref_scores_dicts):
-        for pref_scores in pref_scores_dicts:
-            pass
+        # make distace matrix
+        pref_len = len(pref_list)
+        dist_matrix = np.array([[10.0]*pref_len]*pref_len, np.float32)
+        for u in range (0, pref_len):
+            for v in range(u, pref_len):
+                dist = distance(pref_list[u], pref_list[v])
+                dist_matrix[u][v] = dist
+                dist_matrix[v][u] = dist
+        if TendencyAnalyzer.DEBUG:
+            print("distance matrix: ")
+            print(dist_matrix)
+
+        #perfor clustering
+        hac_result = hac.linkage(dist_matrix, method='complete')
+
+        knee = np.diff(hac_result[::-1, 2], 2)
+        knee[knee.argmax()] = 0
+        num_cluster = knee.argmax() + 2
+
+        part_cluster = hac.fcluster(hac_result, num_cluster, 'maxclust')
+        if TendencyAnalyzer.DEBUG:
+            print("part_cluster: ")
+            print(part_cluster)
+        return part_cluster
 
     @classmethod
     def _score_to_hyponyms(cls, hypernym_synset, hypernym_score, score_sentiments, continue_hyponyms=False):
@@ -553,21 +613,50 @@ if __name__ == "__main__":
                            'SentiWordNet_3.0.0_20130122.txt')
     senti_wordnet = SentiWordNet(sw_path)
 
+    tend_analyzer = TendencyAnalyzer(senti_wordnet)
+
     foods = HyponymRetriever(wn.synset('food.n.01'), max_level=8)
     # pprint(foods.get_list())
+    tend_analyzer.add_word_set('food', 'thing', foods)
 
-    tend_analyzer = TendencyAnalyzer(senti_wordnet, food_set=foods)
 
     TEST_DIARY = "I like a banana. I really like an apple. I don't like a grape. I hate a sweet potato."
     TEST_DIARY2 = """My main course was a half the dishes. Cumbul Ackard Cornish card little gym lettuce. Fresh Peas Mousser on mushrooms, Cocles and a cream sauce finished with a drizzle of olive oil wonderfully tender, and moist card. But I'm really intensify the flavor of the card there by providing a nice flavor contrast to the rich cream sauce. Lovely freshness, and texture from the little gym lettuce. A well executed dish with bags of flavour. Next, a very elegant vanilla, yogurt and strawberries and Candy Basil different strawberry preparations delivered a wonderful variety of flavor. Intensities is there was a sweet and tart lemon curd and yogurt sorbet buttery, Pepper Pastry Cramble Candied Lemons. Testing broken mrang the lemon curd had a wonderfully creamy texture and then ring was perfectly light and Chrissy and wonderful dessert with a great balance of flavors and textures. It's got sweetness. It's got scrunch. It's got acidity. It's got freshness."""
     diary_tags = tagger.tag_pos_doc(TEST_DIARY)
     diary_tags2 = tagger.tag_pos_doc(TEST_DIARY2)
-    pprint(tend_analyzer.scorePreferenceToDiary(diary_tags[1], 'sport', 'activity'))
-    print()
-    print()
-    pprint(tend_analyzer.scorePreferenceToDiary(diary_tags2[1], 'food', 'thing'))
 
-    # TEST_DIARY = "I hate a sweet potato."
-    # diary_tags = tagger.tag_pos_doc(TEST_DIARY)
-    # pprint(tend_analyzer.scorePreferenceToDiary(diary_tags[1], 'food', 'thing'))
+    diary_pref = tend_analyzer.score_pref_to_diary(diary_tags[1], 'food', 'thing')
+    diary_pref2 = tend_analyzer.score_pref_to_diary(diary_tags2[1], 'food', 'thing')
+    pprint(diary_pref)
+    print()
+    print()
+    pprint(diary_pref2)
+    print()
+    print()
+
+    diary_prefs = diary_pref + diary_pref2
+    clustering_result = tend_analyzer.perform_clustering(diary_prefs)
+    print(clustering_result)
+
+
+    ##### TESTS without diary tagging and pref scoring ###
+    # diary_pref = [(-0.18, 'vinifera_grape.n.02', 'food', 'thing'),
+    #     (0.32083333333333336, 'eating_apple.n.01', 'food', 'thing'),
+    #     (-0.12369791666666666, 'root_vegetable.n.01', 'food', 'thing'),
+    #     (0.32083333333333336, 'pome.n.01', 'food', 'thing'),
+    #     (-0.18, 'muscadine.n.02', 'food', 'thing'),
+    #     (-0.12369791666666666, 'yam.n.03', 'food', 'thing'),
+    #     (0.32083333333333336, 'cooking_apple.n.01', 'food', 'thing'),
+    #     (0.35, 'banana.n.02', 'food', 'thing'),
+    #     (-0.08246527777777778, 'vegetable.n.01', 'food', 'thing'),
+    #     (0.10527777777777779, 'edible_fruit.n.01', 'food', 'thing'),
+    #     (-0.18, 'slipskin_grape.n.01', 'food', 'thing'),
+    #     (-0.36, 'grape.n.01', 'food', 'thing'),
+    #     (-0.24739583333333331, 'sweet_potato.n.02', 'food', 'thing'),
+    #     (0.32083333333333336, 'crab_apple.n.03', 'food', 'thing'),
+    #     (0.10611111111111111, 'fruit.n.01', 'food', 'thing'),
+    #     (0.07018518518518518, 'produce.n.01', 'food', 'thing'),
+    #     (0.6416666666666667, 'apple.n.01', 'food', 'thing')]
+    # clustering_result = tend_analyzer.perform_clustering(diary_pref)
+    # print(clustering_result)
 
