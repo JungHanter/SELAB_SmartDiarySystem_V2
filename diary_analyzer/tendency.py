@@ -193,13 +193,13 @@ class TendencyAnalyzer(object):
         for diary_tags in diary_tags_list:
             # step 2
             identified_sent_dict = self._identify_sentences(diary_tags)
-            # pprint(identified_sent_dict)
-            # print()
+            pprint(identified_sent_dict)
+            print()
 
             # step 3
             scores_pref = self._compute_pref_scores(diary_tags, identified_sent_dict)
-            # pprint(scores_pref)
-            # print()
+            pprint(scores_pref)
+            print()
 
             # step 4
             scores_pref = self._compute_pref_scores_of_similars(scores_pref)
@@ -534,8 +534,15 @@ class TendencyAnalyzer(object):
             else:
                 return 5
 
-        # feature selection (filtering with things and activities
-        # which has more than 0.01 preference score
+        # feature selection
+        # filtering with things and activities which there is only one item
+        count_dict = defaultdict(int)
+        for pref_ta in pref_ta_list:
+            count_dict[pref_ta[0]] += 1
+        for i in range(0, len(pref_ta_list))[::-1]:
+            if count_dict[pref_ta_list[i][0]] < 2:
+                pref_ta_list.pop(i)
+        # filtering with things and activities which has more than 0.01 preference score
         for i in range(0, len(pref_ta_list))[::-1]:
             if abs(pref_ta_list[i][1]) < 0.01:
                 pref_ta_list.pop(i)
@@ -635,9 +642,9 @@ class TendencyAnalyzer(object):
                 count_dict[ta[0]]['sum'] += ta[1]
             weight_dict = dict()
             for ta_name, count in count_dict.items():
-                if count['count'] > 1:
+                if count['count'] >= 2:
                     weight_dict[ta_name] = (count['sum'] / count['count']) * \
-                                           (1 + log(count['count'], pref_num))
+                                           (1 + log(count['count']-1, pref_num))
 
             # remove same items and set new pref score multiplied weight
             already_exist_ta_list = list()
@@ -779,11 +786,11 @@ class TendencyAnalyzer(object):
         # arrange things and activities for their type
         clsfied_pos_scores_dict = defaultdict(lambda: list())
         for ta_name, ta in pos_ta_cluster_dict.items():
-            if ta[1] >= 0.25:   # preference score is more than
+            if ta[1] >= 0.2:   # preference score is more than
                 clsfied_pos_scores_dict[(ta[2], ta[3])].append((ta[0], ta[1]))
         clsfied_neg_scores_dict = defaultdict(lambda: list())
         for ta_name, ta in neg_ta_cluster_dict.items():
-            if ta[1] <= -0.25:
+            if ta[1] <= -0.2:
                 clsfied_neg_scores_dict[(ta[2], ta[3])].append((ta[0], ta[1]))
 
         if self.DEBUG:
@@ -954,7 +961,7 @@ if __name__ == "__main__":
     weathers = HyponymRetriever(wn.synset('weather.n.01'), max_level=8)
     exercises = HyponymRetriever(wn.synset('sport.n.01'), wn.synset('sport.n.02'),
                                  wn.synset('exercise.n.01'), wn.synset('exercise.v.03'),
-                                 wn.synset('exercise.v.04'), max_level=12)
+                                 wn.synset('exercise.v.04'), ax_level=12)
     activities = HypernymRetriever(wn.synset('activity.n.01'), wn.synset('action.n.02'),
                                    wn.synset('natural_process.n.01'), wn.synset('act.n.01'),
                                    wn.synset('act.n.02'), wn.synset('act.n.05'),
