@@ -203,8 +203,8 @@ class TendencyAnalyzer(object):
     SIMILAR_PATH_MAX_HYPERNYM = 3
     SIMILAR_PATH_MAX_HYPONYM = 1
 
-    CLUSTER_CUT_DIST = 1
-    CLUSTER_PATH_DIST_MAGNIFICATION = 4
+    CLUSTER_CUT_DIST = 1.5  #1
+    CLUSTER_PATH_DIST_MAGNIFICATION = 1 #4
 
     def __init__(self, senti_wordnet):
         self.senti_wordnet = senti_wordnet
@@ -262,61 +262,61 @@ class TendencyAnalyzer(object):
             converted_tends = self._convert_scores_dict_to_list(scores_tend)
             tend_list += converted_tends
 
-        # print(tend_list)
-        # return
-
-        clusters, pref_num = self._perform_clustering(tend_list)
-        # print("# of Cluster: %s" % len(clusters))
-        for idx in range(0, len(clusters)):
-            cluster = clusters[idx]
-            score_sum = 0
-            score_cnt = 0
-            for ta in cluster:
-                score_sum += ta[1]
-                score_cnt += 1
-            score_avg = score_sum / score_cnt
-            # print("Cluster #%s: %s (avg: %s)" % (idx, self._lable_for_cluster(cluster), score_avg))
-            # pprint(cluster)
-            # print()
+        # group by category and type
+        tend_dict = self._group_tend_list(tend_list)
+        clustering_dict = dict()
+        for type, tend_group_list in tend_dict.items():
+            if len(tend_group_list) < 10:
+                continue
+            print("Clustering for %s.%s" % (type[1], type[0]))
+            clusters, pref_num = self._perform_clustering(tend_group_list)
+            clustering_dict[type] = {'clusters': clusters, 'pref_num': pref_num}
+            print("# of Cluster: %s\n" % len(clusters))
+            for idx in range(0, len(clusters)):
+                cluster = clusters[idx]
+                score_sum = 0
+                score_cnt = 0
+                for ta in cluster:
+                    score_sum += ta[1]
+                    score_cnt += 1
+                score_avg = score_sum / score_cnt
+                print("Cluster #%s: %s (avg: %s)" % (idx, self._lable_for_cluster(cluster), score_avg))
+                pprint(cluster)
+                print()
 
         # step 6
         print("\n##### Step 6. #####")
-        pos_results, neg_result = self._figure_out_best_ta(clusters, len(diary_tags_list), pref_num)
-        pprint(pos_results)
-        pprint(neg_result)
-        print()
+        for type, clustering_info in clustering_dict.items():
+            pos_results, neg_result = self._figure_out_best_ta(clustering_info['clusters'],
+                                                               len(diary_tags_list),
+                                                               clustering_info['pref_num'])
+            print("Tendency for %s.%s" % (type[1], type[0]))
+            for pos_ta in pos_results:
+                print(_get_default_lemma(pos_ta[0]) + ': ' + \
+                      self._get_preference_class_name(pos_ta[1]) + \
+                      ' (' + str(pos_ta[1]) + ')')
+            for neg_ta in neg_result:
+                print(_get_default_lemma(neg_ta[0]) + ': ' + \
+                      self._get_preference_class_name(neg_ta[1]) + \
+                      ' (' + str(neg_ta[1]) + ')')
+            print()
 
-        #
-        # for diary_idx in range(0, len(diary_tags_list)):
-        #     diary_tags = diary_tags_list[diary_idx]
-        #     # print("***** DIARY #%s *****" % diary_idx)
-        #
-        #     # step 2
-        #     identified_sent_dict = self._identify_sentences(diary_tags)
-        #     # pprint(identified_sent_dict)
+        # clusters, pref_num = self._perform_clustering(tend_list)
+        # # print("# of Cluster: %s" % len(clusters))
+        # for idx in range(0, len(clusters)):
+        #     cluster = clusters[idx]
+        #     score_sum = 0
+        #     score_cnt = 0
+        #     for ta in cluster:
+        #         score_sum += ta[1]
+        #         score_cnt += 1
+        #     score_avg = score_sum / score_cnt
+        #     # print("Cluster #%s: %s (avg: %s)" % (idx, self._lable_for_cluster(cluster), score_avg))
+        #     # pprint(cluster)
         #     # print()
-        #
-        #     # step 3
-        #     scores_tend = self._compute_pref_scores(diary_tags, identified_sent_dict)
-        #     # pprint(scores_pref)
-        #     # print()
-        #
-        #     # step 4
-        #     scores_tend = self._compute_pref_scores_of_similars(scores_tend)
-        #     # pprint(scores_pref)
-        #     # print()
-        #
-        #     # convert & add scores_pref dictionary to list
-        #     scores_pref_list = self._convert_scores_dict_to_list(scores_tend)
-        #     pref_ta_list += scores_pref_list
-        #
-        # # step 5
-        # clusters, pref_num = self._perform_clustering(pref_ta_list)
-        # print(len(clusters))
-        # pprint(clusters)
-        # print()
         #
         # # step 6
+        # print("\n##### Step 6. #####")
         # pos_results, neg_result = self._figure_out_best_ta(clusters, len(diary_tags_list), pref_num)
         # pprint(pos_results)
         # pprint(neg_result)
@@ -716,22 +716,26 @@ class TendencyAnalyzer(object):
     ###############################################################################
     def _perform_clustering(self, pref_ta_list):
         def calc_distance(u, v):
-            if u[3] == v[3]:    # is same type? (thing and activity)
-                if u[2] == v[2]:    # is same thing or activity?
-                    path_dist = wn.synset(u[0]).path_similarity(wn.synset(v[0]))
-                    if path_dist is None:
-                        path_dist = 0
-                    path_dist = path_dist * self.CLUSTER_PATH_DIST_MAGNIFICATION
-                    if path_dist > 1:
-                        path_dist = 1
-                    dist = 1 - path_dist
-                    # pref_dist = abs(u[1] - v[1])
-                    # dist = path_dist * pref_dist
-                    return dist
-                else:
-                    return 3
-            else:
-                return 5
+            path_dist = wn.synset(u[0]).path_similarity(wn.synset(v[0]))
+            if path_dist is None:
+                path_dist = 0
+            return 1 - (path_dist * self.CLUSTER_PATH_DIST_MAGNIFICATION)
+            # if u[3] == v[3]:    # is same type? (thing and activity)
+            #     if u[2] == v[2]:    # is same thing or activity?
+            #         path_dist = wn.synset(u[0]).path_similarity(wn.synset(v[0]))
+            #         if path_dist is None:
+            #             path_dist = 0
+            #         path_dist = path_dist * self.CLUSTER_PATH_DIST_MAGNIFICATION
+            #         if path_dist > 1:
+            #             path_dist = 1
+            #         dist = 1 - path_dist
+            #         # pref_dist = abs(u[1] - v[1])
+            #         # dist = path_dist * pref_dist
+            #         return dist
+            #     else:
+            #         return 3
+            # else:
+            #     return 5
 
         # sort list for debugging
         if self.DEBUG:
@@ -779,10 +783,10 @@ class TendencyAnalyzer(object):
 
         # perform clustering
         hac_result = hac.linkage(dist_matrix, method='single')
-        # if self.DEBUG:
-        print("linkage result: ")
-        print(hac_result)
-        print()
+        if self.DEBUG:
+            print("linkage result: ")
+            print(hac_result)
+            print()
 
         # figure out the number of clusters (determine where to cut tree)
         num_cluster = 1
@@ -790,8 +794,8 @@ class TendencyAnalyzer(object):
             if matrix_y[2] > self.CLUSTER_CUT_DIST:
             # if matrix_y[2] > 0.25:
                 num_cluster += 1
-        # if self.DEBUG:
-        print("num_cluster: ", num_cluster, '\n')
+        if self.DEBUG:
+            print("num_cluster: ", num_cluster, '\n')
 
         part_cluster = hac.fcluster(hac_result, num_cluster, 'maxclust')
         if self.DEBUG:
@@ -810,17 +814,17 @@ class TendencyAnalyzer(object):
             print()
 
         # show dendrogram
-        labels = list('' for i in range(pref_len))
-        for i in range(pref_len):
-            # labels[i] = str(i) + ' (' + str(part_cluster[i]) + ')'
-            # labels[i] = str(i)
-            # labels[i] = '[' + str(part_cluster[i]) + '] ' + pref_ta_list[i][0] + '(' + str(i) + ')\n' + \
-            #             str(int(pref_ta_list[i][1] * 100000) / 100000.0)
-            labels[i] = _get_default_lemma(pref_ta_list[i][0]) + '\n' + \
-                        str(int(pref_ta_list[i][1] * 1000) / 1000.0)
-        ct = hac_result[-(num_cluster - 1), 2]
-        p = hac.dendrogram(hac_result, labels=labels, color_threshold=ct)
-        plt.show()
+        # labels = list('' for i in range(pref_len))
+        # for i in range(pref_len):
+        #     # labels[i] = str(i) + ' (' + str(part_cluster[i]) + ')'
+        #     # labels[i] = str(i)
+        #     labels[i] = '[' + str(part_cluster[i]) + '] ' + pref_ta_list[i][0] + '(' + str(i) + ')\n' + \
+        #                 str(int(pref_ta_list[i][1] * 100000) / 100000.0)
+        #     # labels[i] = _get_default_lemma(pref_ta_list[i][0]) + '\n' + \
+        #     #             str(int(pref_ta_list[i][1] * 1000) / 1000.0)
+        # ct = hac_result[-(num_cluster - 1), 2]
+        # p = hac.dendrogram(hac_result, labels=labels, color_threshold=ct)
+        # plt.show()
 
         return clusters, pref_num
 
@@ -866,10 +870,10 @@ class TendencyAnalyzer(object):
                     cluster.insert(i, new_ta)
                     already_exist_ta_list.append(ta[0])
 
-            if self.DEBUG:
-                print("Cluster after applying weight for count")
-                print(cluster)
-                print()
+            # if self.DEBUG:
+            print("Cluster after applying weight for count")
+            print(cluster)
+            print()
 
             # find things and activities ta having max prefs
             # first_ta = cluster[0]
@@ -894,11 +898,11 @@ class TendencyAnalyzer(object):
                         max_neg_pref_ta_list.clear()
                         max_neg_pref_ta_list.append(ta)
 
-            if self.DEBUG:
-                print("Max pref list")
-                print(max_pos_pref_ta_list)
-                print(max_neg_pref_ta_list)
-                print()
+            # if self.DEBUG:
+            print("Max pref list")
+            print(max_pos_pref_ta_list)
+            print(max_neg_pref_ta_list)
+            print()
 
             # if all values are same, find their common parent(hypernym)
             parent_ta_find_dict = defaultdict(int)
@@ -938,11 +942,11 @@ class TendencyAnalyzer(object):
                     else:
                         max_neg_pref_ta_list.append((max_hypyernym, max_neg_pref_score, target, target_type))
 
-            if self.DEBUG:
-                print("Max pref list after parent finding")
-                print(max_pos_pref_ta_list)
-                print(max_neg_pref_ta_list)
-                print()
+            # if self.DEBUG:
+            print("Max pref list after parent finding")
+            print(max_pos_pref_ta_list)
+            print(max_neg_pref_ta_list)
+            print()
 
             # plus score to max value from others
             pos_pref_ta_list_cvt = list()
@@ -961,11 +965,11 @@ class TendencyAnalyzer(object):
                     if ta is not neg_ta:
                         # add a little score which is from other items in the same cluster
                         neg_ta[1] += 0.1 * wn.synset(neg_ta[0]).path_similarity(wn.synset(ta[0])) * ta[1]
-            if self.DEBUG:
-                print('cvt list')
-                print(pos_pref_ta_list_cvt)
-                print(neg_pref_ta_list_cvt)
-                print()
+            # if self.DEBUG:
+            print('cvt list')
+            print(pos_pref_ta_list_cvt)
+            print(neg_pref_ta_list_cvt)
+            print()
 
             # sometimes, final preference score is more than 1 because
             # there are many related ta or the ta is referred in diaries as much times..
@@ -992,11 +996,11 @@ class TendencyAnalyzer(object):
                 else:
                     neg_ta_cluster_dict[neg_ta[0]] = neg_ta
 
-        if self.DEBUG:
-            pprint(pos_ta_cluster_dict)
-            print()
-            pprint(neg_ta_cluster_dict)
-            print()
+        # if self.DEBUG:
+        pprint(pos_ta_cluster_dict)
+        print()
+        pprint(neg_ta_cluster_dict)
+        print()
 
         # it a thing or activity is in both side, to correct it.
         pos_ta_cluster_keys = list(pos_ta_cluster_dict.keys())
@@ -1014,35 +1018,49 @@ class TendencyAnalyzer(object):
                     del neg_ta_cluster_dict[ta_name]
                     pos_ta_cluster_dict[ta_name][1] = ta_score
 
-        # arrange things and activities for their type
-        clsfied_pos_scores_dict = defaultdict(lambda: list())
+        # scores list filter
+        pos_scores_ta = list()
         for ta_name, ta in pos_ta_cluster_dict.items():
             if ta[1] >= 0.2:   # preference score is more than
-                clsfied_pos_scores_dict[(ta[2], ta[3])].append((ta[0], ta[1]))
-        clsfied_neg_scores_dict = defaultdict(lambda: list())
+                pos_scores_ta.append((ta[0], ta[1]))
+        neg_scores_ta = list()
         for ta_name, ta in neg_ta_cluster_dict.items():
             if ta[1] <= -0.2:
-                clsfied_neg_scores_dict[(ta[2], ta[3])].append((ta[0], ta[1]))
+                neg_scores_ta.append((ta[0], ta[1]))
 
-        if self.DEBUG:
-            pprint(clsfied_pos_scores_dict)
-            pprint(clsfied_neg_scores_dict)
-            print()
+        # best tend things and activities
+        best_pos_scores = sorted(pos_scores_ta, key=lambda ta: ta[1], reverse=True)[:5]
+        best_neg_scores = sorted(neg_scores_ta, key=lambda ta: ta[1])[:5]
 
-        # trim up to 5 first element as best score
-        best_pos_scores_dict = dict()
-        for ta_type, ta_list in clsfied_pos_scores_dict.items():
-            best_pos_scores_dict[ta_type] = sorted(ta_list, key=lambda ta: ta[1], reverse=True)[:5]
-        best_neg_scores_dict = dict()
-        for ta_type, ta_list in clsfied_neg_scores_dict.items():
-            best_neg_scores_dict[ta_type] = sorted(ta_list, key=lambda ta: ta[1])[:5]
+        # arrange things and activities for their type
+        # clsfied_pos_scores_dict = defaultdict(lambda: list())
+        # for ta_name, ta in pos_ta_cluster_dict.items():
+        #     if ta[1] >= 0.2:   # preference score is more than
+        #         clsfied_pos_scores_dict[(ta[2], ta[3])].append((ta[0], ta[1]))
+        # clsfied_neg_scores_dict = defaultdict(lambda: list())
+        # for ta_name, ta in neg_ta_cluster_dict.items():
+        #     if ta[1] <= -0.2:
+        #         clsfied_neg_scores_dict[(ta[2], ta[3])].append((ta[0], ta[1]))
+        #
+        # if self.DEBUG:
+        #     pprint(clsfied_pos_scores_dict)
+        #     pprint(clsfied_neg_scores_dict)
+        #     print()
+        #
+        # # trim up to 5 first element as best score
+        # best_pos_scores_dict = dict()
+        # for ta_type, ta_list in clsfied_pos_scores_dict.items():
+        #     best_pos_scores_dict[ta_type] = sorted(ta_list, key=lambda ta: ta[1], reverse=True)[:5]
+        # best_neg_scores_dict = dict()
+        # for ta_type, ta_list in clsfied_neg_scores_dict.items():
+        #     best_neg_scores_dict[ta_type] = sorted(ta_list, key=lambda ta: ta[1])[:5]
+        #
+        # if self.DEBUG:
+        #     pprint(best_pos_scores_dict)
+        #     pprint(best_neg_scores_dict)
+        #     print()
 
-        if self.DEBUG:
-            pprint(best_pos_scores_dict)
-            pprint(best_neg_scores_dict)
-            print()
-
-        return best_pos_scores_dict, best_neg_scores_dict
+        return best_pos_scores, best_neg_scores
 
     # return a list of (found_synset, lemma_word, words_set_type)
     def _find_synsets_in_wordsets(self, finding_word_list, plural=False):
@@ -1146,6 +1164,9 @@ class TendencyAnalyzer(object):
         hypernym_count_dict = defaultdict(int)
         for ta_name in ta_name_list:
             synset = wn.synset(ta_name)
+            # add self
+            hypernym_count_dict[ta_name] += 1
+            # add hypernyms
             if synset:
                 for hypernym in _get_hypernyms(synset, search_level):
                     hypernym_count_dict[hypernym.name()] += 1
@@ -1195,7 +1216,7 @@ class TendencyAnalyzer(object):
                     hypernym_name = common_hypernyms[idx]
                     if idx > 0:
                         rep_ta_name += ', '
-                    rep_ta_name = _get_default_lemma(hypernym_name)
+                    rep_ta_name += _get_default_lemma(hypernym_name)
             else:
                 for idx in range(0, len(max_ta_list)):
                     ta_name = max_ta_list[idx]
@@ -1203,6 +1224,31 @@ class TendencyAnalyzer(object):
                         rep_ta_name += ', '
                     rep_ta_name = _get_default_lemma(ta_name)
         return rep_ta_name
+
+    @classmethod
+    def _get_preference_class_name(cls, score):
+        if score == 1:
+            return "Absolutely Like"
+        elif score >= 0.8:
+            return "Very Like"
+        elif score >= 0.6:
+            return "More Like"
+        elif score >= 0.4:
+            return "Like"
+        elif score >= 0.2:
+            return "Slightly Like"
+        elif score == -1:
+            return "Absolutely Dislike"
+        elif score <= -0.8:
+            return "Very Dislike"
+        elif score <= -0.6:
+            return "More Dislike"
+        elif score <= -0.4:
+            return "Dislike"
+        elif score <= -0.2:
+            return "Slightly Dislike"
+        else:
+            return ""
 
 
 def _lemmas_to_name_list(lemmas, include_count=False):
@@ -1311,14 +1357,14 @@ if __name__ == "__main__":
     # diary_tags3 = tagger.tag_pos_doc(TEST_DIARY3)
     # diary_tags4 = tagger.tag_pos_doc(TEST_DIARY4)
     #
-    diary_tags = [[['I', 'PRP', '2', 'nsubj'], ['like', 'VBP', '0', 'root'], ['a', 'DT', '4', 'det'], ['banana', 'NN', '2', 'dobj'], ['.', None, None, None]], [['I', 'PRP', '3', 'nsubj'], ['really', 'RB', '3', 'advmod'], ['like', 'VBP', '0', 'root'], ['an', 'DT', '5', 'det'], ['apple', 'NN', '3', 'dobj'], ['.', None, None, None]], [['I', 'PRP', '4', 'nsubj'], ['do', 'VBP', '4', 'aux'], ["n't", 'RB', '4', 'neg'], ['like', 'VB', '0', 'root'], ['a', 'DT', '6', 'det'], ['grape', 'NN', '4', 'dobj'], ['.', None, None, None]], [['I', 'PRP', '2', 'nsubj'], ['hate', 'VBP', '0', 'root'], ['a', 'DT', '5', 'det'], ['sweet', 'JJ', '5', 'amod'], ['potato', 'NN', '2', 'dobj'], ['.', None, None, None]]]
-    diary_tags2 = [[['My', 'PRP$', '3', 'nmod:poss'], ['main', 'JJ', '3', 'amod'], ['course', 'NN', '6', 'nsubj'], ['was', 'VBD', '6', 'cop'], ['a', 'DT', '6', 'det'], ['half', 'NN', '0', 'root'], ['the', 'DT', '8', 'det'], ['dishes', 'NNS', '6', 'dep'], ['.', None, None, None]], [['Cumbul', 'NNP', '3', 'compound'], ['Ackard', 'NNP', '3', 'compound'], ['Cornish', 'NNP', '4', 'nsubj'], ['card', 'VBZ', '0', 'root'], ['little', 'JJ', '7', 'amod'], ['gym', 'NN', '7', 'compound'], ['lettuce', 'NN', '4', 'dobj'], ['.', None, None, None]], [['Fresh', 'NNP', '3', 'compound'], ['Peas', 'NNPS', '3', 'compound'], ['Mousser', 'NNP', '12', 'nsubj'], ['on', 'IN', '5', 'case'], ['mushrooms', 'NNS', '3', 'nmod'], [',', None, None, None], ['Cocles', 'NNP', '5', 'conj'], ['and', 'CC', '5', 'cc'], ['a', 'DT', '11', 'det'], ['cream', 'NN', '11', 'compound'], ['sauce', 'NN', '5', 'conj'], ['finished', 'VBD', '0', 'root'], ['with', 'IN', '15', 'case'], ['a', 'DT', '15', 'det'], ['drizzle', 'NN', '12', 'nmod'], ['of', 'IN', '20', 'case'], ['olive', 'JJ', '20', 'amod'], ['oil', 'NN', '20', 'compound'], ['wonderfully', 'NN', '20', 'compound'], ['tender', 'NN', '15', 'nmod'], [',', None, None, None], ['and', 'CC', '20', 'cc'], ['moist', 'NN', '24', 'compound'], ['card', 'NN', '20', 'conj'], ['.', None, None, None]], [['But', 'CC', '5', 'cc'], ['I', 'PRP', '5', 'nsubj'], ["'m", 'VBP', '5', 'aux'], ['really', 'RB', '5', 'advmod'], ['intensify', 'VBG', '0', 'root'], ['the', 'DT', '7', 'det'], ['flavor', 'NN', '5', 'dobj'], ['of', 'IN', '10', 'case'], ['the', 'DT', '10', 'det'], ['card', 'NN', '7', 'nmod'], ['there', 'RB', '5', 'advmod'], ['by', 'IN', '13', 'mark'], ['providing', 'VBG', '5', 'advcl'], ['a', 'DT', '17', 'det'], ['nice', 'JJ', '17', 'amod'], ['flavor', 'NN', '17', 'compound'], ['contrast', 'NN', '13', 'dobj'], ['to', 'TO', '22', 'case'], ['the', 'DT', '22', 'det'], ['rich', 'JJ', '22', 'amod'], ['cream', 'NN', '22', 'compound'], ['sauce', 'NN', '13', 'nmod'], ['.', None, None, None]], [['Lovely', 'NNP', '2', 'nsubj'], ['freshness', 'VBZ', '0', 'root'], [',', None, None, None], ['and', 'CC', '2', 'cc'], ['texture', 'NN', '2', 'conj'], ['from', 'IN', '10', 'case'], ['the', 'DT', '10', 'det'], ['little', 'JJ', '10', 'amod'], ['gym', 'NN', '10', 'compound'], ['lettuce', 'NN', '5', 'nmod'], ['.', None, None, None]], [['A', 'DT', '2', 'det'], ['well', 'NN', '3', 'nsubj'], ['executed', 'VBD', '0', 'root'], ['dish', 'NN', '3', 'dobj'], ['with', 'IN', '6', 'case'], ['bags', 'NNS', '3', 'nmod'], ['of', 'IN', '8', 'case'], ['flavour', 'NN', '6', 'nmod'], ['.', None, None, None]], [['Next', 'RB', '17', 'advmod'], [',', None, None, None], ['a', 'DT', '6', 'det'], ['very', 'RB', '6', 'advmod'], ['elegant', 'JJ', '6', 'dep'], ['vanilla', 'NN', '17', 'nsubj'], [',', None, None, None], ['yogurt', 'NN', '6', 'conj'], ['and', 'CC', '6', 'cc'], ['strawberries', 'NNS', '6', 'conj'], ['and', 'CC', '6', 'cc'], ['Candy', 'NNP', '13', 'compound'], ['Basil', 'NNP', '16', 'compound'], ['different', 'JJ', '16', 'amod'], ['strawberry', 'JJ', '16', 'amod'], ['preparations', 'NNS', '6', 'conj'], ['delivered', 'VBD', '0', 'root'], ['a', 'DT', '20', 'det'], ['wonderful', 'JJ', '20', 'amod'], ['variety', 'NN', '17', 'dobj'], ['of', 'IN', '22', 'case'], ['flavor', 'NN', '20', 'nmod'], ['.', None, None, None]], [['Intensities', 'NNS', '2', 'nsubj'], ['is', 'VBZ', '0', 'root'], ['there', 'EX', '4', 'expl'], ['was', 'VBD', '2', 'ccomp'], ['a', 'DT', '10', 'det'], ['sweet', 'JJ', '10', 'amod'], ['and', 'CC', '6', 'cc'], ['tart', 'JJ', '6', 'conj'], ['lemon', 'JJ', '10', 'amod'], ['curd', 'NN', '4', 'nsubj'], ['and', 'CC', '10', 'cc'], ['yogurt', 'NN', '14', 'compound'], ['sorbet', 'NN', '14', 'compound'], ['buttery', 'NN', '10', 'conj'], [',', None, None, None], ['Pepper', 'NNP', '20', 'compound'], ['Pastry', 'NNP', '20', 'compound'], ['Cramble', 'NNP', '20', 'compound'], ['Candied', 'NNP', '20', 'compound'], ['Lemons', 'NNP', '10', 'appos'], ['.', None, None, None]], [['Testing', 'NNP', '7', 'nsubj'], ['broken', 'VBN', '1', 'acl'], ['mrang', 'VBG', '2', 'xcomp'], ['the', 'DT', '6', 'det'], ['lemon', 'JJ', '6', 'amod'], ['curd', 'NN', '3', 'dobj'], ['had', 'VBD', '0', 'root'], ['a', 'DT', '11', 'det'], ['wonderfully', 'RB', '11', 'advmod'], ['creamy', 'JJ', '11', 'amod'], ['texture', 'NN', '7', 'dobj'], ['and', 'CC', '7', 'cc'], ['then', 'RB', '22', 'advmod'], ['ring', 'NN', '22', 'nsubj'], ['was', 'VBD', '22', 'cop'], ['perfectly', 'RB', '17', 'advmod'], ['light', 'JJ', '22', 'amod'], ['and', 'CC', '17', 'cc'], ['Chrissy', 'JJ', '17', 'conj'], ['and', 'CC', '19', 'cc'], ['wonderful', 'JJ', '19', 'conj'], ['dessert', 'NN', '7', 'conj'], ['with', 'IN', '26', 'case'], ['a', 'DT', '26', 'det'], ['great', 'JJ', '26', 'amod'], ['balance', 'NN', '22', 'nmod'], ['of', 'IN', '28', 'case'], ['flavors', 'NNS', '26', 'nmod'], ['and', 'CC', '28', 'cc'], ['textures', 'NNS', '28', 'conj'], ['.', None, None, None]], [['It', 'PRP', '3', 'nsubjpass'], ["'s", 'VBZ', '3', 'auxpass'], ['got', 'VBN', '0', 'root'], ['sweetness', 'NN', '3', 'dobj'], ['.', None, None, None]], [['It', 'PRP', '3', 'nsubjpass'], ["'s", 'VBZ', '3', 'auxpass'], ['got', 'VBN', '0', 'root'], ['scrunch', 'RB', '3', 'advmod'], ['.', None, None, None]], [['It', 'PRP', '3', 'nsubjpass'], ["'s", 'VBZ', '3', 'auxpass'], ['got', 'VBN', '0', 'root'], ['acidity', 'RB', '3', 'advmod'], ['.', None, None, None]], [['It', 'PRP', '3', 'nsubjpass'], ["'s", 'VBZ', '3', 'auxpass'], ['got', 'VBN', '0', 'root'], ['freshness', 'NN', '3', 'dobj'], ['.', None, None, None]]]
-    diary_tags3 = [[['I', 'PRP', '2', 'nsubj'], ['like', 'VBP', '0', 'root'], ['apples', 'NNS', '2', 'dobj'], ['and', 'CC', '3', 'cc'], ['bananas', 'NNS', '3', 'conj'], ['.', None, None, None]]]
-    diary_tags4 = [[['I', 'PRP', '4', 'nsubj'], ['do', 'VBP', '4', 'aux'], ["n't", 'RB', '4', 'neg'], ['like', 'VB', '0', 'root'], ['sweet', 'JJ', '6', 'amod'], ['potato', 'NN', '4', 'dobj'], ['.', None, None, None]], [['It', 'PRP', '2', 'nsubj'], ['makes', 'VBZ', '0', 'root'], ['me', 'PRP', '4', 'nsubj'], ['full', 'JJ', '2', 'xcomp'], ['!', None, None, None]]]
+    # diary_tags = [[['I', 'PRP', '2', 'nsubj'], ['like', 'VBP', '0', 'root'], ['a', 'DT', '4', 'det'], ['banana', 'NN', '2', 'dobj'], ['.', None, None, None]], [['I', 'PRP', '3', 'nsubj'], ['really', 'RB', '3', 'advmod'], ['like', 'VBP', '0', 'root'], ['an', 'DT', '5', 'det'], ['apple', 'NN', '3', 'dobj'], ['.', None, None, None]], [['I', 'PRP', '4', 'nsubj'], ['do', 'VBP', '4', 'aux'], ["n't", 'RB', '4', 'neg'], ['like', 'VB', '0', 'root'], ['a', 'DT', '6', 'det'], ['grape', 'NN', '4', 'dobj'], ['.', None, None, None]], [['I', 'PRP', '2', 'nsubj'], ['hate', 'VBP', '0', 'root'], ['a', 'DT', '5', 'det'], ['sweet', 'JJ', '5', 'amod'], ['potato', 'NN', '2', 'dobj'], ['.', None, None, None]]]
+    # diary_tags2 = [[['My', 'PRP$', '3', 'nmod:poss'], ['main', 'JJ', '3', 'amod'], ['course', 'NN', '6', 'nsubj'], ['was', 'VBD', '6', 'cop'], ['a', 'DT', '6', 'det'], ['half', 'NN', '0', 'root'], ['the', 'DT', '8', 'det'], ['dishes', 'NNS', '6', 'dep'], ['.', None, None, None]], [['Cumbul', 'NNP', '3', 'compound'], ['Ackard', 'NNP', '3', 'compound'], ['Cornish', 'NNP', '4', 'nsubj'], ['card', 'VBZ', '0', 'root'], ['little', 'JJ', '7', 'amod'], ['gym', 'NN', '7', 'compound'], ['lettuce', 'NN', '4', 'dobj'], ['.', None, None, None]], [['Fresh', 'NNP', '3', 'compound'], ['Peas', 'NNPS', '3', 'compound'], ['Mousser', 'NNP', '12', 'nsubj'], ['on', 'IN', '5', 'case'], ['mushrooms', 'NNS', '3', 'nmod'], [',', None, None, None], ['Cocles', 'NNP', '5', 'conj'], ['and', 'CC', '5', 'cc'], ['a', 'DT', '11', 'det'], ['cream', 'NN', '11', 'compound'], ['sauce', 'NN', '5', 'conj'], ['finished', 'VBD', '0', 'root'], ['with', 'IN', '15', 'case'], ['a', 'DT', '15', 'det'], ['drizzle', 'NN', '12', 'nmod'], ['of', 'IN', '20', 'case'], ['olive', 'JJ', '20', 'amod'], ['oil', 'NN', '20', 'compound'], ['wonderfully', 'NN', '20', 'compound'], ['tender', 'NN', '15', 'nmod'], [',', None, None, None], ['and', 'CC', '20', 'cc'], ['moist', 'NN', '24', 'compound'], ['card', 'NN', '20', 'conj'], ['.', None, None, None]], [['But', 'CC', '5', 'cc'], ['I', 'PRP', '5', 'nsubj'], ["'m", 'VBP', '5', 'aux'], ['really', 'RB', '5', 'advmod'], ['intensify', 'VBG', '0', 'root'], ['the', 'DT', '7', 'det'], ['flavor', 'NN', '5', 'dobj'], ['of', 'IN', '10', 'case'], ['the', 'DT', '10', 'det'], ['card', 'NN', '7', 'nmod'], ['there', 'RB', '5', 'advmod'], ['by', 'IN', '13', 'mark'], ['providing', 'VBG', '5', 'advcl'], ['a', 'DT', '17', 'det'], ['nice', 'JJ', '17', 'amod'], ['flavor', 'NN', '17', 'compound'], ['contrast', 'NN', '13', 'dobj'], ['to', 'TO', '22', 'case'], ['the', 'DT', '22', 'det'], ['rich', 'JJ', '22', 'amod'], ['cream', 'NN', '22', 'compound'], ['sauce', 'NN', '13', 'nmod'], ['.', None, None, None]], [['Lovely', 'NNP', '2', 'nsubj'], ['freshness', 'VBZ', '0', 'root'], [',', None, None, None], ['and', 'CC', '2', 'cc'], ['texture', 'NN', '2', 'conj'], ['from', 'IN', '10', 'case'], ['the', 'DT', '10', 'det'], ['little', 'JJ', '10', 'amod'], ['gym', 'NN', '10', 'compound'], ['lettuce', 'NN', '5', 'nmod'], ['.', None, None, None]], [['A', 'DT', '2', 'det'], ['well', 'NN', '3', 'nsubj'], ['executed', 'VBD', '0', 'root'], ['dish', 'NN', '3', 'dobj'], ['with', 'IN', '6', 'case'], ['bags', 'NNS', '3', 'nmod'], ['of', 'IN', '8', 'case'], ['flavour', 'NN', '6', 'nmod'], ['.', None, None, None]], [['Next', 'RB', '17', 'advmod'], [',', None, None, None], ['a', 'DT', '6', 'det'], ['very', 'RB', '6', 'advmod'], ['elegant', 'JJ', '6', 'dep'], ['vanilla', 'NN', '17', 'nsubj'], [',', None, None, None], ['yogurt', 'NN', '6', 'conj'], ['and', 'CC', '6', 'cc'], ['strawberries', 'NNS', '6', 'conj'], ['and', 'CC', '6', 'cc'], ['Candy', 'NNP', '13', 'compound'], ['Basil', 'NNP', '16', 'compound'], ['different', 'JJ', '16', 'amod'], ['strawberry', 'JJ', '16', 'amod'], ['preparations', 'NNS', '6', 'conj'], ['delivered', 'VBD', '0', 'root'], ['a', 'DT', '20', 'det'], ['wonderful', 'JJ', '20', 'amod'], ['variety', 'NN', '17', 'dobj'], ['of', 'IN', '22', 'case'], ['flavor', 'NN', '20', 'nmod'], ['.', None, None, None]], [['Intensities', 'NNS', '2', 'nsubj'], ['is', 'VBZ', '0', 'root'], ['there', 'EX', '4', 'expl'], ['was', 'VBD', '2', 'ccomp'], ['a', 'DT', '10', 'det'], ['sweet', 'JJ', '10', 'amod'], ['and', 'CC', '6', 'cc'], ['tart', 'JJ', '6', 'conj'], ['lemon', 'JJ', '10', 'amod'], ['curd', 'NN', '4', 'nsubj'], ['and', 'CC', '10', 'cc'], ['yogurt', 'NN', '14', 'compound'], ['sorbet', 'NN', '14', 'compound'], ['buttery', 'NN', '10', 'conj'], [',', None, None, None], ['Pepper', 'NNP', '20', 'compound'], ['Pastry', 'NNP', '20', 'compound'], ['Cramble', 'NNP', '20', 'compound'], ['Candied', 'NNP', '20', 'compound'], ['Lemons', 'NNP', '10', 'appos'], ['.', None, None, None]], [['Testing', 'NNP', '7', 'nsubj'], ['broken', 'VBN', '1', 'acl'], ['mrang', 'VBG', '2', 'xcomp'], ['the', 'DT', '6', 'det'], ['lemon', 'JJ', '6', 'amod'], ['curd', 'NN', '3', 'dobj'], ['had', 'VBD', '0', 'root'], ['a', 'DT', '11', 'det'], ['wonderfully', 'RB', '11', 'advmod'], ['creamy', 'JJ', '11', 'amod'], ['texture', 'NN', '7', 'dobj'], ['and', 'CC', '7', 'cc'], ['then', 'RB', '22', 'advmod'], ['ring', 'NN', '22', 'nsubj'], ['was', 'VBD', '22', 'cop'], ['perfectly', 'RB', '17', 'advmod'], ['light', 'JJ', '22', 'amod'], ['and', 'CC', '17', 'cc'], ['Chrissy', 'JJ', '17', 'conj'], ['and', 'CC', '19', 'cc'], ['wonderful', 'JJ', '19', 'conj'], ['dessert', 'NN', '7', 'conj'], ['with', 'IN', '26', 'case'], ['a', 'DT', '26', 'det'], ['great', 'JJ', '26', 'amod'], ['balance', 'NN', '22', 'nmod'], ['of', 'IN', '28', 'case'], ['flavors', 'NNS', '26', 'nmod'], ['and', 'CC', '28', 'cc'], ['textures', 'NNS', '28', 'conj'], ['.', None, None, None]], [['It', 'PRP', '3', 'nsubjpass'], ["'s", 'VBZ', '3', 'auxpass'], ['got', 'VBN', '0', 'root'], ['sweetness', 'NN', '3', 'dobj'], ['.', None, None, None]], [['It', 'PRP', '3', 'nsubjpass'], ["'s", 'VBZ', '3', 'auxpass'], ['got', 'VBN', '0', 'root'], ['scrunch', 'RB', '3', 'advmod'], ['.', None, None, None]], [['It', 'PRP', '3', 'nsubjpass'], ["'s", 'VBZ', '3', 'auxpass'], ['got', 'VBN', '0', 'root'], ['acidity', 'RB', '3', 'advmod'], ['.', None, None, None]], [['It', 'PRP', '3', 'nsubjpass'], ["'s", 'VBZ', '3', 'auxpass'], ['got', 'VBN', '0', 'root'], ['freshness', 'NN', '3', 'dobj'], ['.', None, None, None]]]
+    # diary_tags3 = [[['I', 'PRP', '2', 'nsubj'], ['like', 'VBP', '0', 'root'], ['apples', 'NNS', '2', 'dobj'], ['and', 'CC', '3', 'cc'], ['bananas', 'NNS', '3', 'conj'], ['.', None, None, None]]]
+    # diary_tags4 = [[['I', 'PRP', '4', 'nsubj'], ['do', 'VBP', '4', 'aux'], ["n't", 'RB', '4', 'neg'], ['like', 'VB', '0', 'root'], ['sweet', 'JJ', '6', 'amod'], ['potato', 'NN', '4', 'dobj'], ['.', None, None, None]], [['It', 'PRP', '2', 'nsubj'], ['makes', 'VBZ', '0', 'root'], ['me', 'PRP', '4', 'nsubj'], ['full', 'JJ', '2', 'xcomp'], ['!', None, None, None]]]
 
     # tend_analyzer.analyze_diary([diary_tags])
     # tend_analyzer.analyze_diary([diary_tags, diary_tags2, diary_tags3, diary_tags4])
-    tend_analyzer.analyze_diary([diary_tags, diary_tags3, diary_tags4])
+    # tend_analyzer.analyze_diary([diary_tags, diary_tags3, diary_tags4])
     # tend_analyzer.analyze_diary([diary_tags, diary_tags3])
     # tend_analyzer.analyze_diary([diary_tags3])
 
@@ -1355,12 +1401,12 @@ if __name__ == "__main__":
     # print("load smiley diaries done.")
     # tend_analyzer.analyze_diary(smiley_diaries)
 
-    # d_diaries = list()
-    # for i in range(0, 40):
-    #     diary_tags = tagger.pickle_to_tags("pickles/diary_d" + str(i) + ".pkl")
-    #     d_diaries.append(diary_tags[1])
-    # print("load D diaries done.")
-    # tend_analyzer.analyze_diary(d_diaries)
+    d_diaries = list()
+    for i in range(0, 40):
+        diary_tags = tagger.pickle_to_tags("pickles/diary_d" + str(i) + ".pkl")
+        d_diaries.append(diary_tags[1])
+    print("load D diaries done.")
+    tend_analyzer.analyze_diary(d_diaries)
 
     # elize_diaries = list()
     # for i in range(0, 4):
