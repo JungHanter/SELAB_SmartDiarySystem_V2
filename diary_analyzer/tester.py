@@ -141,7 +141,94 @@ import csv
 #     print()
 # print()
 
-for synset in wn.synsets('delicious'):
+# for synset in wn.synsets('delicious'):
+#     print(synset, synset.pos(), synset.offset(), synset.frame_ids(), synset.definition(),
+#           synset.examples(), synset.lexname(), sep=' | ')
+#     for lemma in synset.lemmas():
+#         print('\t', lemma, lemma.name(), lemma.syntactic_marker(), lemma.frame_ids(),
+#               lemma.frame
+# _strings(), lemma.count(), sep=' | ')
+#     print()
+# print()
+
+
+# asd = wn.synsets('adsf')
+# pprint(asd)
+
+# for synset in wn.synsets('dsfasdfadfsa'):
+#     print(synset, synset.pos(), synset.offset(), synset.frame_ids(), synset.definition(),
+#           synset.examples(), synset.lexname(), sep=' | ')
+#     for lemma in synset.lemmas():
+#         print('\t', lemma, lemma.name(), lemma.syntactic_marker(), lemma.frame_ids(),
+#               lemma.frame_strings(), lemma.count(), sep=' | ')
+#     print()
+# print()
+#
+# for synset in wn.synsets('work'):
+#     print(synset, synset.pos(), synset.offset(), synset.frame_ids(), synset.definition(),
+#           synset.examples(), synset.lexname(), sep=' | ')
+#     for lemma in synset.lemmas():
+#         print('\t', lemma, lemma.name(), lemma.syntactic_marker(), lemma.frame_ids(),
+#               lemma.frame_strings(), lemma.count(), sep=' | ')
+#     print()
+# print()
+
+# cafe.n.01
+# restaurant.n.01
+# building.n.01
+# structure.n.01
+# artifact.n.01
+
+
+# for synset in wn.synset('sushi.n.01').hypernyms():
+#     print(synset, synset.pos(), synset.offset(), synset.frame_ids(), synset.definition(),
+#           synset.examples(), synset.lexname(), sep=' | ')
+#     for lemma in synset.lemmas():
+#         print('\t', lemma, lemma.name(), lemma.syntactic_marker(), lemma.frame_ids(),
+#               lemma.frame_strings(), lemma.count(), sep=' | ')
+#     print()
+# print()
+
+# for synset in wn.synset('bad_weather.n.01').hyponyms():
+#     print(synset, synset.pos(), synset.offset(), synset.frame_ids(), synset.definition(),
+#           synset.examples(), synset.lexname(), sep=' | ')
+#     for lemma in synset.lemmas():
+#         print('\t', lemma, lemma.name(), lemma.syntactic_marker(), lemma.frame_ids(),
+#               lemma.frame_strings(), lemma.count(), sep=' | ')
+#     print()
+# print()
+#
+# for synset in wn.synset('cold_weather.n.01').hyponyms():
+#     print(synset, synset.pos(), synset.offset(), synset.frame_ids(), synset.definition(),
+#           synset.examples(), synset.lexname(), sep=' | ')
+#     for lemma in synset.lemmas():
+#         print('\t', lemma, lemma.name(), lemma.syntactic_marker(), lemma.frame_ids(),
+#               lemma.frame_strings(), lemma.count(), sep=' | ')
+#     print()
+# print()
+
+
+
+# for synset in wn.synsets('game'):
+#     print(synset, synset.pos(), synset.offset(), synset.frame_ids(), synset.definition(),
+#           synset.examples(), synset.lexname(), sep=' | ')
+#     for lemma in synset.lemmas():
+#         print('\t', lemma, lemma.name(), lemma.syntactic_marker(), lemma.frame_ids(),
+#               lemma.frame_strings(), lemma.count(), sep=' | ')
+#     print()
+# print()
+
+
+synset = wn.synset('heart.n.08')
+print(synset, synset.pos(), synset.offset(), synset.frame_ids(), synset.definition(),
+      synset.examples(), synset.lexname(), sep=' | ')
+for lemma in synset.lemmas():
+    print('\t', lemma, lemma.name(), lemma.syntactic_marker(), lemma.frame_ids(),
+          lemma.frame_strings(), lemma.count(), sep=' | ')
+print()
+
+for synset in wn.synset('heart.n.08').hypernyms():
+# for synset in wn.synset('side.n.09').hyponyms():
     print(synset, synset.pos(), synset.offset(), synset.frame_ids(), synset.definition(),
           synset.examples(), synset.lexname(), sep=' | ')
     for lemma in synset.lemmas():
@@ -150,3 +237,9 @@ for synset in wn.synsets('delicious'):
     print()
 print()
 
+
+# pprint(tagger.tag_pos_doc("I never have been had any pen. I can't find it anywhere. I can find it nowhere."))
+
+
+# for i in range(0, 10)[::-1]:
+#     print(i)

@@ -1,0 +1,365 @@
+acting.n.01 ['noun.act', 'the performance of a part or role in a drama', ['acting', 'playing', 'playacting', 'performing']]
+act.v.03 ['verb.creation', 'play a role or part', ['act', 'play', 'represent']]
+
+board_game.n.01 ['noun.act', 'a game played on a specially designed board', ['board_game']]
+
+cabaret.n.01 ['noun.artifact', 'a spot that is open late at night and that provides entertainment (as singers or dancers) as well as dancing and food and drink', ['cabaret', 'nightclub', 'night_club', 'club', 'nightspot']]
+cabaret.n.02 ['noun.act', 'a series of acts at a night club', ['cabaret', 'floorshow', 'floor_show']]
+
+calligraphy.n.01 ['noun.communication', 'beautiful handwriting', ['calligraphy', 'penmanship', 'chirography']]
+
+programming.n.02 ['noun.act', 'creating a sequence of instructions to enable the computer to do something', ['programming', 'programing', 'computer_programming', 'computer_programing']]
+
+cooking.n.01 ['noun.act', 'the act of preparing something (as food) by the application of heat', ['cooking', 'cookery', 'preparation']]
+cook.v.01 ['verb.creation', 'prepare a hot meal', ['cook']]
+cook.v.03 ['verb.change', 'transform and make suitable for consumption by heating', ['cook']]
+cook.v.05 ['verb.change', 'transform by heating', ['cook']]
+
+coloring.n.03 ['noun.act', 'the act or process of changing the color of something', ['coloring', 'colouring']]
+color.v.04 ['verb.creation', 'decorate with colors', ['color', 'colour', 'emblazon']]
+
+crocheting.n.02 ['noun.act', 'creating a garment of needlework', ['crocheting']]
+crochet.v.01 ['verb.creation', 'create by looping or crocheting', ['crochet']]
+crochet.v.02 ['verb.creation', 'make a piece of needlework by interlocking and looping thread with a hooked needle', ['crochet', 'hook']]
+
+crossword_puzzle.n.01 ['noun.communication', 'a puzzle in which words corresponding to numbered clues are to be found and written in to squares in the puzzle', ['crossword_puzzle', 'crossword']]
+
+cryptography.n.02 ['noun.act', 'act of writing in code or cipher', ['cryptography', 'coding', 'secret_writing', 'steganography']]
+
+dance.n.01 ['noun.communication', 'an artistic form of nonverbal communication', ['dance']]
+dancing.n.01 ['noun.act', 'taking a series of rhythmical steps (and movements) in time to music', ['dancing', 'dance', 'terpsichore', 'saltation']]
+dance.v.01 ['verb.motion', 'move in a graceful and rhythmical way', ['dance']]
+dance.v.02 ['verb.creation', 'move in a pattern; usually to musical accompaniment; do or perform a dance', ['dance', 'trip_the_light_fantastic', 'trip_the_light_fantastic_toe']]
+dance.v.03 ['verb.motion', 'skip, leap, or move up and down or sideways', ['dance']]
+
+drama.n.03 ['noun.communication', 'the literary genre of works intended for the theater', ['drama']]
+
+drawing.n.01 ['noun.communication', 'an illustration that is drawn by hand and published in a book, magazine, or newspaper', ['drawing']]
+drawing.n.03 ['noun.act', 'the creation of artistic pictures or diagrams', ['drawing', 'draftsmanship', 'drafting']]
+drawing.n.05 ['noun.act', 'act of getting or draining something such as electricity or a liquid from a source', ['drawing', 'drawing_off']]
+draw.v.06 ['verb.creation', 'represent by making a drawing of, as with a pencil, chalk, etc. on a surface', ['draw']]
+
+electronics.n.01 ['noun.cognition', 'the branch of physics that deals with the emission and effects of electrons and with the use of electronic devices', ['electronics']]
+
+fashion.n.03 ['noun.cognition', 'the latest and most admired style in clothes and cosmetics and behavior', ['fashion']]
+
+gambling.n.01 ['noun.act', 'the act of playing for stakes in the hope of winning (including the payment of a price for a chance to win a prize)', ['gambling', 'gaming', 'play']]
+bet_on.v.01 ['verb.competition', 'place a bet on', ['bet_on', 'back', 'gage', 'stake', 'game', 'punt']]
+
+genealogy.n.02 ['noun.cognition', 'the study or investigation of ancestry and family history', ['genealogy']]
+
+ice_skating.n.01 ['noun.act', 'skating on ice', ['ice_skating']]
+ice_skate.v.01 ['verb.motion', 'move along on ice skates', ['ice_skate']]
+
+jigsaw_puzzle.n.01 ['noun.artifact', 'a puzzle that requires you to reassemble a picture that has been mounted on a stiff base and cut into interlocking pieces', ['jigsaw_puzzle']]
+
+juggle.n.02 ['noun.act', 'throwing and catching several objects simultaneously', ['juggle', 'juggling']]
+juggle.v.04 ['verb.contact', 'throw, catch, and keep in the air several things simultaneously', ['juggle']]
+
+knitting.n.02 ['noun.act', 'creating knitted wear', ['knitting']]
+knit.v.01 ['verb.creation', 'make (textiles) by knitting', ['knit']]
+
+macrame.v.01 ['verb.creation', 'make knotted patterns', ['macrame']]
+
+metalworking.n.01 ['noun.act', 'the activity of making things out of metal in a skillful manner', ['metalworking', 'metalwork']]
+
+magic.n.01 ['noun.cognition', 'any art that invokes supernatural powers', ['magic', 'thaumaturgy']]
+magic_trick.n.01 ['noun.act', 'an illusory feat; considered magical by naive observers', ['magic_trick', 'conjuring_trick', 'trick', 'magic', 'legerdemain', 'conjuration', 'thaumaturgy', 'illusion', 'deception']]
+
+origami.n.01 ['noun.act', 'the Japanese art of folding paper into shapes representing objects (e.g., flowers or birds)', ['origami']]
+
+painting.n.02 ['noun.act', 'creating a picture with paints', ['painting']]
+paint.v.01 ['verb.creation', 'make a painting', ['paint']]
+paint.v.03 ['verb.creation', 'make a painting of', ['paint']]
+
+pet.n.01 ['noun.animal', 'a domesticated animal kept for companionship or amusement', ['pet']]
+pet.v.01 ['verb.contact', 'stroke or caress gently', ['pet']]
+pet.v.02 ['verb.contact', 'stroke or caress in an erotic manner, as during lovemaking', ['pet']]
+
+pottery.n.01 ['noun.artifact', 'ceramic ware made from clay and baked in a kiln', ['pottery', '3']]
+pottery.n.02 ['noun.act', 'the craft of making earthenware', ['pottery']]
+
+puzzle.n.02 ['noun.artifact', 'a game that tests your ingenuity', ['puzzle']]
+
+quilting.n.01 ['noun.artifact', 'stitching through layers of fabric and a filling so as to create a design', ['quilting']]
+quilt.v.01 ['verb.creation', 'stitch or sew together', ['quilt']]
+
+reading.n.01 ['noun.cognition', 'the cognitive process of understanding a written linguistic message', ['reading']]
+read.v.01 ['verb.cognition', 'interpret something that is written or printed', ['read']]
+read.v.03 ['verb.cognition', 'look at, interpret, and say out loud something that is written or printed', ['read']]
+
+sculpt.v.01 ['verb.creation', 'create by shaping stone or wood or any other hard material', ['sculpt', 'sculpture']]
+
+sewing.n.02 ['noun.artifact', 'needlework on which you are working with needle and thread', ['sewing', 'stitchery']]
+sew.v.02 ['verb.creation', 'create (clothes) with cloth', ['sew', 'tailor', 'tailor-make']]
+
+singing.n.01 ['noun.act', 'the act of singing vocal music', ['singing', 'vocalizing']]
+sing.v.01 ['verb.creation', 'deliver by singing', ['sing']]
+sing.v.02 ['verb.creation', 'produce tones with the voice', ['sing']]
+sing.v.03 ['verb.communication', 'to make melodious sounds', ['sing']]
+
+sketch.v.01 ['verb.creation', 'make a sketch of', ['sketch', 'chalk_out']]
+
+tatting.n.01 ['noun.artifact', 'needlework consisting of handmade lace made by looping and knotting a single thread on a small shuttle', ['tatting']]
+
+taxidermy.n.01 ['noun.cognition', 'the art of mounting the skins of animals so that they have lifelike appearance', ['taxidermy']]
+
+writing.n.01 ['noun.act', 'the act of creating written works', ['writing', 'authorship', 'composition', 'penning']]
+writing.n.05 ['noun.act', 'the activity of putting something in written form', ['writing', 'committal_to_writing']]
+write.v.01 ['verb.creation', 'produce a literary work', ['write', 'compose', 'pen', 'indite']]
+publish.v.03 ['verb.creation', "have (one's written work) issued for publication", ['publish', 'write']]
+
+compose.v.02 ['verb.creation', 'write music', ['compose']]
+
+yoga.n.02 ['noun.act', 'a system of exercises practiced as part of the Hindu discipline to promote control of the body and mind', ['yoga']]
+
+archery.n.01 ['noun.act', 'the sport of shooting arrows with a bow', ['archery']]
+
+astronomy.n.01 ['noun.cognition', 'the branch of physics that studies celestial bodies and the universe as a whole', ['astronomy', 'uranology']]
+
+baseball.n.01 ['noun.act', 'a ball game played with a bat and ball between two teams of nine players; teams take turns at bat trying to score runs', ['baseball', 'baseball_game']]
+
+basketball.n.01 ['noun.act', 'a game played on a court by two opposing teams of 5 players; points are scored by throwing the ball through an elevated horizontal hoop', ['basketball', 'basketball_game', 'hoops']]
+
+beekeeping.n.01 ['noun.act', 'the cultivation of bees on a commercial scale for the production of honey', ['beekeeping', 'apiculture']]
+
+bodybuilding.n.01 ['noun.act', 'exercise that builds muscles through tension', ['bodybuilding', 'anaerobic_exercise', 'muscle_building', 'musclebuilding']]
+
+camping.n.01 ['noun.act', 'the act of encamping and living in tents in a camp', ['camping', 'encampment', 'bivouacking', 'tenting']]
+camp.v.01 ['verb.stative', 'live in or as if in a tent', ['camp', 'encamp', 'camp_out', 'bivouac', 'tent']]
+camp.v.02 ['verb.contact', 'establish or set up a camp', ['camp', 'camp_down']]
+
+dowse.n.01 ['noun.cognition', 'searching for underground water or minerals by using a dowsing rod', ['dowse', 'dowsing', 'rhabdomancy']]
+dowse.v.02 ['verb.contact', 'use a divining rod in search of underground water or metal', ['dowse']]
+
+driving.n.02 ['noun.act', 'the act of controlling and steering the movement of a vehicle or animal', ['driving']]
+drive.v.01 ['verb.motion', 'operate or control a vehicle', ['drive']]
+drive.v.02 ['verb.motion', 'travel or be transported in a vehicle', ['drive', 'motor']]
+
+fishing.n.01 ['noun.act', 'the act of someone who fishes as a diversion', ['fishing', 'sportfishing']]
+fishing.n.02 ['noun.act', 'the occupation of catching fish for a living', ['fishing']]
+fish.v.02 ['verb.competition', 'catch or try to catch fish or shellfish', ['fish']]
+
+foraging.n.01 ['noun.act', 'the act of searching for food and provisions', ['foraging', 'forage']]
+forage.v.02 ['verb.consumption', 'wander and feed', ['forage']]
+
+gardening.n.01 ['noun.act', 'the cultivation of plants', ['gardening', 'horticulture']]
+garden.v.01 ['verb.creation', 'work in the garden', ['garden']]
+
+graffito.n.01 ['noun.artifact', 'a rude decoration inscribed on rocks or walls', ['graffito', 'graffiti']]
+
+handball.n.01 ['noun.artifact', 'a small rubber ball used in playing the game of handball', ['handball']]
+handball.n.02 ['noun.act', 'a game played in a walled court or against a single wall by two or four players who strike a rubber ball with their hands', ['handball']]
+
+hike.n.01 ['noun.act', 'a long walk usually for exercise or pleasure', ['hike', 'hiking', 'tramp']]
+hike.v.02 ['verb.motion', 'walk a long way, as for pleasure or physical exercise', ['hike']]
+
+riding.n.01 ['noun.act', 'the sport of siting on the back of a horse while controlling its movements', ['riding', 'horseback_riding', 'equitation']]
+riding.n.02 ['noun.act', 'travel by being carried on horseback', ['riding', 'horseback_riding']]
+
+hunt.n.08 ['noun.act', 'the pursuit and killing or capture of wild animals regarded as a sport', ['hunt', 'hunting']]
+hunt.v.01 ['verb.competition', 'pursue for food or sport (as of wild animals)', ['hunt', 'run', 'hunt_down', 'track_down']]
+
+jogging.n.01 ['noun.act', 'running at a jog trot as a form of cardiopulmonary exercise', ['jogging']]
+jog.v.03 ['verb.motion', 'run for exercise', ['jog']]
+
+kayak.v.01 ['verb.motion', 'travel in a small canoe', ['kayak']]
+
+mountain_climbing.n.01 ['noun.act', 'the activity of climbing a mountain', ['mountain_climbing', 'mountaineering']]
+mountaineer.v.01 ['verb.motion', 'climb mountains for pleasure as a sport', ['mountaineer']]
+
+netball.n.01 ['noun.act', 'a team game that resembles basketball; a soccer ball is to be thrown so that it passes through a ring on the top of a post', ['netball']]
+
+paintball.n.02 ['noun.act', 'a game that simulates military combat; players on one team try to eliminate players on the opposing team by shooting capsules of paint at them', ['paintball']]
+
+polo.n.02 ['noun.act', 'a game similar to field hockey but played on horseback using long-handled mallets and a wooden ball', ['polo']]
+
+raft.v.01 ['verb.motion', 'transport on a raft', ['raft']]
+raft.v.02 ['verb.motion', 'travel by raft in water', ['raft']]
+
+rappel.v.01 ['verb.motion', 'lower oneself with a rope coiled around the body from a mountainside', ['rappel', 'abseil', 'rope_down']]
+
+rock_climbing.n.01 ['noun.act', 'the sport or pastime of scaling rock masses on mountain sides (especially with the help of ropes and special equipment)', ['rock_climbing']]
+
+roller_skating.n.01 ['noun.act', 'skating on wheels', ['roller_skating']]
+roller_skate.v.01 ['verb.motion', 'travel on shoes with steel or rubber rollers attached to their soles', ['roller_skate']]
+
+rugby.n.01 ['noun.act', 'a form of football played with an oval ball', ['rugby', 'rugby_football', 'rugger']]
+
+run.n.07 ['noun.act', 'the act of running; traveling on foot at a fast pace', ['run', 'running']]
+track.n.11 ['noun.act', 'the act of participating in an athletic competition involving running on a track', ['track', 'running']]
+run.v.01 ['verb.motion', "move fast by using one's feet, with one foot off the ground at any given time", ['run']]
+run.v.29 ['verb.motion', 'cover by running; run a certain distance', ['run']]
+run.v.34 ['verb.motion', 'travel rapidly, by any (unspecified) means', ['run']]
+ply.v.03 ['verb.motion', 'travel a route regularly', ['ply', 'run']]
+race.v.02 ['verb.competition', 'compete in a race', ['race', 'run']]
+
+seafaring.n.01 ['noun.act', 'the work of a sailor', ['seafaring', 'navigation', 'sailing']]
+sailing.n.02 ['noun.act', 'riding in a sailboat', ['sailing']]
+sail.v.03 ['verb.motion', 'travel on water propelled by wind', ['sail']]
+
+glide.n.03 ['noun.act', 'the activity of flying a glider', ['glide', 'gliding', 'sailplaning', 'soaring', 'sailing']]
+
+scouting.n.01 ['noun.act', 'exploring in order to gain information', ['scouting', 'exploratory_survey', 'reconnoitering', 'reconnoitring']]
+scout.v.01 ['verb.perception', 'explore, often with the goal of finding something or somebody', ['scout', 'reconnoiter', 'reconnoitre']]
+
+shooting.n.01 ['noun.act', 'the act of firing a projectile', ['shooting', 'shot']]
+shoot.v.01 ['verb.competition', 'hit with a missile from a weapon', ['shoot', 'hit', 'pip']]
+
+shopping.n.01 ['noun.act', 'searching for or buying goods or services', ['shopping']]
+shop.v.01 ['verb.possession', "do one's shopping", ['shop']]
+shop.v.03 ['verb.possession', 'shop around; not necessarily buying', ['shop', 'browse']]
+
+skateboarding.n.01 ['noun.act', 'the sport of skating on a skateboard', ['skateboarding']]
+skateboard.v.01 ['verb.motion', 'ride on a flat board with rollers attached to the bottom', ['skateboard']]
+
+skiing.n.01 ['noun.act', 'a sport in which participants must travel on skis', ['skiing']]
+ski.v.01 ['verb.motion', 'move along on skis', ['ski']]
+
+skydiving.n.01 ['noun.act', 'performing acrobatics in free fall before pulling the ripcord of a parachute', ['skydiving']]
+sky_dive.v.01 ['verb.motion', "jump from an airplane and perform various maneuvers before opening one's parachute", ['sky_dive', 'skydive']]
+
+snowboarding.n.01 ['noun.act', 'the act of sliding down a snow-covered slope while standing on a snowboard', ['snowboarding']]
+snowboard.v.01 ['verb.motion', 'glide down a snow-covered slope while standing on a board', ['snowboard']]
+
+surfing.n.01 ['noun.act', 'the sport of riding a surfboard toward the shore on the crest of a wave', ['surfing', 'surfboarding', 'surfriding']]
+surfboard.v.01 ['verb.motion', 'ride the waves of the sea with a surfboard', ['surfboard', 'surf']]
+surf.v.03 ['verb.change', 'switch channels, on television', ['surf', 'channel-surf']]
+
+swimming.n.01 ['noun.act', 'the act of swimming', ['swimming', 'swim']]
+swim.v.01 ['verb.motion', 'travel through water', ['swim']]
+swim.v.05 ['verb.motion', 'move as if gliding through water', ['swim']]
+
+tae_kwon_do.n.01 ['noun.act', 'a Korean martial art similar to karate', ['tae_kwon_do', 'taekwondo']]
+
+vacation.n.01 ['noun.time', 'leisure time away from work devoted to rest or pleasure', ['vacation', 'holiday']]
+vacation.v.01 ['verb.stative', 'spend or take a vacation', ['vacation', 'holiday']]
+
+walk.n.01 ['noun.act', 'the act of traveling by foot', ['walk', 'walking']]
+walk.v.01 ['verb.motion', "use one's feet to advance; advance by steps", ['walk']]
+
+water_sport.n.01 ['noun.act', 'sports that involve bodies of water', ['water_sport', 'aquatics']]
+
+numismatics.n.01 ['noun.act', 'the collection and study of money (and coins in particular)', ['numismatics', 'numismatology', 'coin_collecting', 'coin_collection']]
+
+philately.n.01 ['noun.act', 'the collection and study of postage stamps', ['philately', 'stamp_collecting', 'stamp_collection']]
+
+badminton.n.01 ['noun.act', 'a game played on a court with light long-handled rackets used to volley a shuttlecock over a net', ['badminton']]
+
+billiards.n.01 ['noun.act', 'any of several games played on rectangular cloth-covered table (with cushioned edges) in which long tapering cue sticks are used to propel ivory (or composition) balls', ['billiards']]
+
+bowling.n.01 ['noun.act', 'a game in which balls are rolled at an object or group of objects with the aim of knocking them over or moving them', ['bowling']]
+
+packing.n.02 ['noun.act', 'the enclosure of something in a package or box', ['packing', 'boxing']]
+box.v.01 ['verb.contact', 'put into a box', ['box', 'package']]
+
+cheerlead.v.01 ['verb.communication', 'act as a cheerleader in a sports event', ['cheerlead']]
+
+chess.n.02 ['noun.act', "a board game for two players who move their 16 pieces according to specific rules; the object is to checkmate the opponent's king", ['chess', 'chess_game']]
+
+curling.n.01 ['noun.act', 'a game played on ice in which heavy stones with handles are slid toward a target', ['curling']]
+curl.v.05 ['verb.competition', 'play the Scottish game of curling', ['curl']]
+
+darts.n.01 ['noun.act', 'a game in which small pointed missiles are thrown at a dartboard', ['darts']]
+dart.n.01 ['noun.artifact', 'a small narrow pointed missile that is thrown or shot', ['dart']]
+
+argument.n.03 ['noun.communication', 'a discussion in which reasons are advanced for and against some proposition or proposal', ['argument', 'argumentation', 'debate']]
+debate.n.02 ['noun.communication', 'the formal presentation of a stated proposition and the opposition to it (usually followed by a vote)', ['debate', 'disputation', 'public_debate']]
+debate.v.01 ['verb.cognition', 'argue with one another', ['debate']]
+argue.v.02 ['verb.communication', 'have an argument about something', ['argue', 'contend', 'debate', 'fence']]
+
+fencing.n.03 ['noun.act', 'the art or sport of fighting with swords (especially the use of foils or epees or sabres to score points under a set of rules)', ['fencing']]
+
+marble.n.02 ['noun.artifact', 'a small ball of glass that is used in various games', ['marble']]
+
+martial_art.n.01 ['noun.act', 'any of several Oriental arts of weaponless self-defense; usually practiced as a sport', ['martial_art']]
+
+mah-jongg.n.01 ['noun.act', 'Chinese game played by 4 people with 144 tiles', ['Mah-Jongg', 'mahjong']]
+
+poker.n.01 ['noun.artifact', 'fire iron consisting of a metal rod with a handle; used to stir a fire', ['poker', 'stove_poker', 'fire_hook', 'salamander']]
+poker.n.02 ['noun.act', 'any of various card games in which players bet that they hold the highest-ranking hand', ['poker', 'poker_game']]
+
+volleyball.n.01 ['noun.act', 'a game in which two teams hit an inflated ball over a high net using their hands', ['volleyball', 'volleyball_game']]
+volleyball.n.02 ['noun.artifact', 'an inflated ball used in playing volleyball', ['volleyball']]
+
+weightlift.n.01 ['noun.act', 'bodybuilding by exercise that involves lifting weights', ['weightlift', 'weightlifting']]
+weight-lift.v.01 ['verb.competition', 'lift weights', ['weight-lift', 'weightlift', 'press']]
+
+american_football.n.01 ['noun.act', 'a game played by two teams of 11 players on a rectangular field 100 yards long; teams try to get possession of the ball and advance it across the opponents goal line in a series of (running or passing) plays', ['American_football', 'American_football_game']]
+
+soccer.n.01 ['noun.act', "a football game in which two teams of 11 players try to kick or head a ball into the opponents' goal", ['soccer', 'association_football']]
+
+auto_racing.n.01 ['noun.act', 'the sport of racing automobiles', ['auto_racing', 'car_racing']]
+
+climb.v.01 ['verb.motion', 'go upward with gradual or continuous progress', ['climb', 'climb_up', 'mount', 'go_up']]
+climb.v.04 ['verb.motion', 'slope upward', ['climb']]
+
+cricket.n.02 ['noun.act', 'a game played with a ball and bat by two teams of 11 players; teams take turns trying to score runs', ['cricket']]
+cricket.v.01 ['verb.competition', 'play cricket', ['cricket']]
+
+cycling.n.01 ['noun.act', 'the sport of traveling on a bicycle or motorcycle', ['cycling']]
+bicycle.v.01 ['verb.motion', 'ride a bicycle', ['bicycle', 'cycle', 'bike', 'pedal', 'wheel']]
+
+cycle.v.02 ['verb.motion', 'pass through a cycle', ['cycle']]
+motorbike.v.01 ['verb.motion', 'ride a motorcycle', ['motorbike', 'motorcycle', 'cycle']]
+
+field_hockey.n.01 ['noun.act', "a game resembling ice hockey that is played on an open field; two opposing teams use curved sticks try to drive a ball into the opponents' net", ['field_hockey', 'hockey']]
+
+figure_skating.n.01 ['noun.act', 'ice skating where the skates trace outlines of selected figures', ['figure_skating']]
+figure_skate.v.01 ['verb.motion', 'dance on skates', ['figure_skate']]
+
+golfing.n.01 ['noun.act', 'playing golf', ['golfing']]
+golf.v.01 ['verb.competition', 'play golf', ['golf']]
+
+handball.n.01 ['noun.artifact', 'a small rubber ball used in playing the game of handball', ['handball']]
+handball.n.02 ['noun.act', 'a game played in a walled court or against a single wall by two or four players who strike a rubber ball with their hands', ['handball']]
+
+ice_hockey.n.01 ['noun.act', "a game played on an ice rink by two opposing teams of six skaters each who try to knock a flat round puck into the opponents' goal with angled sticks", ['ice_hockey', 'hockey', 'hockey_game']]
+
+judo.n.01 ['noun.act', 'a sport adapted from jujitsu (using principles of not resisting) and similar to wrestling; developed in Japan', ['judo']]
+
+lacrosse.n.01 ['noun.act', "a game invented by American Indians; now played by two teams who use long-handled rackets to catch and carry and throw the ball toward the opponents' goal", ['lacrosse']]
+
+racquetball.n.01 ['noun.artifact', 'the ball used in playing the game of racquetball', ['racquetball']]
+racquetball.n.02 ['noun.act', 'a game played on a handball court with short-handled rackets', ['racquetball']]
+
+skateboarding.n.01 ['noun.act', 'the sport of skating on a skateboard', ['skateboarding']]
+skateboard.v.01 ['verb.motion', 'ride on a flat board with rollers attached to the bottom', ['skateboard']]
+
+speed_skating.n.01 ['noun.act', 'competitive skating on speed skates (usually around an oval course)', ['speed_skating']]
+speed_skate.v.01 ['verb.motion', 'race on skates', ['speed_skate']]
+
+squash.n.03 ['noun.act', 'a game played in an enclosed court by two or four players who strike the ball with long-handled rackets', ['squash', 'squash_racquets', 'squash_rackets']]
+squash.v.01 ['verb.contact', 'to compress with violence, out of natural shape or condition', ['squash', 'crush', 'squelch', 'mash', 'squeeze']]
+
+table_tennis.n.01 ['noun.act', 'a game (trademark Ping-Pong) resembling tennis but played on a table with paddles and a light hollow ball', ['table_tennis', 'Ping-Pong']]
+
+tennis.n.01 ['noun.act', 'a game played with rackets by two or four players who hit a ball back and forth over a net that divides the court', ['tennis', 'lawn_tennis']]
+
+volleyball.n.01 ['noun.act', 'a game in which two teams hit an inflated ball over a high net using their hands', ['volleyball', 'volleyball_game']]
+volleyball.n.02 ['noun.artifact', 'an inflated ball used in playing volleyball', ['volleyball']]
+
+learning.n.01 ['noun.cognition', 'the cognitive process of acquiring skill or knowledge', ['learning', 'acquisition']]
+learn.v.01 ['verb.cognition', 'gain knowledge or skills', ['learn', 'larn', 'acquire']]
+learn.v.04 ['verb.cognition', 'be a student of a certain subject', ['learn', 'study', 'read', 'take']]
+
+teach.v.01 ['verb.communication', 'impart skills or knowledge to', ['teach', 'learn', 'instruct']]
+
+astrology.n.01 ['noun.cognition', 'a pseudoscience claiming divination by the positions of the planets and sun and moon', ['astrology', 'star_divination']]
+
+bird.v.01 ['verb.competition', 'watch and study birds in their natural habitat', ['bird', 'birdwatch']]
+
+meteorology.n.01 ['noun.communication', 'predicting what the weather will be', ['meteorology', 'weather_forecasting']]
+meteorology.n.02 ['noun.cognition', 'the earth science dealing with phenomena of the atmosphere (especially weather)', ['meteorology']]
+
+photography.n.01 ['noun.act', 'the act of taking and printing photographs', ['photography', 'picture_taking']]
+photography.n.02 ['noun.process', 'the process of producing images of objects on photosensitive surfaces', ['photography']]
+photography.n.03 ['noun.act', 'the occupation of taking and printing photographs or making movies', ['photography']]
+
+game.n.01 ['noun.act', 'a contest with rules to determine a winner' ['game']]
+game.n.02 ['noun.act', 'a single play of a sport or other contest' ['game']]
+
+travel.n.01 ['noun.act', 'the act of going from one place to another', ['travel', 'traveling', 'travelling']]
+travel.v.02 ['verb.motion', 'undertake a journey or trip', ['travel', 'journey']]
+travel.v.03 ['verb.motion', 'make a trip for pleasure', ['travel', 'trip', 'jaunt']]
+travel.v.04 ['verb.motion', 'travel upon or across', ['travel', 'journey']]

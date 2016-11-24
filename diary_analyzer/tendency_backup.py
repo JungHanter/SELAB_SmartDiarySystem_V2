@@ -615,7 +615,7 @@ if __name__ == "__main__":
 
     tend_analyzer = TendencyAnalyzer(senti_wordnet)
 
-    foods = HyponymRetriever(wn.synset('food.n.01'), max_level=8)
+    foods = HyponymRetriever(wn.synset('food.n.02'), wn.synset('food.n.01'), max_level=8)
     # pprint(foods.get_list())
     tend_analyzer.add_word_set('food', 'thing', foods)
 
@@ -626,17 +626,17 @@ if __name__ == "__main__":
     diary_tags2 = tagger.tag_pos_doc(TEST_DIARY2)
 
     diary_pref = tend_analyzer.score_pref_to_diary(diary_tags[1], 'food', 'thing')
-    diary_pref2 = tend_analyzer.score_pref_to_diary(diary_tags2[1], 'food', 'thing')
+    # diary_pref2 = tend_analyzer.score_pref_to_diary(diary_tags2[1], 'food', 'thing')
     pprint(diary_pref)
-    print()
-    print()
-    pprint(diary_pref2)
-    print()
-    print()
+    # print()
+    # print()
+    # pprint(diary_pref2)
+    # print()
+    # print()
 
-    diary_prefs = diary_pref + diary_pref2
-    clustering_result = tend_analyzer.perform_clustering(diary_prefs)
-    print(clustering_result)
+    # diary_prefs = diary_pref + diary_pref2
+    # clustering_result = tend_analyzer.perform_clustering(diary_prefs)
+    # print(clustering_result)
 
 
     ##### TESTS without diary tagging and pref scoring ###

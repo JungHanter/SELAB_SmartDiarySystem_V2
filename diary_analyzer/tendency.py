@@ -27,7 +27,7 @@ class WordSetRetriever(object):
 
     def find_synset(self, synset):
         for item in self.synset_list:
-            if synset.name() is item[self.IDX_SYNSET].name():
+            if synset.name() == item[self.IDX_SYNSET].name():
                 return item[self.IDX_SYNSET]
         return None
 
@@ -51,10 +51,11 @@ class WordSetRetriever(object):
 
 
 class HyponymRetriever(WordSetRetriever):
-    def __init__(self, *root_synsets, max_level=1):
+    def __init__(self, *root_synsets, max_level=1, excepts=[]):
         if type(root_synsets[0]) is list or type(root_synsets[0]) is tuple:
             root_synsets = root_synsets[0]
         self.synset_list = list()
+        self.excepts = excepts
         for synset in root_synsets:
             self.synset_list += self._collect_hyponyms(synset, max_level)
 
@@ -66,6 +67,9 @@ class HyponymRetriever(WordSetRetriever):
             # names, counts = _lemmas_to_name_list(hyponym.lemmas(), True)
             # hyponym_list.append((hyponym, max_level, names, counts))
 
+            if hyponym.name() in self.excepts:
+                continue
+
             # tuple (sysnet, level, lemma_words)
             hyponym_list.append((hyponym, now_level, _lemmas_to_name_list(hyponym.lemmas())))
             hyponym_list = hyponym_list + self._collect_hyponyms(hyponym, max_level, now_level)
@@ -73,10 +77,11 @@ class HyponymRetriever(WordSetRetriever):
 
 
 class HypernymRetriever(WordSetRetriever):
-    def __init__(self, *root_synsets, max_level=1):
+    def __init__(self, *root_synsets, max_level=1, excepts=[]):
         if type(root_synsets[0]) is list or type(root_synsets[0]) is tuple:
             root_synsets = root_synsets[0]
         self.synset_list = list()
+        self.excepts = excepts
         for synset in root_synsets:
             self.synset_list += self._collect_hyponyms(synset, max_level)
 
@@ -87,6 +92,8 @@ class HypernymRetriever(WordSetRetriever):
         for hypernym in root_synset.hypernyms():
             # names, counts = _lemmas_to_name_list(hyponym.lemmas(), True)
             # hyponym_list.append((hyponym, max_level, names, counts))
+            if hypernym.name() in self.excepts:
+                continue
 
             # tuple (sysnet, level, lemma_words)
             hypernym_list.append((hypernym, now_level, _lemmas_to_name_list(hypernym.lemmas())))
@@ -110,11 +117,63 @@ class ListFileRetriever(WordSetRetriever):
                 line = file.readline()
                 if not line:
                     break
-                line = line.strip()
+                line = _text_to_lemma_format(line.strip())
                 for synset in wn.synsets(line):
-                    synset_list.append((synset, 0, _lemmas_to_name_list(synset.lemmas())))
+                    synset_list.append((synset, 0, _lemmas_to_name_list(synset.lemmas()),
+                                        synset.lexname(), synset.definition()))
             file.close()
         return synset_list
+
+
+class SynsetListRetirever(WordSetRetriever):
+    def __init__(self, file_path):
+        self.synset_list = list()
+        if file_path:
+            self.synset_list = self._load_list_file(file_path)
+
+    def _load_list_file(self, file_path):
+        synset_list = list()
+        with open(file_path, "r") as file:
+            synset_group = []
+            while True:
+                line = file.readline()
+                if not line:
+                    break
+                if line == '\n':
+                    synsets = []
+                    lemmas = []
+                    for synset_name in synset_group:
+                        synset = wn.synset(synset_name)
+                        if synset:
+                            synsets.append(wn.synset(synset_name))
+                            lemmas.extend(_lemmas_to_name_list(synset.lemmas()))
+                    synset_list.append((synsets, 0, lemmas))
+
+                    synset_group = [] # init
+                    continue
+                else:
+                    synset_name = line.split(' [')[0]
+                    synset_group.append(synset_name)
+            file.close()
+        return synset_list
+
+    def get_list(self):
+        return self.synset_list
+
+    def find_synset(self, synset):
+        for item in self.synset_list:
+            synset_group = item[0]
+            for s in synset_group:
+                if synset.name() == s.name():
+                    return synset_group[0]
+        return None
+
+    def find_word(self, word):
+        for item in self.synset_list:
+            synset_group = item[0]
+            if word in item[self.IDX_LEMMA_WORDS]:  # lemma list
+                return synset_group[0]  # synset
+        return None
 
 
 class SentiWordNet(object):
@@ -200,13 +259,13 @@ class TendencyAnalyzer(object):
     """Perform Tendency analysis"""
     DEBUG = False
 
-    SIMILAR_PATH_MAX_HYPERNYM = 3
+    SIMILAR_PATH_MAX_HYPERNYM = 2
     SIMILAR_PATH_MAX_HYPONYM = 1
 
-    CLUSTER_CUT_DIST = 1.5  #1
+    CLUSTER_CUT_DIST = 1  #1
     CLUSTER_PATH_DIST_MAGNIFICATION = 1 #4
 
-    def __init__(self, senti_wordnet):
+    def __init__(self, senti_wordnet=None):
         self.senti_wordnet = senti_wordnet
         self.words_sets = dict()
         # and more word set ...
@@ -216,42 +275,49 @@ class TendencyAnalyzer(object):
             self.words_sets[(target, target_type)] = words_set
 
     # input: a list of tagged diary
-    def analyze_diary(self, diary_tags_list):
+    def analyze_diary(self, diary_tags_list, target_types):
         pref_ta_list = list()
         diary_len = len(diary_tags_list)
 
+        # step 1
+        self._load_word_corpora(target_types)
+
         # step 2
         print("\n##### Step 2. #####")
-        identified_sent_dict_list = list()
+        extracted_sent_dict_list = list()
         for diary_idx in range(0, diary_len):
             diary_tags = diary_tags_list[diary_idx]
-            identified_sent_dict = self._identify_sentences(diary_tags)
-            identified_sent_dict_list.append(identified_sent_dict)
-            # print("Diary #%s" % (diary_idx+1))
-            # pprint(identified_sent_dict)
-            # print()
+            extracted_sent_dict = self._extract_sentences(diary_tags)
+            extracted_sent_dict_list.append(extracted_sent_dict)
+            print("Diary #%s" % (diary_idx+1))
+            # pprint(extracted_sent_dict)
+            for sent_id, extracted_words in extracted_sent_dict.items():
+                print(str(sent_id) + ':', extracted_words[0])
+                for idx in range(1, len(extracted_words)):
+                    print('  ', extracted_words[idx])
+            print()
 
         # step 3
         print("\n##### Step 3. #####")
         scores_tend_list = list()
         for diary_idx in range(0, diary_len):
             diary_tags = diary_tags_list[diary_idx]
-            identified_sent_dict = identified_sent_dict_list[diary_idx]
-            scores_tend = self._compute_pref_scores(diary_tags, identified_sent_dict)
+            extracted_sent_dict = extracted_sent_dict_list[diary_idx]
+            scores_tend = self._compute_pref_scores(diary_tags, extracted_sent_dict, diary_idx+1)
             scores_tend_list.append(scores_tend)
-            # print("Diary #%s" % (diary_idx+1))
-            # pprint(scores_tend)
-            # print()
+            print("Diary #%s" % (diary_idx+1))
+            pprint(scores_tend)
+            print()
 
         # step 4
-        print("\n##### Step 4. #####")
-        for diary_idx in range(0, diary_len):
-            scores_tend = scores_tend_list[diary_idx]
-            scores_tend_sim = self._compute_pref_scores_of_similars(scores_tend)
-            scores_tend_list[diary_idx] = scores_tend_sim
-            # print("Diary #%s" % (diary_idx+1))
-            # pprint(scores_tend_sim)
-            # print()
+        # print("\n##### Step 4. #####")
+        # for diary_idx in range(0, diary_len):
+        #     scores_tend = scores_tend_list[diary_idx]
+        #     scores_tend_sim = self._compute_pref_scores_of_similars(scores_tend)
+        #     scores_tend_list[diary_idx] = scores_tend_sim
+        #     print("Diary #%s" % (diary_idx+1))
+        #     pprint(scores_tend_sim)
+        #     print()
 
         # step 5
         # convert & add scores_pref dictionary to list
@@ -271,7 +337,11 @@ class TendencyAnalyzer(object):
             print("Clustering for %s.%s" % (type[1], type[0]))
             clusters, pref_num = self._perform_clustering(tend_group_list)
             clustering_dict[type] = {'clusters': clusters, 'pref_num': pref_num}
-            print("# of Cluster: %s\n" % len(clusters))
+            print("Number of Clusters: %s" % len(clusters))
+            for idx in range(0, len(clusters)):
+                cluster = clusters[idx]
+                print("Number of Clsuter #%s: %s" % ((idx+1), len(cluster)))
+            print()
             for idx in range(0, len(clusters)):
                 cluster = clusters[idx]
                 score_sum = 0
@@ -279,8 +349,11 @@ class TendencyAnalyzer(object):
                 for ta in cluster:
                     score_sum += ta[1]
                     score_cnt += 1
+                if score_cnt == 0:
+                    score_cnt = 1
                 score_avg = score_sum / score_cnt
-                print("Cluster #%s: %s (avg: %s)" % (idx, self._lable_for_cluster(cluster), score_avg))
+                print("Cluster #%s: %s (count: %s, avg_score: %s)" %
+                      ((idx+1), self._lable_for_cluster(cluster), len(cluster), score_avg))
                 pprint(cluster)
                 print()
 
@@ -325,9 +398,52 @@ class TendencyAnalyzer(object):
         # return pos_results, neg_result
 
     ###############################################################################
+    # Step 1. Retrieving Corpora about Things, Activities, and Preferences        #
+    ###############################################################################
+    def _load_word_corpora(self, type_corpora):
+        sw_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'wordset',
+                              'SentiWordNet_3.0.0_20130122.txt')
+        senti_wordnet = SentiWordNet(sw_path)
+        foods = HyponymRetriever(wn.synset('food.n.02'), wn.synset('food.n.01'),
+                                 max_level=10,
+                                 excepts=['slop.n.04', 'loaf.n.02', 'leftovers.n.01',
+                                          'convenience_food.n.01', 'nutriment.n.01',
+                                          'miraculous_food.n.01', 'micronutrient.n.01',
+                                          'feed.n.01', 'fare.n.04', 'cut.n.06',
+                                          'culture_medium.n.01', 'comestible.n.01',
+                                          'comfort_food.n.01', 'commissariat.n.01',
+                                          'alcohol.n.01', 'chyme.n.01', 'meal.n.03',
+                                          'variety_meat.n.01'])
+        restaurants = HyponymRetriever(wn.synset('restaurant.n.01'), max_level=8)
+        weathers = HyponymRetriever(wn.synset('weather.n.01'), max_level=8,
+                                    excepts=['thaw.n.02', 'wave.n.08', 'wind.n.01',
+                                             'elements.n.01', 'atmosphere.n.04'])
+        exercises = HyponymRetriever(wn.synset('sport.n.01'), wn.synset('sport.n.02'),
+                                     wn.synset('exercise.n.01'), wn.synset('exercise.v.03'),
+                                     wn.synset('exercise.v.04'), max_level=12,
+                                     excepts=['set.n.03'])
+        hobbies = SynsetListRetirever("wordset/hobbies_wiki_wordnet.txt")
+
+        self.senti_wordnet = senti_wordnet
+
+        for type in type_corpora:
+            word_set_corpus = None
+            if type == ('food', 'thing'):
+                word_set_corpus = foods
+            elif type == ('restaurant', 'thing'):
+                word_set_corpus = restaurants
+            elif type == ('weather', 'thing'):
+                word_set_corpus = weathers
+            elif type == ('hobby', 'activity'):
+                word_set_corpus = hobbies
+            elif type == ('exercise', 'activity'):
+                word_set_corpus = exercises
+            self.add_word_set(type[0], type[1], word_set_corpus)
+
+    ###############################################################################
     # Step 2. Identifying Sentences including Things and Activities in Each Diary #
     ###############################################################################
-    def _identify_sentences(self, diary_tags):
+    def _extract_sentences(self, diary_tags):
         identified_sent_dict = defaultdict(lambda: list())
         for sent_idx in range(0, len(diary_tags)):
             tagged_sent = diary_tags[sent_idx]
@@ -437,7 +553,7 @@ class TendencyAnalyzer(object):
     ###############################################################################
     # Step 3. Computing Preference Scores of Things and Activities in Each Diary  #
     ###############################################################################
-    def _compute_pref_scores(self, diary_sent_list, identified_sent_dict):
+    def _compute_pref_scores(self, diary_sent_list, identified_sent_dict, diary_idx=None):
         scores_pref = dict()
         scores_pref_sent = defaultdict(lambda: {'score': 0.0, 'count': 0, 'type': None})
 
@@ -655,6 +771,8 @@ class TendencyAnalyzer(object):
         # compute preference scores for diaries
         for synset_name, sent_dict in scores_pref_sent.items():
             scores_pref[synset_name] = dict()
+            if diary_idx is not None:
+                scores_pref[synset_name]['diary_idx'] = diary_idx
             # not just average, if the word is refered many times, it have to multiply weight
             scores_pref[synset_name]['score'] = sent_dict['score'] / sent_dict['count'] * \
                                                 (1 + ((sent_dict['count']-1) / 11)) # 1+(count-1/11) weight
@@ -679,13 +797,30 @@ class TendencyAnalyzer(object):
             if score_dict['score'] == 0:
                 continue
 
+            lemmas_of_type_hypernyms = _get_hypernym_lemmas(word=score_dict['type'][0])
+            lemmas_of_type_hypernyms.extend(_get_hypernym_lemmas(word=score_dict['type'][1]))
+
             # find hypernyms and hyponyms and score to them
             hypernyms = HypernymRetriever(wn.synset(synset_name), max_level=self.SIMILAR_PATH_MAX_HYPERNYM).get_list()
             for hypernym in hypernyms:
+                if score_dict['type'][0] in hypernym[2] or \
+                        score_dict['type'][1] in hypernym[2]:
+                    continue
+                root_word_found = False
+                for lemma in hypernym[0].lemmas():
+                    if lemma in lemmas_of_type_hypernyms:
+                        root_word_found = True
+                        break
+                if root_word_found:
+                    continue
                 scores_pref_rel[hypernym[0].name()]['score'] += score_dict['score'] / (hypernym[1]+1)
                 scores_pref_rel[hypernym[0].name()]['count'] += 1
                 if not scores_pref_rel[hypernym[0].name()]['type']:
                     scores_pref_rel[hypernym[0].name()]['type'] = score_dict['type']
+            # for i in range(0, len(hypernym))[::-1]:
+            #     hypernym = hypernyms[i]
+            #     if score_dict['type'][] in hypernym
+
             hyponyms = HyponymRetriever(wn.synset(synset_name), max_level=self.SIMILAR_PATH_MAX_HYPONYM).get_list()
             for hyponym in hyponyms:
                 scores_pref_rel[hyponym[0].name()]['score'] += score_dict['score'] / ((hyponym[1]+1)*2)
@@ -716,26 +851,22 @@ class TendencyAnalyzer(object):
     ###############################################################################
     def _perform_clustering(self, pref_ta_list):
         def calc_distance(u, v):
-            path_dist = wn.synset(u[0]).path_similarity(wn.synset(v[0]))
-            if path_dist is None:
-                path_dist = 0
-            return 1 - (path_dist * self.CLUSTER_PATH_DIST_MAGNIFICATION)
-            # if u[3] == v[3]:    # is same type? (thing and activity)
-            #     if u[2] == v[2]:    # is same thing or activity?
-            #         path_dist = wn.synset(u[0]).path_similarity(wn.synset(v[0]))
-            #         if path_dist is None:
-            #             path_dist = 0
-            #         path_dist = path_dist * self.CLUSTER_PATH_DIST_MAGNIFICATION
-            #         if path_dist > 1:
-            #             path_dist = 1
-            #         dist = 1 - path_dist
-            #         # pref_dist = abs(u[1] - v[1])
-            #         # dist = path_dist * pref_dist
-            #         return dist
-            #     else:
-            #         return 3
-            # else:
-            #     return 5
+            # path_dist = wn.synset(u[0]).path_similarity(wn.synset(v[0]))
+            # if path_dist is None:
+            #     path_dist = 0
+            # return 1 - (path_dist * self.CLUSTER_PATH_DIST_MAGNIFICATION)
+
+            if u[0] == v[0]:
+                return 0
+            elif u[0] in _get_hypernyms_name(wn.synset(v[0]), level=3) or \
+                    v[0] in _get_hypernyms_name(wn.synset(u[0]), level=3):
+                path_dist = wn.synset(u[0]).path_similarity(wn.synset(v[0]))
+                if path_dist is None:
+                    path_dist = 0
+                return 1 - path_dist
+                # return 0
+            else:
+                return 1
 
         # sort list for debugging
         if self.DEBUG:
@@ -791,7 +922,7 @@ class TendencyAnalyzer(object):
         # figure out the number of clusters (determine where to cut tree)
         num_cluster = 1
         for matrix_y in hac_result:
-            if matrix_y[2] > self.CLUSTER_CUT_DIST:
+            if matrix_y[2] >= self.CLUSTER_CUT_DIST:
             # if matrix_y[2] > 0.25:
                 num_cluster += 1
         if self.DEBUG:
@@ -835,7 +966,7 @@ class TendencyAnalyzer(object):
         pos_ta_cluster_dict = dict()
         neg_ta_cluster_dict = dict()
 
-        min_cluter_item = diary_num / 14.0
+        min_cluter_item = diary_num / 30.0
         for cluster in clusters:
             # if the number of the items in cluster is a few
             if len(cluster) < min_cluter_item:
@@ -854,6 +985,7 @@ class TendencyAnalyzer(object):
             weight_dict = dict()
             for ta_name, count in count_dict.items():
                 if count['count'] >= 2:
+                    # average * count_weight
                     weight_dict[ta_name] = (count['sum'] / count['count']) * \
                                            (1 + log(count['count']-1, pref_num))
 
@@ -870,12 +1002,12 @@ class TendencyAnalyzer(object):
                     cluster.insert(i, new_ta)
                     already_exist_ta_list.append(ta[0])
 
-            # if self.DEBUG:
-            print("Cluster after applying weight for count")
-            print(cluster)
-            print()
+            if self.DEBUG:
+                print("Cluster after applying weight for count")
+                print(cluster)
+                print()
 
-            # find things and activities ta having max prefs
+            # find things and activities ta having macx prefs
             # first_ta = cluster[0]
             max_pos_pref_ta_list = []
             max_pos_pref_score = -1
@@ -898,11 +1030,11 @@ class TendencyAnalyzer(object):
                         max_neg_pref_ta_list.clear()
                         max_neg_pref_ta_list.append(ta)
 
-            # if self.DEBUG:
-            print("Max pref list")
-            print(max_pos_pref_ta_list)
-            print(max_neg_pref_ta_list)
-            print()
+            if self.DEBUG:
+                print("Max pref list")
+                print(max_pos_pref_ta_list)
+                print(max_neg_pref_ta_list)
+                print()
 
             # if all values are same, find their common parent(hypernym)
             parent_ta_find_dict = defaultdict(int)
@@ -942,11 +1074,11 @@ class TendencyAnalyzer(object):
                     else:
                         max_neg_pref_ta_list.append((max_hypyernym, max_neg_pref_score, target, target_type))
 
-            # if self.DEBUG:
-            print("Max pref list after parent finding")
-            print(max_pos_pref_ta_list)
-            print(max_neg_pref_ta_list)
-            print()
+            if self.DEBUG:
+                print("Max pref list after parent finding")
+                print(max_pos_pref_ta_list)
+                print(max_neg_pref_ta_list)
+                print()
 
             # plus score to max value from others
             pos_pref_ta_list_cvt = list()
@@ -956,7 +1088,9 @@ class TendencyAnalyzer(object):
                 for ta in cluster:
                     if ta is not pos_ta:
                         # add a little score which is from other items in the same cluster
-                        pos_ta[1] += 0.1 * wn.synset(pos_ta[0]).path_similarity(wn.synset(ta[0])) * ta[1]
+                        path_sim = wn.synset(pos_ta[0]).path_similarity(wn.synset(ta[0]))
+                        if path_sim is None: path_sim = 0
+                        pos_ta[1] += 0.1 * path_sim * ta[1]
             neg_pref_ta_list_cvt = list()
             for neg_ta in max_neg_pref_ta_list:
                 neg_pref_ta_list_cvt.append(list(neg_ta))
@@ -964,12 +1098,14 @@ class TendencyAnalyzer(object):
                 for ta in cluster:
                     if ta is not neg_ta:
                         # add a little score which is from other items in the same cluster
-                        neg_ta[1] += 0.1 * wn.synset(neg_ta[0]).path_similarity(wn.synset(ta[0])) * ta[1]
-            # if self.DEBUG:
-            print('cvt list')
-            print(pos_pref_ta_list_cvt)
-            print(neg_pref_ta_list_cvt)
-            print()
+                        path_sim = wn.synset(neg_ta[0]).path_similarity(wn.synset(ta[0]))
+                        if path_sim is None: path_sim = 0
+                        neg_ta[1] += 0.1 * path_sim * ta[1]
+            if self.DEBUG:
+                print('cvt list')
+                print(pos_pref_ta_list_cvt)
+                print(neg_pref_ta_list_cvt)
+                print()
 
             # sometimes, final preference score is more than 1 because
             # there are many related ta or the ta is referred in diaries as much times..
@@ -996,11 +1132,11 @@ class TendencyAnalyzer(object):
                 else:
                     neg_ta_cluster_dict[neg_ta[0]] = neg_ta
 
-        # if self.DEBUG:
-        pprint(pos_ta_cluster_dict)
-        print()
-        pprint(neg_ta_cluster_dict)
-        print()
+        if self.DEBUG:
+            pprint(pos_ta_cluster_dict)
+            print()
+            pprint(neg_ta_cluster_dict)
+            print()
 
         # it a thing or activity is in both side, to correct it.
         pos_ta_cluster_keys = list(pos_ta_cluster_dict.keys())
@@ -1147,8 +1283,13 @@ class TendencyAnalyzer(object):
     def _convert_scores_dict_to_list(cls, scores_pref):
         pref_ta_list = list()
         for synset_name, score_dict in scores_pref.items():
-            pref_ta = (synset_name, score_dict['score'],
-                       score_dict['type'][0], score_dict['type'][1])
+            if 'diary_idx' in score_dict:
+                pref_ta = (synset_name, score_dict['score'],
+                           score_dict['type'][0], score_dict['type'][1],
+                           score_dict['diary_idx'])
+            else:
+                pref_ta = (synset_name, score_dict['score'],
+                           score_dict['type'][0], score_dict['type'][1])
             pref_ta_list.append(pref_ta)
         return pref_ta_list
 
@@ -1193,7 +1334,8 @@ class TendencyAnalyzer(object):
             count_item_dict[ta[0]] += 1
             sum_score += ta[1]
             cnt_score += 1
-
+        if cnt_score == 0:
+            cnt_score = 1
         avg_score = sum_score / cnt_score
 
         max_ta_count = 0
@@ -1301,13 +1443,23 @@ def _text_to_lemma_format(text):
         lemma_form += texts[i]
     return lemma_form
 
-def _get_hypernyms(synset, level):
+
+def _get_hypernyms(synset, level=99999):
     hypernym_list = list()
     for hypernym in synset.hypernyms():
         hypernym_list.append(hypernym)
         if level > 1:
             hypernym_list.extend(_get_hypernyms(hypernym, level-1))
     return hypernym_list
+
+
+def _get_hypernyms_name(synset, level=99999):
+    hypernym_name_list = list()
+    for hypernym in synset.hypernyms():
+        hypernym_name_list.append(hypernym.name())
+        if level > 1:
+            hypernym_name_list.extend(_get_hypernyms_name(hypernym, level-1))
+    return hypernym_name_list
 
 
 def _get_default_lemma(synset_name):
@@ -1319,35 +1471,26 @@ def _get_default_lemma(synset_name):
     return None
 
 
+def _get_hypernym_lemmas(synset_name=None, word=None, level=5):
+    lemma_list = []
+    if synset_name:
+        synset = wn.synset(synset_name)
+        if synset:
+            hypernym_list = _get_hypernyms(synset, level)
+            for hypernym in hypernym_list:
+                lemma_list.extend(hypernym.lemmas())
+        return lemma_list
+    elif word:
+        for synset in wn.synsets(word):
+            lemma_list = []
+            if synset:
+                hypernym_list = _get_hypernyms(synset, level)
+                for hypernym in hypernym_list:
+                    lemma_list.extend(hypernym.lemmas())
+    return lemma_list
+
+
 if __name__ == "__main__":
-    #######################################################################################
-    # Step 1. Retrieving Word Sets about Things, Activities, and Preferences from Corpora #
-    #######################################################################################
-    sw_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'wordset',
-                           'SentiWordNet_3.0.0_20130122.txt')
-    senti_wordnet = SentiWordNet(sw_path)
-    foods = HyponymRetriever(wn.synset('food.n.02'), wn.synset('food.n.01'), max_level=10)
-    restaurants = HyponymRetriever(wn.synset('restaurant.n.01'), max_level=8)
-    weathers = HyponymRetriever(wn.synset('weather.n.01'), max_level=8)
-    exercises = HyponymRetriever(wn.synset('sport.n.01'), wn.synset('sport.n.02'),
-                                 wn.synset('exercise.n.01'), wn.synset('exercise.v.03'),
-                                 wn.synset('exercise.v.04'), max_level=12)
-    # activities = HypernymRetriever(wn.synset('activity.n.01'), wn.synset('action.n.02'),
-    #                                wn.synset('natural_process.n.01'), wn.synset('act.n.01'),
-    #                                wn.synset('act.n.02'), wn.synset('act.n.05'),
-    #                                wn.synset('act.v.01'), wn.synset('act.v.02'), wn.synset('act.v.03'),
-    #                                wn.synset('act.v.05'), wn.synset('work.v.03'),
-    #                                wn.synset('act.v.08'), wn.synset('dissemble.v.03'), max_level=16)
-    hobbies = ListFileRetriever("wordset/hobbies_from_wikipedia.txt")
-
-    tend_analyzer = TendencyAnalyzer(senti_wordnet)
-    tend_analyzer.add_word_set('food', 'thing', foods)
-    # tend_analyzer.add_word_set('restaurant', 'thing', restaurants)
-    # tend_analyzer.add_word_set('weather', 'thing', weathers)
-    # tend_analyzer.add_word_set('hobby', 'activity', hobbies)
-    # tend_analyzer.add_word_set('exercise', 'activity', exercises)
-    # tend_analyzer.add_word_set('all', 'activity', activities)
-
     # TEST_DIARY = "I like a banana. I really like an apple. I don't like a grape. I hate a sweet potato."
     # TEST_DIARY2 = """My main course was a half the dishes. Cumbul Ackard Cornish card little gym lettuce. Fresh Peas Mousser on mushrooms, Cocles and a cream sauce finished with a drizzle of olive oil wonderfully tender, and moist card. But I'm really intensify the flavor of the card there by providing a nice flavor contrast to the rich cream sauce. Lovely freshness, and texture from the little gym lettuce. A well executed dish with bags of flavour. Next, a very elegant vanilla, yogurt and strawberries and Candy Basil different strawberry preparations delivered a wonderful variety of flavor. Intensities is there was a sweet and tart lemon curd and yogurt sorbet buttery, Pepper Pastry Cramble Candied Lemons. Testing broken mrang the lemon curd had a wonderfully creamy texture and then ring was perfectly light and Chrissy and wonderful dessert with a great balance of flavors and textures. It's got sweetness. It's got scrunch. It's got acidity. It's got freshness."""
     # TEST_DIARY3 = "I like apples and bananas."
@@ -1379,6 +1522,7 @@ if __name__ == "__main__":
     #     tagger.tags_to_pickle(diary_tags, "pickles/jennifer" + str(i) + ".pkl")
     #     print()
 
+    tend_analyzer = TendencyAnalyzer()
 
     # joanne_diaries = list()
     # for i in range(0, 30):
@@ -1392,28 +1536,34 @@ if __name__ == "__main__":
     #     diary_tags = tagger.pickle_to_tags("pickles/jennifer" + str(i) + ".pkl")
     #     jeniffer_diaries.append(diary_tags[1])
     # print("load jeniffer diaries done.")
-    # tend_analyzer.analyze_diary(jeniffer_diaries)
+    # tend_analyzer.analyze_diary(jeniffer_diaries,
+    #         [('food', 'thing'), ('restaurant', 'thing'), ('weather', 'thing'),
+    #          ('hobby', 'activity'), ('exercise', 'activity')])
 
     # smiley_diaries = list()
     # for i in range(0, 50):
     #     diary_tags = tagger.pickle_to_tags("pickles/smiley" + str(i) + ".pkl")
     #     smiley_diaries.append(diary_tags[1])
     # print("load smiley diaries done.")
-    # tend_analyzer.analyze_diary(smiley_diaries)
+    # tend_analyzer.analyze_diary(smiley_diaries,
+    #         [('food', 'thing'), ('restaurant', 'thing'), ('weather', 'thing'),
+    #          ('hobby', 'activity'), ('exercise', 'activity')])
 
     d_diaries = list()
     for i in range(0, 40):
         diary_tags = tagger.pickle_to_tags("pickles/diary_d" + str(i) + ".pkl")
         d_diaries.append(diary_tags[1])
     print("load D diaries done.")
-    tend_analyzer.analyze_diary(d_diaries)
+    tend_analyzer.analyze_diary(d_diaries,
+            [('food', 'thing'), ('restaurant', 'thing'), ('weather', 'thing'),
+             ('hobby', 'activity'), ('exercise', 'activity')])
 
     # elize_diaries = list()
     # for i in range(0, 4):
     #     diary_tags = tagger.pickle_to_tags("pickles/eliz" + str(i) + ".pkl")
     #     elize_diaries.append(diary_tags[1])
     # print("load eliz diaries done.")
-    # tend_analyzer.analyze_diary(elize_diaries)
+    # tend_analyzer.analyze_diary(elize_diaries, [('food', 'thing')])
 
     # TEST_DIARY4 = "I am having chili for supper. I have an apple."
     # diary_tags4 = tagger.tag_pos_doc(TEST_DIARY4)
