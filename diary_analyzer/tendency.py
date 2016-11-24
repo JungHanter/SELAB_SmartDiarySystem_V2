@@ -49,6 +49,18 @@ class WordSetRetriever(object):
         else:
             return False
 
+    def get_item_word(self, word):
+        for item in self.synset_list:
+            if word in item[self.IDX_LEMMA_WORDS]:  # lemma list
+                return item
+        return None
+
+    def get_item_synset(self, synset):
+        for item in self.synset_list:
+            if synset.name() == item[self.IDX_SYNSET].name():
+                return item
+        return None
+
 
 class HyponymRetriever(WordSetRetriever):
     def __init__(self, *root_synsets, max_level=1, excepts=[]):
@@ -267,7 +279,7 @@ class TendencyAnalyzer(object):
 
     def __init__(self, senti_wordnet=None):
         self.senti_wordnet = senti_wordnet
-        self.words_sets = dict()
+        self.words_sets = defaultdict(lambda: None)
         # and more word set ...
 
     def add_word_set(self, target, target_type, words_set):
@@ -353,7 +365,8 @@ class TendencyAnalyzer(object):
                     score_cnt = 1
                 score_avg = score_sum / score_cnt
                 print("Cluster #%s: %s (count: %s, avg_score: %s)" %
-                      ((idx+1), self._lable_for_cluster(cluster), len(cluster), score_avg))
+                      ((idx+1), self._lable_for_cluster(cluster, self.words_sets[type]),
+                       len(cluster), score_avg))
                 pprint(cluster)
                 print()
 
@@ -1301,8 +1314,9 @@ class TendencyAnalyzer(object):
         return tend_dict
 
     @classmethod
-    def _find_common_hypernyms(cls, ta_name_list, search_level=3):
+    def _find_common_hypernyms(cls, ta_name_list, search_level=3, corpus_retriever=None):
         hypernym_count_dict = defaultdict(int)
+
         for ta_name in ta_name_list:
             synset = wn.synset(ta_name)
             # add self
@@ -1310,7 +1324,17 @@ class TendencyAnalyzer(object):
             # add hypernyms
             if synset:
                 for hypernym in _get_hypernyms(synset, search_level):
+                    # if corpus_retriever.get_item_synset(hypernym)
                     hypernym_count_dict[hypernym.name()] += 1
+
+        hypernym_count_dict_common = defaultdict(int)
+        for common_synset_name in hypernym_count_dict.keys():
+            if common_synset_name in ta_name_list:
+                hypernym_count_dict_common[common_synset_name] = hypernym_count_dict[common_synset_name]
+
+        if len(hypernym_count_dict_common):
+            hypernym_count_dict = hypernym_count_dict_common
+
         max_hypernym_list = list()
         max_hypernym_count = 0
         for hypernym_name, count in hypernym_count_dict.items():
@@ -1325,7 +1349,7 @@ class TendencyAnalyzer(object):
         return []
 
     @classmethod
-    def _lable_for_cluster(cls, cluster):
+    def _lable_for_cluster(cls, cluster, corpus_retriever=None):
         sum_score = 0
         cnt_score = 0
 
@@ -1336,7 +1360,6 @@ class TendencyAnalyzer(object):
             cnt_score += 1
         if cnt_score == 0:
             cnt_score = 1
-        avg_score = sum_score / cnt_score
 
         max_ta_count = 0
         max_ta_list = list()
@@ -1352,7 +1375,8 @@ class TendencyAnalyzer(object):
         if len(max_ta_list) == 1:
             rep_ta_name = _get_default_lemma(max_ta_list[0])
         else:
-            common_hypernyms = cls._find_common_hypernyms(max_ta_list)
+            common_hypernyms = cls._find_common_hypernyms(max_ta_list,
+                                                          corpus_retriever=corpus_retriever)
             if common_hypernyms:
                 for idx in range(0, len(common_hypernyms)):
                     hypernym_name = common_hypernyms[idx]
@@ -1531,14 +1555,17 @@ if __name__ == "__main__":
     # print("load joanne diaries done.")
     # tend_analyzer.analyze_diary(joanne_diaries)
 
-    # jeniffer_diaries = list()
-    # for i in range(0, 36):
-    #     diary_tags = tagger.pickle_to_tags("pickles/jennifer" + str(i) + ".pkl")
-    #     jeniffer_diaries.append(diary_tags[1])
-    # print("load jeniffer diaries done.")
-    # tend_analyzer.analyze_diary(jeniffer_diaries,
-    #         [('food', 'thing'), ('restaurant', 'thing'), ('weather', 'thing'),
-    #          ('hobby', 'activity'), ('exercise', 'activity')])
+    jeniffer_diaries = list()
+    for i in range(0, 36):
+        diary_tags = tagger.pickle_to_tags("pickles/jennifer" + str(i) + ".pkl")
+        jeniffer_diaries.append(diary_tags[1])
+    print("load jeniffer diaries done.")
+    tend_analyzer.analyze_diary(jeniffer_diaries,
+            [('food', 'thing'), ('restaurant', 'thing'), ('weather', 'thing'),
+             ('hobby', 'activity'), ('exercise', 'activity')])
+    # tend_analyzer.analyze_diary(jeniffer_diaries, [('food', 'thing')])
+    # tend_analyzer.analyze_diary(jeniffer_diaries, [('exercise', 'activity')])
+    # tend_analyzer.analyze_diary(jeniffer_diaries, [('hobby', 'activity')])
 
     # smiley_diaries = list()
     # for i in range(0, 50):
@@ -1549,14 +1576,14 @@ if __name__ == "__main__":
     #         [('food', 'thing'), ('restaurant', 'thing'), ('weather', 'thing'),
     #          ('hobby', 'activity'), ('exercise', 'activity')])
 
-    d_diaries = list()
-    for i in range(0, 40):
-        diary_tags = tagger.pickle_to_tags("pickles/diary_d" + str(i) + ".pkl")
-        d_diaries.append(diary_tags[1])
-    print("load D diaries done.")
-    tend_analyzer.analyze_diary(d_diaries,
-            [('food', 'thing'), ('restaurant', 'thing'), ('weather', 'thing'),
-             ('hobby', 'activity'), ('exercise', 'activity')])
+    # d_diaries = list()
+    # for i in range(0, 40):
+    #     diary_tags = tagger.pickle_to_tags("pickles/diary_d" + str(i) + ".pkl")
+    #     d_diaries.append(diary_tags[1])
+    # print("load D diaries done.")
+    # tend_analyzer.analyze_diary(d_diaries,
+    #         [('food', 'thing'), ('restaurant', 'thing'), ('weather', 'thing'),
+    #          ('hobby', 'activity'), ('exercise', 'activity')])
 
     # elize_diaries = list()
     # for i in range(0, 4):
