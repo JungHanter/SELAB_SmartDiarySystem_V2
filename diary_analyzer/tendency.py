@@ -339,18 +339,8 @@ class TendencyAnalyzer(object):
             # print()
 
         # step 4
-        # print("\n##### Step 4. #####")
-        # for diary_idx in range(0, diary_len):
-        #     scores_tend = scores_tend_list[diary_idx]
-        #     scores_tend_sim = self._compute_pref_scores_of_similars(scores_tend)
-        #     scores_tend_list[diary_idx] = scores_tend_sim
-        #     print("Diary #%s" % (diary_idx+1))
-        #     pprint(scores_tend_sim)
-        #     print()
-
-        # step 5
         # convert & add scores_pref dictionary to list
-        print("\n##### Step 5. #####")
+        print("\n##### Step 4. #####")
         tend_list = list()
         for diary_idx in range(0, diary_len):
             scores_tend = scores_tend_list[diary_idx]
@@ -382,13 +372,15 @@ class TendencyAnalyzer(object):
                     score_cnt = 1
                 score_avg = score_sum / score_cnt
                 print("Cluster #%s: %s (count: %s, avg_score: %s)" %
-                      ((idx+1), self._lable_for_cluster(cluster, self.words_sets[type]),
+                      ((idx+1), self._label_for_cluster(cluster, self.words_sets[type]),
                        len(cluster), score_avg))
-                pprint(cluster)
+                # pprint(cluster)
+                for ta in cluster:
+                    print(ta)
                 print()
 
-        # step 6
-        print("\n##### Step 6. #####")
+        # step 5
+        print("\n##### Step 5. #####")
         for type, clustering_info in clustering_dict.items():
             pos_results, neg_result = self._figure_out_best_ta(clustering_info['clusters'],
                                                                len(diary_tags_list),
@@ -403,27 +395,6 @@ class TendencyAnalyzer(object):
                       self._get_preference_class_name(neg_ta[1]) + \
                       ' (' + str(neg_ta[1]) + ')')
             print()
-
-        # clusters, pref_num = self._perform_clustering(tend_list)
-        # # print("# of Cluster: %s" % len(clusters))
-        # for idx in range(0, len(clusters)):
-        #     cluster = clusters[idx]
-        #     score_sum = 0
-        #     score_cnt = 0
-        #     for ta in cluster:
-        #         score_sum += ta[1]
-        #         score_cnt += 1
-        #     score_avg = score_sum / score_cnt
-        #     # print("Cluster #%s: %s (avg: %s)" % (idx, self._lable_for_cluster(cluster), score_avg))
-        #     # pprint(cluster)
-        #     # print()
-        #
-        # # step 6
-        # print("\n##### Step 6. #####")
-        # pos_results, neg_result = self._figure_out_best_ta(clusters, len(diary_tags_list), pref_num)
-        # pprint(pos_results)
-        # pprint(neg_result)
-        # print()
 
         # return pos_results, neg_result
 
@@ -815,100 +786,28 @@ class TendencyAnalyzer(object):
         return scores_pref
 
     ###############################################################################
-    # Step 4. Computing Preference Scores of Similar Things and Activities        #
-    #         of the Scored Things and Activities                                 #
-    ###############################################################################
-    def _compute_pref_scores_of_similars(self, scores_pref):
-        # dict for sum and count of similar words
-        scores_pref_rel = defaultdict(lambda: {'score': 0.0, 'count': 0, 'type': None})
-
-        for synset_name, score_dict in scores_pref.items():
-            # if score is 0, pass
-            if score_dict['score'] == 0:
-                continue
-
-            lemmas_of_type_hypernyms = _get_hypernym_lemmas(word=score_dict['type'][0])
-            lemmas_of_type_hypernyms.extend(_get_hypernym_lemmas(word=score_dict['type'][1]))
-
-            # find hypernyms and hyponyms and score to them
-            hypernyms = HypernymRetriever(wn.synset(synset_name), max_level=self.SIMILAR_PATH_MAX_HYPERNYM).get_list()
-            for hypernym in hypernyms:
-                if score_dict['type'][0] in hypernym[2] or \
-                        score_dict['type'][1] in hypernym[2]:
-                    continue
-                root_word_found = False
-                for lemma in hypernym[0].lemmas():
-                    if lemma in lemmas_of_type_hypernyms:
-                        root_word_found = True
-                        break
-                if root_word_found:
-                    continue
-                scores_pref_rel[hypernym[0].name()]['score'] += score_dict['score'] / (hypernym[1]+1)
-                scores_pref_rel[hypernym[0].name()]['count'] += 1
-                if not scores_pref_rel[hypernym[0].name()]['type']:
-                    scores_pref_rel[hypernym[0].name()]['type'] = score_dict['type']
-            # for i in range(0, len(hypernym))[::-1]:
-            #     hypernym = hypernyms[i]
-            #     if score_dict['type'][] in hypernym
-
-            hyponyms = HyponymRetriever(wn.synset(synset_name), max_level=self.SIMILAR_PATH_MAX_HYPONYM).get_list()
-            for hyponym in hyponyms:
-                scores_pref_rel[hyponym[0].name()]['score'] += score_dict['score'] / ((hyponym[1]+1)*2)
-                scores_pref_rel[hyponym[0].name()]['count'] += 1
-                if not scores_pref_rel[hyponym[0].name()]['type']:
-                    scores_pref_rel[hyponym[0].name()]['type'] = score_dict['type']
-
-        # compute preference score of similar things and activities
-        for synset_name, score_dict in scores_pref_rel.items():
-            pref_score_rel = score_dict['score'] / score_dict['count']
-
-            # if similar thing or activity is already existed thing or activity, add score
-            if synset_name in scores_pref.keys():
-                scores_pref[synset_name]['score'] += pref_score_rel
-                if scores_pref[synset_name]['score'] > 1:
-                    scores_pref[synset_name]['score'] = 1
-                elif scores_pref[synset_name]['score'] < -1:
-                    scores_pref[synset_name]['score'] = -1
-            else:
-                scores_pref[synset_name] = dict()
-                scores_pref[synset_name]['score'] = pref_score_rel
-                scores_pref[synset_name]['type'] = score_dict['type']
-
-        return scores_pref
-
-    ###############################################################################
-    # Step 5. Clustering the Things and Activities                                #
+    # Step 4. Clustering the Things and Activities                                #
     ###############################################################################
     def _perform_clustering(self, pref_ta_list):
         def calc_distance(u, v):
             synset_u = wn.synset(u[0])
             synset_v = wn.synset(v[0])
 
-            distance = synset_u.shortest_path_distance(synset_v,
-                    simulate_root=True and synset_u._needs_root())
+            if synset_u.pos() != synset_v.pos():
+                if synset_u.pos() != 'n':
+                    synset_u_rel_list = _nounify(synset_u)
+                    if len(synset_u_rel_list) > 0:
+                        synset_u = synset_u_rel_list[0]
+                elif synset_v.pos() != 'n':
+                    synset_v_rel_list = _nounify(synset_v)
+                    if len(synset_v_rel_list) > 0:
+                        synset_v = synset_v_rel_list[0]
+
+            distance = _calc_path_distance(synset_u, synset_v)
+
             # if distance is None or distance < 0:
             #     distance
             return distance
-
-            path_dist = wn.synset(u[0]).path_similarity(wn.synset(v[0]))
-            if path_dist is None:
-                path_dist = 0
-            return 1 - (path_dist * self.CLUSTER_PATH_DIST_MAGNIFICATION)
-
-            if u[0] == v[0]:
-                return 0
-            # if u is hypernym of v or v is hypernym of u
-            elif u[0] in _get_hypernyms_name(wn.synset(v[0]), level=3) or \
-                    v[0] in _get_hypernyms_name(wn.synset(u[0]), level=3):
-                return 1 - path_dist
-                # print(u[0] + ' and ' + v[0])
-                # return 0
-                # return 0
-            # if u and v have common parent
-            elif path_dist >= (1/4):
-                return 1 - path_dist
-            else:
-                return 1
 
         # sort list for debugging
         if self.DEBUG:
@@ -920,46 +819,72 @@ class TendencyAnalyzer(object):
             pprint(pref_ta_list)
             print()
 
-        # feature selection
+        # feature extraction
+        pref_ta_features = list()
+        # hypernyms to hyponym
+        for i in range(0, len(pref_ta_list)):
+            pref_ta = pref_ta_list[i]
+            hypo_pref_set = set()
+            for j in range(0, len(pref_ta_list)):
+                if i == j:
+                    continue
+                pref_ta2 = pref_ta_list[j]
+                if _is_inherit_hypernym_of(wn.synset(pref_ta2[0]), wn.synset(pref_ta[0])):
+                    hypo_pref_set.add(pref_ta2[0])
+            # if ta is hypernym of others
+            if len(hypo_pref_set) > 0:
+                for pref_hypo_name in hypo_pref_set:
+                    pref_feature = [pref_hypo_name, pref_ta[1], pref_ta[2], pref_ta[3], pref_ta[4], pref_ta[0]]
+                    pref_ta_features.append(pref_feature)
+            else:
+                pref_feature = list(pref_ta) + [None]
+                pref_ta_features.append(pref_feature)
+
+        # for i in range(0, len(pref_ta_list)):
+        #     pref_ta_features.append(list(pref_ta_list[i]))
+
         # filtering with things and activities which there is only one item (with low score)
         count_dict = defaultdict(int)
-        for pref_ta in pref_ta_list:
+        for pref_ta in pref_ta_features:
             count_dict[pref_ta[0]] += 1
-        for i in range(0, len(pref_ta_list))[::-1]:
-            if count_dict[pref_ta_list[i][0]] < 2:
-                pref_ta_list.pop(i)
+        for i in range(0, len(pref_ta_features))[::-1]:
+            if count_dict[pref_ta_features[i][0]] < 2:
+                pref_ta_features.pop(i)
         # filtering with things and activities which has more than 0.01 preference score
-        for i in range(0, len(pref_ta_list))[::-1]:
-            if abs(pref_ta_list[i][1]) < 0.01:
-                pref_ta_list.pop(i)
-        pref_num = len(pref_ta_list)
+        for i in range(0, len(pref_ta_features))[::-1]:
+            if abs(pref_ta_features[i][1]) < 0.01:
+                pref_ta_features.pop(i)
+        pref_num = len(pref_ta_features)
 
         # print list for debug
         if self.DEBUG:
-            print("pref_ta_list(filtered): ")
-            pprint(pref_ta_list)
+            print("pref_ta_list(features): ")
+            pprint(pref_ta_features)
             print()
 
         # make distance matrix
-        pref_len = len(pref_ta_list)
+        pref_len = len(pref_ta_features)
         dist_matrix = np.array([list(10.0 for i in range(pref_len)) for j in range(pref_len)], np.float32)
         for u in range (0, pref_len):
             for v in range(u, pref_len):
-                dist = calc_distance(pref_ta_list[u], pref_ta_list[v])
+                dist = calc_distance(pref_ta_features[u], pref_ta_features[v])
                 dist_matrix[u][v] = dist
                 dist_matrix[v][u] = dist
 
         if self.DEBUG:
             print("distance matrix: ")
-            print(dist_matrix)
+            for y in dist_matrix:
+                print(y)
             print()
 
         # perform clustering
-        hac_result = hac.linkage(dist_matrix, method='single')
+        # hac_result = hac.linkage(dist_matrix, method='single')
+        hac_result = hac.linkage(dist_matrix, method='complete')
         if self.DEBUG:
             print("linkage result: ")
             for y in hac_result:
                 print(y)
+            print()
 
         # figure out the number of clusters (determine where to cut tree)
         num_cluster = 1
@@ -981,29 +906,29 @@ class TendencyAnalyzer(object):
         clusters = [[] for i in range(num_cluster)]
         for idx_ta in range(0, len(part_cluster)):
             cluster_id = part_cluster[idx_ta] - 1
-            clusters[cluster_id].append(pref_ta_list[idx_ta])
+            clusters[cluster_id].append(pref_ta_features[idx_ta])
         if self.DEBUG:
             print("clusters:")
             pprint(clusters)
             print()
 
         # show dendrogram
-        # labels = list('' for i in range(pref_len))
-        # for i in range(pref_len):
-        #     # labels[i] = str(i) + ' (' + str(part_cluster[i]) + ')'
-        #     # labels[i] = str(i)
-        #     labels[i] = '[' + str(part_cluster[i]) + '] ' + pref_ta_list[i][0] + '(' + str(i) + ')\n' + \
-        #                 str(int(pref_ta_list[i][1] * 100000) / 100000.0)
-        #     # labels[i] = _get_default_lemma(pref_ta_list[i][0]) + '\n' + \
-        #     #             str(int(pref_ta_list[i][1] * 1000) / 1000.0)
-        # ct = hac_result[-(num_cluster - 1), 2]
-        # p = hac.dendrogram(hac_result, labels=labels, color_threshold=ct)
-        # plt.show()
+        labels = list('' for i in range(pref_len))
+        for i in range(pref_len):
+            # labels[i] = str(i) + ' (' + str(part_cluster[i]) + ')'
+            # labels[i] = str(i)
+            labels[i] = '[' + str(part_cluster[i]) + '] ' + pref_ta_features[i][0] + '(' + str(i) + ')\n' + \
+                        str(int(pref_ta_features[i][1] * 100000) / 100000.0)
+            # labels[i] = _get_default_lemma(pref_ta_list[i][0]) + '\n' + \
+            #             str(int(pref_ta_list[i][1] * 1000) / 1000.0)
+        ct = hac_result[-(num_cluster - 1), 2]
+        p = hac.dendrogram(hac_result, labels=labels, color_threshold=ct)
+        plt.show()
 
         return clusters, pref_num
 
     ###############################################################################
-    # Step 6. Figuring out Things and Activities having the Best Preference Score #
+    # Step 5. Figuring out Things and Activities having the Best Preference Score #
     ###############################################################################
     def _figure_out_best_ta(self, clusters, diary_num, pref_num):
         pos_ta_score_dict = dict()
@@ -1024,7 +949,7 @@ class TendencyAnalyzer(object):
             # add weight for things or activities which are more count than others
             # weight formula can be changed
             # now: weight = 1 + log_max_count(count)
-            count_dict = defaultdict(lambda: {'count':0, 'sum':0.0})  # dict for counting
+            count_dict = defaultdict(lambda: {'count': 0, 'sum': 0.0})  # dict for counting
             for ta in cluster:
                 count_dict[ta[0]]['count'] += 1
                 count_dict[ta[0]]['sum'] += ta[1]
@@ -1123,17 +1048,18 @@ class TendencyAnalyzer(object):
                         else:
                             neg_ta_score_dict[neg_ta[0]] = neg_ta[1]
 
-        if self.DEBUG:
-            pprint(pos_ta_score_dict)
-            pprint(neg_ta_score_dict)
-            print()
+        # if self.DEBUG:
+        print("figuring out things/activities results:")
+        pprint(pos_ta_score_dict)
+        pprint(neg_ta_score_dict)
+        print()
 
         # it a thing or activity is in both side, to correct it.
         pos_ta_cluster_keys = list(pos_ta_score_dict.keys())
         for idx in range(0, len(pos_ta_cluster_keys))[::-1]:
             ta_name = pos_ta_cluster_keys[idx]
             if ta_name in neg_ta_score_dict.keys(): #if both
-                ta_score = pos_ta_score_dict[ta_name]+ neg_ta_score_dict[ta_name]
+                ta_score = pos_ta_score_dict[ta_name] + neg_ta_score_dict[ta_name]
                 if ta_score == 0:
                     del pos_ta_score_dict[ta_name]
                     del neg_ta_score_dict[ta_name]
@@ -1263,30 +1189,45 @@ class TendencyAnalyzer(object):
 
     @classmethod
     def _find_common_hypernyms(cls, ta_name_list, corpus_retriever, search_level=3):
-        hypernym_count_dict = defaultdict(lambda: {'count': 0, 'level': -1})
+        if len(ta_name_list) == 0:
+            return []
 
+        is_all_same = True
+        first_ta_name = ta_name_list[0]
+        for ta_name in ta_name_list:
+            if first_ta_name != ta_name:
+                is_all_same = False
+                break
+        if is_all_same:
+            return [first_ta_name]
+
+        hypernym_count_dict = defaultdict(lambda: {'count': 0, 'level': -1})
         for ta_name in ta_name_list:
             synset = wn.synset(ta_name)
             hypernym_item = corpus_retriever.get_item_synset(synset)
             # add self
             hypernym_count_dict[ta_name]['count'] += 1
             hypernym_count_dict[ta_name]['level'] = hypernym_item[WordSetRetriever.IDX_LEVEL]
+
             # add hypernyms
             if synset:
-                for hypernym in _get_hypernyms(synset, search_level):
+                hypernyms = _get_hypernyms(synset, search_level)
+                for hypernym in hypernyms:
                     hypernym_item = corpus_retriever.get_item_synset(hypernym)
                     if hypernym_item:
                         hypernym_count_dict[hypernym.name()]['count'] += 1
                         hypernym_count_dict[hypernym.name()]['level'] \
                             = hypernym_item[WordSetRetriever.IDX_LEVEL]
 
-        hypernym_count_dict_common = defaultdict(int)
-        for common_synset_name in hypernym_count_dict.keys():
-            if common_synset_name in ta_name_list:
-                hypernym_count_dict_common[common_synset_name] = hypernym_count_dict[common_synset_name]
-
-        if len(hypernym_count_dict_common):
-            hypernym_count_dict = hypernym_count_dict_common
+        # hypernym_count_dict_common = dict()
+        # for common_synset_name in hypernym_count_dict.keys():
+        #     if common_synset_name in ta_name_list:
+        #         hypernym_count_dict_common[common_synset_name] = hypernym_count_dict[common_synset_name]
+        #
+        # if len(hypernym_count_dict_common):
+        #     hypernym_count_dict = hypernym_count_dict_common
+        #
+        # print(hypernym_count_dict)
 
         max_hypernym_list = list()
         max_hypernym_count = 0
@@ -1304,51 +1245,60 @@ class TendencyAnalyzer(object):
                     max_hypernym_list.append(hypernym_name)
                 elif max_hypernym_level == count_dict['level']:
                     max_hypernym_list.append(hypernym_name)
+        # print(max_hypernym_list)
         if max_hypernym_count >= len(ta_name_list):
-            return max_hypernym_list
+            max_hypernym_list_in_origin = list()
+            for hypernym_name in max_hypernym_list:
+                if hypernym_name in ta_name_list:
+                    max_hypernym_list_in_origin.append(hypernym_name)
+            if len(max_hypernym_list_in_origin) > 0:
+                return max_hypernym_list_in_origin
+            else:
+                return max_hypernym_list
         return []
 
     @classmethod
-    def _lable_for_cluster(cls, cluster, corpus_retriever=None):
-        sum_score = 0
-        cnt_score = 0
-
-        count_item_dict = defaultdict(int)
-        for ta in cluster:
-            count_item_dict[ta[0]] += 1
-            sum_score += ta[1]
-            cnt_score += 1
-        if cnt_score == 0:
-            cnt_score = 1
-
-        max_ta_count = 0
-        max_ta_list = list()
-        for ta_name, count in count_item_dict.items():
-            if max_ta_count < count:
-                max_ta_list.clear()
-                max_ta_count = count
-                max_ta_list.append(ta_name)
-            elif max_ta_count == count:
-                max_ta_list.append(ta_name)
-
+    def _label_for_cluster(cls, cluster, corpus_retriever=None):
         rep_ta_name = ''
-        if len(max_ta_list) == 1:
-            rep_ta_name = _get_default_lemma(max_ta_list[0])
+
+        synset_name_list = list()
+        for ta in cluster:
+            synset_name_list.append(ta[0])
+        common_hypernyms = cls._find_common_hypernyms(synset_name_list,
+                                                      corpus_retriever)
+        if common_hypernyms:
+            for idx in range(0, len(common_hypernyms)):
+                hypernym_name = common_hypernyms[idx]
+                if idx > 0:
+                    rep_ta_name += ', '
+                rep_ta_name += _get_default_lemma(hypernym_name)
         else:
-            common_hypernyms = cls._find_common_hypernyms(max_ta_list,
-                                                          corpus_retriever)
-            if common_hypernyms:
-                for idx in range(0, len(common_hypernyms)):
-                    hypernym_name = common_hypernyms[idx]
-                    if idx > 0:
-                        rep_ta_name += ', '
-                    rep_ta_name += _get_default_lemma(hypernym_name)
-            else:
-                for idx in range(0, len(max_ta_list)):
-                    ta_name = max_ta_list[idx]
-                    if idx > 0:
-                        rep_ta_name += ', '
-                    rep_ta_name = _get_default_lemma(ta_name)
+            sum_score = 0
+            cnt_score = 0
+
+            count_item_dict = defaultdict(int)
+            for ta in cluster:
+                count_item_dict[ta[0]] += 1
+                sum_score += ta[1]
+                cnt_score += 1
+            if cnt_score == 0:
+                cnt_score = 1
+
+            max_ta_count = 0
+            max_ta_list = list()
+            for ta_name, count in count_item_dict.items():
+                if max_ta_count < count:
+                    max_ta_list.clear()
+                    max_ta_count = count
+                    max_ta_list.append(ta_name)
+                elif max_ta_count == count:
+                    max_ta_list.append(ta_name)
+
+            for idx in range(0, len(max_ta_list)):
+                ta_name = max_ta_list[idx]
+                if idx > 0:
+                    rep_ta_name += ', '
+                rep_ta_name = _get_default_lemma(ta_name)
         return rep_ta_name
 
     @classmethod
@@ -1429,21 +1379,21 @@ def _text_to_lemma_format(text):
 
 
 def _get_hypernyms(synset, level=99999):
-    hypernym_list = list()
+    hypernym_set = set()
     for hypernym in synset.hypernyms():
-        hypernym_list.append(hypernym)
+        hypernym_set.add(hypernym)
         if level > 1:
-            hypernym_list.extend(_get_hypernyms(hypernym, level-1))
-    return hypernym_list
+            hypernym_set |= _get_hypernyms(hypernym, level-1)
+    return hypernym_set
 
 
 def _get_hypernyms_name(synset, level=99999):
-    hypernym_name_list = list()
+    hypernym_name_set = set()
     for hypernym in synset.hypernyms():
-        hypernym_name_list.append(hypernym.name())
+        hypernym_name_set.add(hypernym.name())
         if level > 1:
-            hypernym_name_list.extend(_get_hypernyms_name(hypernym, level-1))
-    return hypernym_name_list
+            hypernym_name_set |= _get_hypernyms_name(hypernym, level-1)
+    return hypernym_name_set
 
 
 def _get_default_lemma(synset_name):
@@ -1460,18 +1410,41 @@ def _get_hypernym_lemmas(synset_name=None, word=None, level=5):
     if synset_name:
         synset = wn.synset(synset_name)
         if synset:
-            hypernym_list = _get_hypernyms(synset, level)
-            for hypernym in hypernym_list:
+            hypernyms = _get_hypernyms(synset, level)
+            for hypernym in hypernyms:
                 lemma_list.extend(hypernym.lemmas())
         return lemma_list
     elif word:
         for synset in wn.synsets(word):
             lemma_list = []
             if synset:
-                hypernym_list = _get_hypernyms(synset, level)
-                for hypernym in hypernym_list:
+                hypernyms = _get_hypernyms(synset, level)
+                for hypernym in hypernyms:
                     lemma_list.extend(hypernym.lemmas())
     return lemma_list
+
+
+def _is_inherit_hypernym_of(hyponym, hypernym):
+    r_hypernym_names = _get_hypernyms_name(hyponym, level=20)
+    if hypernym.name() in r_hypernym_names:
+        return True
+    else:
+        return False
+
+
+def _calc_path_distance(synset_a, synset_b):
+    distance = synset_a.shortest_path_distance(synset_b,
+       simulate_root=True and synset_a._needs_root())
+    return distance
+
+
+def _nounify(verb_synset):
+    set_of_related_nouns = list()
+    for lemma in verb_synset.lemmas():
+        for related_form in lemma.derivationally_related_forms():
+            for synset in wn.synsets(related_form.name(), pos=wn.NOUN):
+                set_of_related_nouns.append(synset)
+    return set_of_related_nouns
 
 
 if __name__ == "__main__":
@@ -1563,12 +1536,16 @@ if __name__ == "__main__":
 
     jeniffer_2015_diaries = list()
     for i in range(0, 228):
+        if i == 144:
+            continue
         diary_tags = tagger.pickle_to_tags("pickles/jennifer_2015" + str(i) + ".pkl")
         jeniffer_2015_diaries.append(diary_tags[1])
     print("load jeniffer 2016 diaries done.")
     tend_analyzer.analyze_diary(jeniffer_2015_diaries,
-            [('food', 'thing'), ('restaurant', 'thing'), ('weather', 'thing'),
-             ('hobby', 'activity'), ('exercise', 'activity')])
+            # [('food', 'thing'), ('restaurant', 'thing'), ('weather', 'thing'),
+            #  ('hobby', 'activity'), ('exercise', 'activity')])
+            # [('exercise', 'activity')])
+            [('food', 'thing')])
 
 
     # with open("wordset/jeniffer_2015.txt", "r") as file:
