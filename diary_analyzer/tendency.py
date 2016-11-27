@@ -174,7 +174,7 @@ class SynsetListRetirever(WordSetRetriever):
 
     def find_synset(self, synset):
         for item in self.synset_list:
-            synset_group = item[0]
+            synset_group = item[self.IDX_SYNSET]
             for s in synset_group:
                 if synset.name() == s.name():
                     return synset_group[0]
@@ -182,9 +182,26 @@ class SynsetListRetirever(WordSetRetriever):
 
     def find_word(self, word):
         for item in self.synset_list:
-            synset_group = item[0]
-            if word in item[self.IDX_LEMMA_WORDS]:  # lemma list
-                return synset_group[0]  # synset
+            synset_group = item[self.IDX_SYNSET]
+            for s in synset_group:
+                if word in item[self.IDX_LEMMA_WORDS]:
+                    return synset_group[0]
+        return None
+
+    def get_item_word(self, word):
+        for item in self.synset_list:
+            synset_group = item[self.IDX_SYNSET]
+            for s in synset_group:
+                if word in item[self.IDX_LEMMA_WORDS]:
+                    return item
+        return None
+
+    def get_item_synset(self, synset):
+        for item in self.synset_list:
+            synset_group = item[self.IDX_SYNSET]
+            for s in synset_group:
+                if synset.name() == s.name():
+                    return item
         return None
 
 
@@ -274,7 +291,8 @@ class TendencyAnalyzer(object):
     SIMILAR_PATH_MAX_HYPERNYM = 2
     SIMILAR_PATH_MAX_HYPONYM = 1
 
-    CLUSTER_CUT_DIST = 1  #1
+    # CLUSTER_CUT_DIST = 1  #1
+    CLUSTER_CUT_DIST = 5  #1
     CLUSTER_PATH_DIST_MAGNIFICATION = 1 #4
 
     def __init__(self, senti_wordnet=None):
@@ -301,13 +319,12 @@ class TendencyAnalyzer(object):
             diary_tags = diary_tags_list[diary_idx]
             extracted_sent_dict = self._extract_sentences(diary_tags)
             extracted_sent_dict_list.append(extracted_sent_dict)
-            print("Diary #%s" % (diary_idx+1))
-            # pprint(extracted_sent_dict)
-            for sent_id, extracted_words in extracted_sent_dict.items():
-                print(str(sent_id) + ':', extracted_words[0])
-                for idx in range(1, len(extracted_words)):
-                    print('  ', extracted_words[idx])
-            print()
+            # print("Diary #%s" % (diary_idx+1))
+            # for sent_id, extracted_words in extracted_sent_dict.items():
+            #     print(str(sent_id) + ':', extracted_words[0])
+            #     for idx in range(1, len(extracted_words)):
+            #         print('  ', extracted_words[idx])
+            # print()
 
         # step 3
         print("\n##### Step 3. #####")
@@ -317,9 +334,9 @@ class TendencyAnalyzer(object):
             extracted_sent_dict = extracted_sent_dict_list[diary_idx]
             scores_tend = self._compute_pref_scores(diary_tags, extracted_sent_dict, diary_idx+1)
             scores_tend_list.append(scores_tend)
-            print("Diary #%s" % (diary_idx+1))
-            pprint(scores_tend)
-            print()
+            # print("Diary #%s" % (diary_idx+1))
+            # pprint(scores_tend)
+            # print()
 
         # step 4
         # print("\n##### Step 4. #####")
@@ -864,20 +881,32 @@ class TendencyAnalyzer(object):
     ###############################################################################
     def _perform_clustering(self, pref_ta_list):
         def calc_distance(u, v):
-            # path_dist = wn.synset(u[0]).path_similarity(wn.synset(v[0]))
-            # if path_dist is None:
-            #     path_dist = 0
-            # return 1 - (path_dist * self.CLUSTER_PATH_DIST_MAGNIFICATION)
+            synset_u = wn.synset(u[0])
+            synset_v = wn.synset(v[0])
+
+            distance = synset_u.shortest_path_distance(synset_v,
+                    simulate_root=True and synset_u._needs_root())
+            # if distance is None or distance < 0:
+            #     distance
+            return distance
+
+            path_dist = wn.synset(u[0]).path_similarity(wn.synset(v[0]))
+            if path_dist is None:
+                path_dist = 0
+            return 1 - (path_dist * self.CLUSTER_PATH_DIST_MAGNIFICATION)
 
             if u[0] == v[0]:
                 return 0
+            # if u is hypernym of v or v is hypernym of u
             elif u[0] in _get_hypernyms_name(wn.synset(v[0]), level=3) or \
                     v[0] in _get_hypernyms_name(wn.synset(u[0]), level=3):
-                path_dist = wn.synset(u[0]).path_similarity(wn.synset(v[0]))
-                if path_dist is None:
-                    path_dist = 0
                 return 1 - path_dist
+                # print(u[0] + ' and ' + v[0])
                 # return 0
+                # return 0
+            # if u and v have common parent
+            elif path_dist >= (1/4):
+                return 1 - path_dist
             else:
                 return 1
 
@@ -929,19 +958,20 @@ class TendencyAnalyzer(object):
         hac_result = hac.linkage(dist_matrix, method='single')
         if self.DEBUG:
             print("linkage result: ")
-            print(hac_result)
-            print()
+            for y in hac_result:
+                print(y)
 
         # figure out the number of clusters (determine where to cut tree)
         num_cluster = 1
         for matrix_y in hac_result:
-            if matrix_y[2] >= self.CLUSTER_CUT_DIST:
+            if matrix_y[2] > self.CLUSTER_CUT_DIST:
             # if matrix_y[2] > 0.25:
                 num_cluster += 1
         if self.DEBUG:
             print("num_cluster: ", num_cluster, '\n')
 
-        part_cluster = hac.fcluster(hac_result, num_cluster, 'maxclust')
+        # part_cluster = hac.fcluster(hac_result, num_cluster, 'maxclust')
+        part_cluster = hac.fcluster(hac_result, self.CLUSTER_CUT_DIST, 'distance')
         if self.DEBUG:
             print("part_cluster: ")
             print(part_cluster)
@@ -976,8 +1006,8 @@ class TendencyAnalyzer(object):
     # Step 6. Figuring out Things and Activities having the Best Preference Score #
     ###############################################################################
     def _figure_out_best_ta(self, clusters, diary_num, pref_num):
-        pos_ta_cluster_dict = dict()
-        neg_ta_cluster_dict = dict()
+        pos_ta_score_dict = dict()
+        neg_ta_score_dict = dict()
 
         min_cluter_item = diary_num / 30.0
         for cluster in clusters:
@@ -988,6 +1018,9 @@ class TendencyAnalyzer(object):
             target = cluster[0][2]
             target_type = cluster[0][3]
 
+            for i in range(0, len(cluster)):
+                cluster[i] = list(cluster[i])
+
             # add weight for things or activities which are more count than others
             # weight formula can be changed
             # now: weight = 1 + log_max_count(count)
@@ -995,12 +1028,14 @@ class TendencyAnalyzer(object):
             for ta in cluster:
                 count_dict[ta[0]]['count'] += 1
                 count_dict[ta[0]]['sum'] += ta[1]
-            weight_dict = dict()
+            count_weight_dict = dict()
             for ta_name, count in count_dict.items():
                 if count['count'] >= 2:
                     # average * count_weight
-                    weight_dict[ta_name] = (count['sum'] / count['count']) * \
-                                           (1 + log(count['count']-1, pref_num))
+                    count_weight_dict[ta_name] = (count['sum'] / count['count']) * \
+                                           (1 + log(count['count']-1, int(pref_num/2)+1))
+                # else:
+                #     count_weight_dict[ta_name] = (count['sum'] / count['count'])
 
             # remove same items and set new pref score multiplied weight
             already_exist_ta_list = list()
@@ -1009,206 +1044,119 @@ class TendencyAnalyzer(object):
                 if ta[0] in already_exist_ta_list:
                     cluster.pop(i)
                     continue
-                if ta[0] in weight_dict.keys():
-                    ext_ta = cluster.pop(i)
-                    new_ta = (ext_ta[0], weight_dict[ta[0]], ext_ta[2], ext_ta[3])
-                    cluster.insert(i, new_ta)
+                if ta[0] in count_weight_dict.keys():
+                    # ext_ta = cluster.pop(i)
+                    # new_ta = (ext_ta[0], weight_dict[ta[0]], ext_ta[2], ext_ta[3])
+                    # cluster.insert(i, new_ta)
+                    ta[1] = count_weight_dict[ta[0]]
                     already_exist_ta_list.append(ta[0])
-
             if self.DEBUG:
-                print("Cluster after applying weight for count")
+                print("Cluster after applying score for count")
                 print(cluster)
                 print()
 
-            # find things and activities ta having macx prefs
-            # first_ta = cluster[0]
-            max_pos_pref_ta_list = []
-            max_pos_pref_score = -1
-            max_neg_pref_ta_list = []
-            max_neg_pref_score = 1
-            for idx_ta in range(0, len(cluster)):
-                ta = cluster[idx_ta]
+            # plus scores to each other in same cluster (cause they are related)
+            cluster_len = len(cluster)
+            for i in range(0, cluster_len):
+                for j in range(0, cluster_len):
+                    if i != j:
+                        cluster[i][1] += wn.synset(cluster[i][0]).path_similarity(wn.synset(cluster[j][0])) * \
+                            cluster[j][1] / cluster_len
+            if self.DEBUG:
+                print("Cluster after applying score for each other")
+                print(cluster)
+                print()
+
+            # find common hypernym
+            synset_name_list = list()
+            for ta in cluster:
+                synset_name_list.append(ta[0])
+            common_hypernyms = self._find_common_hypernyms(synset_name_list,
+                                                           self.words_sets[(target, target_type)])
+            if self.DEBUG:
+                print("common_hypernyms: ")
+                print(common_hypernyms)
+                print()
+
+            # classify pos and neg
+            pos_ta_list = list()
+            neg_ta_list = list()
+            for ta in cluster:
                 if ta[1] >= 0:
-                    if max_pos_pref_score == ta[1]:
-                        max_pos_pref_ta_list.append(ta)
-                    elif max_pos_pref_score < ta[1]:
-                        max_pos_pref_score = ta[1]
-                        max_pos_pref_ta_list.clear()
-                        max_pos_pref_ta_list.append(ta)
+                    pos_ta_list.append(ta)
                 else:
-                    if max_neg_pref_score == ta[1]:
-                        max_neg_pref_ta_list.append(ta)
-                    elif max_neg_pref_score > ta[1]:
-                        max_neg_pref_score = ta[1]
-                        max_neg_pref_ta_list.clear()
-                        max_neg_pref_ta_list.append(ta)
-
+                    neg_ta_list.append(ta)
+            pos_ta_list = sorted(pos_ta_list, key=lambda ta: ta[1], reverse=True)
+            neg_ta_list = sorted(neg_ta_list, key=lambda ta: ta[1])
             if self.DEBUG:
-                print("Max pref list")
-                print(max_pos_pref_ta_list)
-                print(max_neg_pref_ta_list)
+                print(pos_ta_list)
+                print(neg_ta_list)
                 print()
 
-            # if all values are same, find their common parent(hypernym)
-            parent_ta_find_dict = defaultdict(int)
-            if (len(cluster) == len(max_pos_pref_ta_list) and len(max_pos_pref_ta_list) > 1) or \
-                    (len(cluster) == len(max_neg_pref_ta_list) and len(max_neg_pref_ta_list) > 1):
-                for ta in cluster:
-                    # find all hypernym
-                    for hypernym in wn.synset(ta[0]).hypernyms():
-                        parent_ta_find_dict[hypernym.name()] += 1
-                # find max hypernym(s)
-                max_count = -1
-                max_hypyernym = ''
-                for hypernym_name, count in parent_ta_find_dict.items():
-                    if max_count < count:
-                        max_hypyernym = hypernym_name
-                    elif max_count == count:
-                        if type(max_hypyernym) is list:
-                            max_hypyernym.append(hypernym_name)
+            if len(pos_ta_list) > 0:
+                if pos_ta_list[0][0] in common_hypernyms: # if max scored ta is common hypernym
+                    pos_ta_score_dict[pos_ta_list[0][0]] = pos_ta_list[0][1]
+                else:
+                    for k in range(0, int(len(pos_ta_list)/2)+1):
+                        pos_ta = pos_ta_list[k]
+                        if pos_ta[0] in common_hypernyms:
+                            continue
+                        if pos_ta[0] in pos_ta_score_dict.keys():
+                            if pos_ta[1] > pos_ta_score_dict[pos_ta[0]]:
+                                # set higher score
+                                pos_ta_score_dict[pos_ta[0]] = pos_ta[1]
                         else:
-                            max_hypyernym = [max_hypyernym]
-                            max_hypyernym.append(hypernym_name)
-                # set max hypernyms to max_pos_pref_list or max_neg_pref_list
-                if len(cluster) == len(max_pos_pref_ta_list):
-                    max_pos_pref_score = cluster[0][1] * 1.2
-                    max_pos_pref_ta_list = list()
-                    if type(max_hypyernym) is list:
-                        for hypernym in max_hypyernym:
-                            max_pos_pref_ta_list.append((hypernym, max_pos_pref_score, target, target_type))
-                    else:
-                        max_pos_pref_ta_list.append((max_hypyernym, max_pos_pref_score, target, target_type))
+                            pos_ta_score_dict[pos_ta[0]] = pos_ta[1]
+
+            if len(neg_ta_list) > 0:
+                if neg_ta_list[0][0] in common_hypernyms:
+                    neg_ta_score_dict[neg_ta_list[0][0]] = neg_ta_list[0][1]
                 else:
-                    max_neg_pref_score = cluster[0][1] * 1.2
-                    max_neg_pref_ta_list = list()
-                    if type(max_hypyernym) is list:
-                        for hypernym in max_hypyernym:
-                            max_neg_pref_ta_list.append((hypernym, max_neg_pref_score, target, target_type))
-                    else:
-                        max_neg_pref_ta_list.append((max_hypyernym, max_neg_pref_score, target, target_type))
-
-            if self.DEBUG:
-                print("Max pref list after parent finding")
-                print(max_pos_pref_ta_list)
-                print(max_neg_pref_ta_list)
-                print()
-
-            # plus score to max value from others
-            pos_pref_ta_list_cvt = list()
-            for pos_ta in max_pos_pref_ta_list:
-                pos_pref_ta_list_cvt.append(list(pos_ta))
-            for pos_ta in pos_pref_ta_list_cvt:
-                for ta in cluster:
-                    if ta is not pos_ta:
-                        # add a little score which is from other items in the same cluster
-                        path_sim = wn.synset(pos_ta[0]).path_similarity(wn.synset(ta[0]))
-                        if path_sim is None: path_sim = 0
-                        pos_ta[1] += 0.1 * path_sim * ta[1]
-            neg_pref_ta_list_cvt = list()
-            for neg_ta in max_neg_pref_ta_list:
-                neg_pref_ta_list_cvt.append(list(neg_ta))
-            for neg_ta in neg_pref_ta_list_cvt:
-                for ta in cluster:
-                    if ta is not neg_ta:
-                        # add a little score which is from other items in the same cluster
-                        path_sim = wn.synset(neg_ta[0]).path_similarity(wn.synset(ta[0]))
-                        if path_sim is None: path_sim = 0
-                        neg_ta[1] += 0.1 * path_sim * ta[1]
-            if self.DEBUG:
-                print('cvt list')
-                print(pos_pref_ta_list_cvt)
-                print(neg_pref_ta_list_cvt)
-                print()
-
-            # sometimes, final preference score is more than 1 because
-            # there are many related ta or the ta is referred in diaries as much times..
-            for pos_ta in pos_pref_ta_list_cvt:
-                if pos_ta[1] > 1:
-                    pos_ta[1] = 1
-            for neg_ta in neg_pref_ta_list_cvt:
-                if neg_ta[1] < -1:
-                    neg_ta[1] = -1
-
-            # add to final dict if the ta is higher
-            for pos_ta in pos_pref_ta_list_cvt:
-                if pos_ta[0] in pos_ta_cluster_dict.keys():
-                    if pos_ta[1] > pos_ta_cluster_dict[pos_ta[0]][1]:
-                        # set higher score
-                        pos_ta_cluster_dict[pos_ta[0]][1] = pos_ta[1]
-                else:
-                    pos_ta_cluster_dict[pos_ta[0]] = pos_ta
-            for neg_ta in neg_pref_ta_list_cvt:
-                if neg_ta[0] in neg_ta_cluster_dict.keys():
-                    if neg_ta[1] < neg_ta_cluster_dict[neg_ta[0]][1]:
-                        # set higher score
-                        neg_ta_cluster_dict[neg_ta[0]][1] = neg_ta[1]
-                else:
-                    neg_ta_cluster_dict[neg_ta[0]] = neg_ta
+                    for k in range(0, int(len(neg_ta_list)/2)+1):
+                        neg_ta = neg_ta_list[k]
+                        if neg_ta[0] in common_hypernyms:
+                            continue
+                        if neg_ta[0] in neg_ta_score_dict.keys():
+                            if neg_ta[1] > neg_ta_score_dict[neg_ta[0]]:
+                                # set higher score
+                                neg_ta_score_dict[neg_ta[0]] = neg_ta[1]
+                        else:
+                            neg_ta_score_dict[neg_ta[0]] = neg_ta[1]
 
         if self.DEBUG:
-            pprint(pos_ta_cluster_dict)
-            print()
-            pprint(neg_ta_cluster_dict)
+            pprint(pos_ta_score_dict)
+            pprint(neg_ta_score_dict)
             print()
 
         # it a thing or activity is in both side, to correct it.
-        pos_ta_cluster_keys = list(pos_ta_cluster_dict.keys())
+        pos_ta_cluster_keys = list(pos_ta_score_dict.keys())
         for idx in range(0, len(pos_ta_cluster_keys))[::-1]:
             ta_name = pos_ta_cluster_keys[idx]
-            if ta_name in neg_ta_cluster_dict.keys():
-                ta_score = pos_ta_cluster_dict[ta_name][1] + neg_ta_cluster_dict[ta_name][1]
+            if ta_name in neg_ta_score_dict.keys(): #if both
+                ta_score = pos_ta_score_dict[ta_name]+ neg_ta_score_dict[ta_name]
                 if ta_score == 0:
-                    del pos_ta_cluster_dict[ta_name]
-                    del neg_ta_cluster_dict[ta_name]
+                    del pos_ta_score_dict[ta_name]
+                    del neg_ta_score_dict[ta_name]
                 elif ta_score < 0:
-                    del pos_ta_cluster_dict[ta_name]
-                    neg_ta_cluster_dict[ta_name][1] = ta_score
+                    del pos_ta_score_dict[ta_name]
+                    neg_ta_score_dict[ta_name] = ta_score
                 else:   # elif ta_score > 0:
-                    del neg_ta_cluster_dict[ta_name]
-                    pos_ta_cluster_dict[ta_name][1] = ta_score
+                    del neg_ta_score_dict[ta_name]
+                    pos_ta_score_dict[ta_name] = ta_score
 
         # scores list filter
         pos_scores_ta = list()
-        for ta_name, ta in pos_ta_cluster_dict.items():
-            if ta[1] >= 0.2:   # preference score is more than
-                pos_scores_ta.append((ta[0], ta[1]))
+        for ta_name, score in pos_ta_score_dict.items():
+            if score >= 0.2:   # preference score is more than
+                pos_scores_ta.append((ta_name, score))
         neg_scores_ta = list()
-        for ta_name, ta in neg_ta_cluster_dict.items():
-            if ta[1] <= -0.2:
-                neg_scores_ta.append((ta[0], ta[1]))
+        for ta_name, score in neg_ta_score_dict.items():
+            if score <= -0.2:
+                neg_scores_ta.append((ta_name, score))
 
         # best tend things and activities
         best_pos_scores = sorted(pos_scores_ta, key=lambda ta: ta[1], reverse=True)[:5]
         best_neg_scores = sorted(neg_scores_ta, key=lambda ta: ta[1])[:5]
-
-        # arrange things and activities for their type
-        # clsfied_pos_scores_dict = defaultdict(lambda: list())
-        # for ta_name, ta in pos_ta_cluster_dict.items():
-        #     if ta[1] >= 0.2:   # preference score is more than
-        #         clsfied_pos_scores_dict[(ta[2], ta[3])].append((ta[0], ta[1]))
-        # clsfied_neg_scores_dict = defaultdict(lambda: list())
-        # for ta_name, ta in neg_ta_cluster_dict.items():
-        #     if ta[1] <= -0.2:
-        #         clsfied_neg_scores_dict[(ta[2], ta[3])].append((ta[0], ta[1]))
-        #
-        # if self.DEBUG:
-        #     pprint(clsfied_pos_scores_dict)
-        #     pprint(clsfied_neg_scores_dict)
-        #     print()
-        #
-        # # trim up to 5 first element as best score
-        # best_pos_scores_dict = dict()
-        # for ta_type, ta_list in clsfied_pos_scores_dict.items():
-        #     best_pos_scores_dict[ta_type] = sorted(ta_list, key=lambda ta: ta[1], reverse=True)[:5]
-        # best_neg_scores_dict = dict()
-        # for ta_type, ta_list in clsfied_neg_scores_dict.items():
-        #     best_neg_scores_dict[ta_type] = sorted(ta_list, key=lambda ta: ta[1])[:5]
-        #
-        # if self.DEBUG:
-        #     pprint(best_pos_scores_dict)
-        #     pprint(best_neg_scores_dict)
-        #     print()
-
         return best_pos_scores, best_neg_scores
 
     # return a list of (found_synset, lemma_word, words_set_type)
@@ -1314,18 +1262,23 @@ class TendencyAnalyzer(object):
         return tend_dict
 
     @classmethod
-    def _find_common_hypernyms(cls, ta_name_list, search_level=3, corpus_retriever=None):
-        hypernym_count_dict = defaultdict(int)
+    def _find_common_hypernyms(cls, ta_name_list, corpus_retriever, search_level=3):
+        hypernym_count_dict = defaultdict(lambda: {'count': 0, 'level': -1})
 
         for ta_name in ta_name_list:
             synset = wn.synset(ta_name)
+            hypernym_item = corpus_retriever.get_item_synset(synset)
             # add self
-            hypernym_count_dict[ta_name] += 1
+            hypernym_count_dict[ta_name]['count'] += 1
+            hypernym_count_dict[ta_name]['level'] = hypernym_item[WordSetRetriever.IDX_LEVEL]
             # add hypernyms
             if synset:
                 for hypernym in _get_hypernyms(synset, search_level):
-                    # if corpus_retriever.get_item_synset(hypernym)
-                    hypernym_count_dict[hypernym.name()] += 1
+                    hypernym_item = corpus_retriever.get_item_synset(hypernym)
+                    if hypernym_item:
+                        hypernym_count_dict[hypernym.name()]['count'] += 1
+                        hypernym_count_dict[hypernym.name()]['level'] \
+                            = hypernym_item[WordSetRetriever.IDX_LEVEL]
 
         hypernym_count_dict_common = defaultdict(int)
         for common_synset_name in hypernym_count_dict.keys():
@@ -1337,13 +1290,20 @@ class TendencyAnalyzer(object):
 
         max_hypernym_list = list()
         max_hypernym_count = 0
-        for hypernym_name, count in hypernym_count_dict.items():
-            if max_hypernym_count < count:
+        max_hypernym_level = -1
+        for hypernym_name, count_dict in hypernym_count_dict.items():
+            if max_hypernym_count < count_dict['count']:
                 max_hypernym_list.clear()
-                max_hypernym_count = count
+                max_hypernym_count = count_dict['count']
+                max_hypernym_level = count_dict['level']
                 max_hypernym_list.append(hypernym_name)
-            elif max_hypernym_count == count:
-                max_hypernym_list.append(hypernym_name)
+            elif max_hypernym_count == count_dict['count']:
+                if max_hypernym_level < count_dict['level']:
+                    max_hypernym_list.clear()
+                    max_hypernym_level = count_dict['level']
+                    max_hypernym_list.append(hypernym_name)
+                elif max_hypernym_level == count_dict['level']:
+                    max_hypernym_list.append(hypernym_name)
         if max_hypernym_count >= len(ta_name_list):
             return max_hypernym_list
         return []
@@ -1376,7 +1336,7 @@ class TendencyAnalyzer(object):
             rep_ta_name = _get_default_lemma(max_ta_list[0])
         else:
             common_hypernyms = cls._find_common_hypernyms(max_ta_list,
-                                                          corpus_retriever=corpus_retriever)
+                                                          corpus_retriever)
             if common_hypernyms:
                 for idx in range(0, len(common_hypernyms)):
                     hypernym_name = common_hypernyms[idx]
@@ -1553,17 +1513,21 @@ if __name__ == "__main__":
     #     diary_tags = tagger.pickle_to_tags("pickles/joanne" + str(i) + ".pkl")
     #     joanne_diaries.append(diary_tags[1])
     # print("load joanne diaries done.")
-    # tend_analyzer.analyze_diary(joanne_diaries)
+    # tend_analyzer.analyze_diary(joanne_diaries,
+    #         [('food', 'thing'), ('restaurant', 'thing'), ('weather', 'thing'),
+    #          ('hobby', 'activity'), ('exercise', 'activity')])
 
-    jeniffer_diaries = list()
-    for i in range(0, 36):
-        diary_tags = tagger.pickle_to_tags("pickles/jennifer" + str(i) + ".pkl")
-        jeniffer_diaries.append(diary_tags[1])
-    print("load jeniffer diaries done.")
-    tend_analyzer.analyze_diary(jeniffer_diaries,
-            [('food', 'thing'), ('restaurant', 'thing'), ('weather', 'thing'),
-             ('hobby', 'activity'), ('exercise', 'activity')])
+    # jeniffer_diaries = list()
+    # for i in range(0, 36):
+    #     diary_tags = tagger.pickle_to_tags("pickles/jennifer" + str(i) + ".pkl")
+    #     jeniffer_diaries.append(diary_tags[1])
+    # print("load jeniffer diaries done.")
+    # tend_analyzer.analyze_diary(jeniffer_diaries,
+    #         [('food', 'thing'), ('restaurant', 'thing'), ('weather', 'thing'),
+    #          ('hobby', 'activity'), ('exercise', 'activity')])
     # tend_analyzer.analyze_diary(jeniffer_diaries, [('food', 'thing')])
+    # tend_analyzer.analyze_diary(jeniffer_diaries, [('exercise', 'activity'),
+    #                                                ('food', 'thing')])
     # tend_analyzer.analyze_diary(jeniffer_diaries, [('exercise', 'activity')])
     # tend_analyzer.analyze_diary(jeniffer_diaries, [('hobby', 'activity')])
 
@@ -1572,6 +1536,7 @@ if __name__ == "__main__":
     #     diary_tags = tagger.pickle_to_tags("pickles/smiley" + str(i) + ".pkl")
     #     smiley_diaries.append(diary_tags[1])
     # print("load smiley diaries done.")
+    # tend_analyzer.analyze_diary(smiley_diaries, [('food', 'thing')])
     # tend_analyzer.analyze_diary(smiley_diaries,
     #         [('food', 'thing'), ('restaurant', 'thing'), ('weather', 'thing'),
     #          ('hobby', 'activity'), ('exercise', 'activity')])
@@ -1596,3 +1561,30 @@ if __name__ == "__main__":
     # diary_tags4 = tagger.tag_pos_doc(TEST_DIARY4)
     # tend_analyzer.analyze_diary([diary_tags4[1]])
 
+    jeniffer_2015_diaries = list()
+    for i in range(0, 228):
+        diary_tags = tagger.pickle_to_tags("pickles/jennifer_2015" + str(i) + ".pkl")
+        jeniffer_2015_diaries.append(diary_tags[1])
+    print("load jeniffer 2016 diaries done.")
+    tend_analyzer.analyze_diary(jeniffer_2015_diaries,
+            [('food', 'thing'), ('restaurant', 'thing'), ('weather', 'thing'),
+             ('hobby', 'activity'), ('exercise', 'activity')])
+
+
+    # with open("wordset/jeniffer_2015.txt", "r") as file:
+    #     num = 0
+    #     while True:
+    #         diary = file.readline()
+    #         if not diary:
+    #             break
+    #         if num < 83:
+    #             print("pass diary #%s" % num)
+    #             num += 1
+    #             continue
+    #         print("start tagging diary #%s" % num)
+    #         diary_tags = tagger.tag_pos_doc(diary, True)
+    #         print("create pickle for tags of diary #%s" % num)
+    #         tagger.tags_to_pickle(diary_tags, "pickles/jennifer_2015" + str(num) + ".pkl")
+    #         num += 1
+    #         print()
+    #     file.close()
