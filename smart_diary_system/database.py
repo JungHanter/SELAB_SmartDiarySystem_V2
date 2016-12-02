@@ -202,41 +202,6 @@ class AudioDiaryManager(DBManager):
             logger.error("ERROR MSG : %s", error_msg)
             return False
 
-    def retrieve_audio_diary_by_user_id(self, user_id):
-        """Creating new audio_diary to SD DB
-        Usually, this method be called
-        When User retrieving audio_diary
-
-
-        :param audio_diary_info:
-        :rtype None:
-        """
-        # START : for calculating execution time
-        start = timeit.default_timer()
-
-        assert self.connected
-        try:
-            query_for_retrieve_audio_diary = "SELECT * FROM audio_diary WHERE user_id = %s  "
-            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                cur.execute(query_for_retrieve_audio_diary, user_id)
-                result = cur.fetchall()
-                if result:
-                    # END : for calculating execution time
-                    stop = timeit.default_timer()
-                    logger.debug("DB : retrieve_audio_diary_by_user_id() - Execution Time : %s", stop - start)
-                    logger.debug('DB RESULT : %s', result) 
-                    return result
-                else:
-                    return False
-
-        except Exception as exp:
-            logger.error(">>>MYSQL ERROR<<<")
-            logger.error("At retrieve_audio_diary_by_user_id()")
-            num, error_msg = exp.args
-            logger.error("ERROR NO : %s", num)
-            logger.error("ERROR MSG : %s", error_msg)
-            return False
-
     def retrieve_audio_diary_list_by_timestamp(self, audio_diary_info):
         """Creating new audio_diary to SD DB
         Usually, this method be called
@@ -325,44 +290,6 @@ class AudioDiaryManager(DBManager):
         except Exception as exp:
             logger.error(">>>MYSQL ERROR<<<")
             logger.error("At retrieve_audio_diary_detail_by_audio_diary_id()")
-            num, error_msg = exp.args
-            logger.error("ERROR NO : %s", num)
-            logger.error("ERROR MSG : %s", error_msg)
-            return False
-
-    def retrieve_sentence_list_from_audio_diary(self, audio_diary_id):
-        """Creating new audio_diary to SD DB
-            Usually, this method be called
-            When User retrieving audio_diary
-
-
-            :param audio_diary_info:
-            :rtype None:
-            """
-        # START : for calculating execution time
-        start = timeit.default_timer()
-
-        assert self.connected
-        try:
-            query_for_list = "SELECT sentence.text FROM sentence INNER JOIN text_diary " \
-                             "WHERE text_diary.audio_diary_id = %s "
-            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                cur.execute(query_for_list, audio_diary_id)
-                result = cur.fetchall()
-                # END : for calculating execution time
-                stop = timeit.default_timer()
-                logger.debug("DB : retrieve_sentence_list_from_audio_diary() - Execution Time : %s", stop - start)
-
-                if result:
-                    logger.debug('DB RESULT : %s', result)
-
-                    return result
-                else:
-                    return None
-
-        except Exception as exp:
-            logger.error(">>>MYSQL ERROR<<<")
-            logger.error("At retrive_setence_list_from_audio_diary()")
             num, error_msg = exp.args
             logger.error("ERROR NO : %s", num)
             logger.error("ERROR MSG : %s", error_msg)
@@ -717,38 +644,6 @@ class TextDiaryManager(DBManager):
         except pymysql.MySQLError as exp:
             logger.error(">>>MYSQL ERROR<<<")
             logger.error("At create_text_diary()")
-            num, error_msg = exp.args
-            logger.error("ERROR NO : %s", num)
-            logger.error("ERROR MSG : %s", error_msg)
-            return False
-
-    def retrieve_text_diary_by_audio_diary_id(self, audio_diary_id):
-        """retrieving converted text from SD DB
-        Usually, this method be called
-        When ...
-
-        :param text_diary_id:
-        :rtype: dict contains user's inforamtion
-        """
-        # START : for calculating execution time
-        start = timeit.default_timer()
-        assert self.connected  # Connection Check Flag
-        query_for_c_text = "SELECT * FROM text_diary WHERE audio_diary_id = %s"
-        try:
-            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                cur.execute(query_for_c_text, audio_diary_id)
-                # END : for calculating execution time
-                stop = timeit.default_timer()
-                logger.debug("DB : get_text_diary() - Execution Time : %s", stop - start)
-                result = cur.fetchone()
-                if result:
-                    logger.debug('DB RESULT : %s', result) 
-                    return result
-                else:
-                    return None
-        except pymysql.MySQLError as exp:
-            logger.error(">>>MYSQL ERROR<<<")
-            logger.error("At get_text_diary()")
             num, error_msg = exp.args
             logger.error("ERROR NO : %s", num)
             logger.error("ERROR MSG : %s", error_msg)
