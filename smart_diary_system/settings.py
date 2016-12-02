@@ -56,7 +56,7 @@ ROOT_URLCONF = 'smart_diary_system.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'templates')]
+        'DIRS': [os.path.join(BASE_DIR, 'smart_diary_system', 'templates')]
         ,
         'APP_DIRS': True,
         'OPTIONS': {
@@ -129,3 +129,10 @@ PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 MEDIA_ROOT = os.path.join(PROJECT_ROOT, 'uploaded')
 
 BASE_DIR = str(Path(__file__).parents[1])
+
+# Sending Email
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST_USER = 'selab.ssu@gmail.com'
+EMAIL_HOST_PASSWORD = 'lovejesus7'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
