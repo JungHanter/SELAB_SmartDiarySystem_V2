@@ -1,0 +1,238 @@
+acrobatics.n.02 ['noun.act', 'the performance of stunts while in flight in an aircraft', ['acrobatics', 'aerobatics', 'stunting', 'stunt_flying']]
+
+ballooning.n.01 ['noun.act', 'flying in a balloon', ['ballooning']]
+balloon.v.01 ['verb.motion', 'ride in a hot-air balloon', ['balloon']]
+
+glide.n.03 ['noun.act', 'the activity of flying a glider', ['glide', 'gliding', 'sailplaning', 'soaring', 'sailing']]
+glide.v.02 ['verb.motion', 'fly in or as if in a glider plane', ['glide']]
+
+hang_gliding.n.01 ['noun.act', 'gliding in a hang glider', ['hang_gliding']]
+hang_glide.v.01 ['verb.motion', 'fly by means of a hang glider', ['hang_glide', 'soar']]
+
+parasailing.n.01 ['noun.act', 'gliding in a parasail', ['parasailing', 'paragliding']]
+
+archery.n.01 ['noun.act', 'the sport of shooting arrows with a bow', ['archery']]
+
+badminton.n.01 ['noun.act', 'a game played on a court with light long-handled rackets used to volley a shuttlecock over a net', ['badminton']]
+
+volleyball.n.01 ['noun.act', 'a game in which two teams hit an inflated ball over a high net using their hands', ['volleyball', 'volleyball_game']]
+
+basketball.n.01 ['noun.act', 'a game played on a court by two opposing teams of 5 players; points are scored by throwing the ball through an elevated horizontal hoop', ['basketball', 'basketball_game', 'hoops']]
+
+netball.n.01 ['noun.act', 'a team game that resembles basketball; a soccer ball is to be thrown so that it passes through a ring on the top of a post', ['netball']]
+
+baseball.n.01 ['noun.act', 'a ball game played with a bat and ball between two teams of nine players; teams take turns at bat trying to score runs', ['baseball', 'baseball_game']]
+
+softball.n.02 ['noun.act', 'a game closely resembling baseball that is played on a smaller diamond and with a ball that is larger and softer', ['softball', 'softball_game']]
+
+cricket.n.02 ['noun.act', 'a game played with a ball and bat by two teams of 11 players; teams take turns trying to score runs', ['cricket']]
+cricket.v.01 ['verb.competition', 'play cricket', ['cricket']]
+
+rounders.n.01 ['noun.act', 'an English ball game similar to baseball', ['rounders']]
+
+stickball.n.01 ['noun.act', 'a form of baseball played in the streets with a rubber ball and broomstick handle', ['stickball', 'stickball_game']]
+
+skateboarding.n.01 ['noun.act', 'the sport of skating on a skateboard', ['skateboarding']]
+skateboard.v.01 ['verb.motion', 'ride on a flat board with rollers attached to the bottom', ['skateboard']]
+
+snowboarding.n.01 ['noun.act', 'the act of sliding down a snow-covered slope while standing on a snowboard', ['snowboarding']]
+snowboard.v.01 ['verb.motion', 'glide down a snow-covered slope while standing on a board', ['snowboard']]
+
+surfing.n.01 ['noun.act', 'the sport of riding a surfboard toward the shore on the crest of a wave', ['surfing', 'surfboarding', 'surfriding']]
+surfboard.v.01 ['verb.motion', 'ride the waves of the sea with a surfboard', ['surfboard', 'surf']]
+
+swimming.n.01 ['noun.act', 'the act of swimming', ['swimming', 'swim']]
+
+rock_climbing.n.01 ['noun.act', 'the sport or pastime of scaling rock masses on mountain sides (especially with the help of ropes and special equipment)', ['rock_climbing']]
+
+rappel.v.01 ['verb.motion', 'lower oneself with a rope coiled around the body from a mountainside', ['rappel', 'abseil', 'rope_down']]
+
+mountain_climbing.n.01 ['noun.act', 'the activity of climbing a mountain', ['mountain_climbing', 'mountaineering']]
+
+hike.n.01 ['noun.act', 'a long walk usually for exercise or pleasure', ['hike', 'hiking', 'tramp']]
+hike.v.02 ['verb.motion', 'walk a long way, as for pleasure or physical exercise', ['hike']]
+
+unicycle.n.01 ['noun.artifact', 'a vehicle with a single wheel that is driven by pedals', ['unicycle', 'monocycle']]
+unicycle.v.01 ['verb.motion', 'ride a unicycle', ['unicycle']]
+
+jujutsu.n.01 ['noun.act', "a method of self-defense without weapons that was developed in China and Japan; holds and blows are supplemented by clever use of the attacker's own weight and strength", ['jujutsu', 'jujitsu', 'jiujitsu']]
+
+sumo.n.01 ['noun.act', 'a Japanese form of wrestling; you lose if you are forced out of a small ring or if any part of your body (other than your feet) touches the ground', ['sumo']]
+
+wrestle.v.01 ['verb.competition', 'combat to overcome an opposing tendency or force', ['wrestle']]
+wrestle.v.04 ['verb.contact', 'engage in a wrestling match', ['wrestle']]
+
+cockfighting.n.01 ['noun.act', 'participation in the sport of matching gamecocks in a cockfight', ['cockfighting']]
+
+boxing.n.01 ['noun.act', 'fighting with the fists', ['boxing', 'pugilism', 'fisticuffs']]
+
+karate.n.01 ['noun.act', 'a traditional Japanese system of unarmed combat; sharp blows and kicks are given to pressure-sensitive points on the body of the opponent', ['karate']]
+
+tae_kwon_do.n.01 ['noun.act', 'a Korean martial art similar to karate', ['tae_kwon_do', 'taekwondo']]
+
+ninjutsu.n.01 ['noun.act', 'the traditional Japanese method of espionage; involves stealthy movements and the use of camouflage', ['ninjutsu', 'ninjitsu']]
+
+fencing.n.03 ['noun.act', 'the art or sport of fighting with swords (especially the use of foils or epees or sabres to score points under a set of rules)', ['fencing']]
+fence.v.03 ['verb.competition', 'fight with fencing swords', ['fence']]
+
+kung_fu.n.01 ['noun.act', 'a Chinese martial art', ['kung_fu']]
+
+paintball.n.02 ['noun.act', 'a game that simulates military combat; players on one team try to eliminate players on the opposing team by shooting capsules of paint at them', ['paintball']]
+
+snooker.n.01 ['noun.act', 'a form of pool played with 15 red balls and six balls of other colors and a cue ball', ['snooker']]
+snooker.v.02 ['verb.competition', "leave one's opponent unable to take a direct shot", ['snooker']]
+
+cross_country.n.01 ['noun.event', 'a long race run over open country', ['cross_country']]
+
+endurance_riding.n.01 ['noun.act', 'riding for long hours over long distances', ['endurance_riding']]
+
+riding.n.01 ['noun.act', 'the sport of siting on the back of a horse while controlling its movements', ['riding', 'horseback_riding', 'equitation']]
+
+harness_race.n.01 ['noun.event', 'a horse race between people riding in sulkies behind horses that are trotting or pacing', ['harness_race', 'harness_racing']]
+horse_racing.n.01 ['noun.act', 'the sport of racing horses', ['horse_racing']]
+
+joust.v.01 ['verb.competition', 'joust against somebody in a tournament by fighting on horseback', ['joust']]
+
+rodeo.n.01 ['noun.act', 'an exhibition of cowboy skills', ['rodeo']]
+rodeo.n.02 ['noun.artifact', 'an enclosure for cattle that have been rounded up', ['rodeo']]
+
+football.n.01 ['noun.act', "any of various games played with a ball (round or oval) in which two teams try to kick or carry or propel the ball into each other's goal", ['football', 'football_game']]
+
+american_football.n.01 ['noun.act', 'a game played by two teams of 11 players on a rectangular field 100 yards long; teams try to get possession of the ball and advance it across the opponents goal line in a series of (running or passing) plays', ['American_football', 'American_football_game']]
+
+rugby.n.01 ['noun.act', 'a form of football played with an oval ball', ['rugby', 'rugby_football', 'rugger']]
+
+touch_football.n.01 ['noun.act', 'a version of American football in which the ball carrier is touched rather than tackled', ['touch_football']]
+
+soccer.n.01 ['noun.act', "a football game in which two teams of 11 players try to kick or head a ball into the opponents' goal", ['soccer', 'association_football']]
+soccer.n.01 ['noun.act', "a football game in which two teams of 11 players try to kick or head a ball into the opponents' goal", ['soccer', 'association_football']]
+
+golf.n.01 ['noun.act', 'a game played on a large open course with 9 or 18 holes; the object is use as few strokes as possible in playing all the holes', ['golf', 'golf_game']]
+golf.v.01 ['verb.competition', 'play golf', ['golf']]
+
+gymnastics.n.01 ['noun.act', 'a sport that involves exercises intended to display strength and balance and agility', ['gymnastics', 'gymnastic_exercise']]
+
+acrobatics.n.01 ['noun.act', 'the gymnastic moves of an acrobat', ['acrobatics', 'tumbling']]
+
+judo.n.01 ['noun.act', 'a sport adapted from jujitsu (using principles of not resisting) and similar to wrestling; developed in Japan', ['judo']]
+
+water_polo.n.01 ['noun.act', "a game played in a swimming pool by two teams of swimmers who try to throw an inflated ball into the opponents' goal", ['water_polo']]
+
+deer_hunting.n.01 ['noun.act', 'hunting deer', ['deer_hunting', 'deer_hunt']]
+
+fox_hunting.n.01 ['noun.act', 'mounted hunters follow hounds in pursuit of a fox', ['fox_hunting', 'foxhunt']]
+
+ice_hockey.n.01 ['noun.act', "a game played on an ice rink by two opposing teams of six skaters each who try to knock a flat round puck into the opponents' goal with angled sticks", ['ice_hockey', 'hockey', 'hockey_game']]
+
+figure_skating.n.01 ['noun.act', 'ice skating where the skates trace outlines of selected figures', ['figure_skating']]
+figure_skate.v.01 ['verb.motion', 'dance on skates', ['figure_skate']]
+
+sport_kite.n.01 ['noun.artifact', 'a maneuverable kite controlled by two lines and flown with both hands', ['sport_kite', 'stunt_kite']]
+
+decathlon.n.01 ['noun.event', 'an athletic contest consisting of ten different events', ['decathlon']]
+
+pentathlon.n.01 ['noun.event', 'an athletic contest consisting of five different events', ['pentathlon']]
+
+racquetball.n.02 ['noun.act', 'a game played on a handball court with short-handled rackets', ['racquetball']]
+racket.n.04 ['noun.artifact', 'a sports implement (usually consisting of a handle and an oval frame with a tightly interlaced network of strings) used to strike a ball (or shuttlecock) in various games', ['racket', 'racquet']]
+
+royal_tennis.n.01 ['noun.act', 'an ancient form of tennis played in a four-walled court', ['royal_tennis', 'real_tennis', 'court_tennis']]
+
+squash.n.03 ['noun.act', 'a game played in an enclosed court by two or four players who strike the ball with long-handled rackets', ['squash', 'squash_racquets', 'squash_rackets']]
+
+table_tennis.n.01 ['noun.act', 'a game (trademark Ping-Pong) resembling tennis but played on a table with paddles and a light hollow ball', ['table_tennis', 'Ping-Pong']]
+
+tennis.n.01 ['noun.act', 'a game played with rackets by two or four players who hit a ball back and forth over a net that divides the court', ['tennis', 'lawn_tennis']]
+
+roping.n.01 ['noun.act', 'capturing cattle or horses with a lasso', ['roping']]
+
+marathon.n.01 ['noun.act', 'any long and arduous undertaking', ['marathon', 'endurance_contest']]
+marathon.n.02 ['noun.event', 'a footrace of 26 miles 385 yards', ['marathon']]
+
+dash.n.02 ['noun.act', 'a quick run', ['dash', 'sprint']]
+sprint.v.01 ['verb.motion', 'run very fast, usually for a short distance', ['sprint']]
+
+hurdles.n.01 ['noun.event', 'a footrace in which contestants must negotiate a series of hurdles', ['hurdles', 'hurdling', 'hurdle_race']]
+hurdle.v.01 ['verb.motion', 'jump a hurdle', ['hurdle']]
+
+sailing.n.02 ['noun.act', 'riding in a sailboat', ['sailing']]
+sail.v.01 ['verb.motion', 'traverse or travel on (a body of water)', ['sail']]
+sail.v.03 ['verb.motion', 'travel on water propelled by wind', ['sail']]
+
+windsurf.v.01 ['verb.motion', 'ride standing on a surfboard with an attached sail, on water', ['windsurf']]
+
+skiing.n.01 ['noun.act', 'a sport in which participants must travel on skis', ['skiing']]
+ski.v.01 ['verb.motion', 'move along on skis', ['ski']]
+
+cross-country_skiing.n.01 ['noun.act', 'the sport of skiing across the countryside (rather than downhill)', ['cross-country_skiing']]
+
+ski_jumping.n.01 ['noun.act', 'the act of performing a jump on skis from a high ramp overhanging a snow covered slope', ['ski_jumping']]
+ski_jump.v.01 ['verb.motion', 'jump on skis', ['ski_jump']]
+
+bobsled.n.01 ['noun.artifact', 'formerly two short sleds coupled together', ['bobsled', 'bobsleigh']]
+bobsled.n.02 ['noun.artifact', 'a long racing sled (for 2 or more people) with a steering mechanism', ['bobsled', 'bobsleigh', 'bob']]
+
+luge.n.01 ['noun.artifact', 'a racing sled for one or two people', ['luge']]
+
+field_hockey.n.01 ['noun.act', "a game resembling ice hockey that is played on an open field; two opposing teams use curved sticks try to drive a ball into the opponents' net", ['field_hockey', 'hockey']]
+
+ice_hockey.n.01 ['noun.act', "a game played on an ice rink by two opposing teams of six skaters each who try to knock a flat round puck into the opponents' goal with angled sticks", ['ice_hockey', 'hockey', 'hockey_game']]
+
+hurling.n.01 ['noun.act', 'a traditional Irish game resembling hockey; played by two teams of 15 players each', ['hurling']]
+
+broad_jump.n.02 ['noun.act', 'the act of jumping as far as possible from a running start', ['broad_jump', 'long_jump']]
+
+high_jump.n.02 ['noun.act', 'the act of jumping as high as possible over a horizontal bar', ['high_jump']]
+
+lacrosse.n.01 ['noun.act', "a game invented by American Indians; now played by two teams who use long-handled rackets to catch and carry and throw the ball toward the opponents' goal", ['lacrosse']]
+
+polo.n.02 ['noun.act', 'a game similar to field hockey but played on horseback using long-handled mallets and a wooden ball', ['polo']]
+
+hike.n.01 ['noun.act', 'a long walk usually for exercise or pleasure', ['hike', 'hiking', 'tramp']]
+
+water_polo.n.01 ['noun.act', "a game played in a swimming pool by two teams of swimmers who try to throw an inflated ball into the opponents' goal", ['water_polo']]
+
+backstroke.n.01 ['noun.act', 'a swimming stroke that resembles the crawl except the swimmer lies on his or her back', ['backstroke']]
+backstroke.v.01 ['verb.motion', "swim on one's back", ['backstroke']]
+
+breaststroke.n.01 ['noun.act', 'a swimming stroke; the arms are extended together in front of the head and swept back on either side accompanied by a frog kick', ['breaststroke']]
+breaststroke.v.01 ['verb.motion', 'swim with the face down and extend the arms forward and outward while kicking with the leg', ['breaststroke']]
+
+scuba_diving.n.01 ['noun.act', 'skin diving with scuba apparatus', ['scuba_diving']]
+
+dive.n.02 ['noun.act', 'a headlong plunge into water', ['dive', 'diving']]
+dive.v.02 ['verb.motion', 'plunge into water', ['dive']]
+
+belly_flop.n.01 ['noun.act', 'a dive in which the abdomen bears the main force of impact with the water', ['belly_flop', 'belly_flopper', 'belly_whop', 'belly_whopper']]
+
+cliff_diving.n.01 ['noun.act', 'diving into the water from a steep overhanging cliff', ['cliff_diving']]
+
+bodybuilding.n.01 ['noun.act', 'exercise that builds muscles through tension', ['bodybuilding', 'anaerobic_exercise', 'muscle_building', 'musclebuilding']]
+
+auto_racing.n.01 ['noun.act', 'the sport of racing automobiles', ['auto_racing', 'car_racing']]
+
+drifting.n.01 ['noun.act', 'aimless wandering from place to place', ['drifting']]
+
+automobile_race.n.01 ['noun.event', 'a race between (usually high-performance) automobiles', ['automobile_race', 'auto_race', 'car_race']]
+
+deck_tennis.n.01 ['noun.act', 'game played mainly on board ocean liners; players toss a ring back and forth over a net that is stretched across a small court', ['deck_tennis']]
+
+handball.n.02 ['noun.act', 'a game played in a walled court or against a single wall by two or four players who strike a rubber ball with their hands', ['handball']]
+
+pallone.n.01 ['noun.act', 'an Italian game similar to tennis', ['pallone']]
+
+croquet.n.01 ['noun.act', 'a game in which players hit a wooden ball through a series of hoops; the winner is the first to traverse all the hoops and hit a peg', ['croquet']]
+
+professional_baseball.n.01 ['noun.act', 'playing baseball for money', ['professional_baseball']]
+
+professional_basketball.n.01 ['noun.act', 'playing basketball for money', ['professional_basketball']]
+
+professional_boxing.n.01 ['noun.act', 'boxing for money', ['professional_boxing']]
+
+professional_football.n.01 ['noun.act', 'football played for pay', ['professional_football']]
+
+professional_golf.n.01 ['noun.act', 'playing golf for money', ['professional_golf']]
+
+professional_tennis.n.01 ['noun.act', 'playing tennis for money', ['professional_tennis']]
+
+professional_wrestling.n.01 ['noun.act', 'wrestling for money', ['professional_wrestling']]

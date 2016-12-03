@@ -1,6 +1,3 @@
-acting.n.01 ['noun.act', 'the performance of a part or role in a drama', ['acting', 'playing', 'playacting', 'performing']]
-act.v.03 ['verb.creation', 'play a role or part', ['act', 'play', 'represent']]
-
 board_game.n.01 ['noun.act', 'a game played on a specially designed board', ['board_game']]
 
 cabaret.n.01 ['noun.artifact', 'a spot that is open late at night and that provides entertainment (as singers or dancers) as well as dancing and food and drink', ['cabaret', 'nightclub', 'night_club', 'club', 'nightspot']]
@@ -43,8 +40,8 @@ electronics.n.01 ['noun.cognition', 'the branch of physics that deals with the e
 
 fashion.n.03 ['noun.cognition', 'the latest and most admired style in clothes and cosmetics and behavior', ['fashion']]
 
-gambling.n.01 ['noun.act', 'the act of playing for stakes in the hope of winning (including the payment of a price for a chance to win a prize)', ['gambling', 'gaming', 'play']]
-bet_on.v.01 ['verb.competition', 'place a bet on', ['bet_on', 'back', 'gage', 'stake', 'game', 'punt']]
+game.n.01 ['noun.act', 'a contest with rules to determine a winner' ['game']]
+game.n.02 ['noun.act', 'a single play of a sport or other contest' ['game']]
 
 genealogy.n.02 ['noun.cognition', 'the study or investigation of ancestry and family history', ['genealogy']]
 
@@ -157,9 +154,6 @@ hike.v.02 ['verb.motion', 'walk a long way, as for pleasure or physical exercise
 riding.n.01 ['noun.act', 'the sport of siting on the back of a horse while controlling its movements', ['riding', 'horseback_riding', 'equitation']]
 riding.n.02 ['noun.act', 'travel by being carried on horseback', ['riding', 'horseback_riding']]
 
-hunt.n.08 ['noun.act', 'the pursuit and killing or capture of wild animals regarded as a sport', ['hunt', 'hunting']]
-hunt.v.01 ['verb.competition', 'pursue for food or sport (as of wild animals)', ['hunt', 'run', 'hunt_down', 'track_down']]
-
 jogging.n.01 ['noun.act', 'running at a jog trot as a form of cardiopulmonary exercise', ['jogging']]
 jog.v.03 ['verb.motion', 'run for exercise', ['jog']]
 
@@ -173,9 +167,6 @@ netball.n.01 ['noun.act', 'a team game that resembles basketball; a soccer ball 
 paintball.n.02 ['noun.act', 'a game that simulates military combat; players on one team try to eliminate players on the opposing team by shooting capsules of paint at them', ['paintball']]
 
 polo.n.02 ['noun.act', 'a game similar to field hockey but played on horseback using long-handled mallets and a wooden ball', ['polo']]
-
-raft.v.01 ['verb.motion', 'transport on a raft', ['raft']]
-raft.v.02 ['verb.motion', 'travel by raft in water', ['raft']]
 
 rappel.v.01 ['verb.motion', 'lower oneself with a rope coiled around the body from a mountainside', ['rappel', 'abseil', 'rope_down']]
 
@@ -203,9 +194,6 @@ glide.n.03 ['noun.act', 'the activity of flying a glider', ['glide', 'gliding', 
 scouting.n.01 ['noun.act', 'exploring in order to gain information', ['scouting', 'exploratory_survey', 'reconnoitering', 'reconnoitring']]
 scout.v.01 ['verb.perception', 'explore, often with the goal of finding something or somebody', ['scout', 'reconnoiter', 'reconnoitre']]
 
-shooting.n.01 ['noun.act', 'the act of firing a projectile', ['shooting', 'shot']]
-shoot.v.01 ['verb.competition', 'hit with a missile from a weapon', ['shoot', 'hit', 'pip']]
-
 shopping.n.01 ['noun.act', 'searching for or buying goods or services', ['shopping']]
 shop.v.01 ['verb.possession', "do one's shopping", ['shop']]
 shop.v.03 ['verb.possession', 'shop around; not necessarily buying', ['shop', 'browse']]
@@ -232,8 +220,6 @@ swim.v.05 ['verb.motion', 'move as if gliding through water', ['swim']]
 
 tae_kwon_do.n.01 ['noun.act', 'a Korean martial art similar to karate', ['tae_kwon_do', 'taekwondo']]
 
-vacation.n.01 ['noun.time', 'leisure time away from work devoted to rest or pleasure', ['vacation', 'holiday']]
-vacation.v.01 ['verb.stative', 'spend or take a vacation', ['vacation', 'holiday']]
 
 walk.n.01 ['noun.act', 'the act of traveling by foot', ['walk', 'walking']]
 walk.v.01 ['verb.motion', "use one's feet to advance; advance by steps", ['walk']]
@@ -256,9 +242,6 @@ box.v.01 ['verb.contact', 'put into a box', ['box', 'package']]
 cheerlead.v.01 ['verb.communication', 'act as a cheerleader in a sports event', ['cheerlead']]
 
 chess.n.02 ['noun.act', "a board game for two players who move their 16 pieces according to specific rules; the object is to checkmate the opponent's king", ['chess', 'chess_game']]
-
-curling.n.01 ['noun.act', 'a game played on ice in which heavy stones with handles are slid toward a target', ['curling']]
-curl.v.05 ['verb.competition', 'play the Scottish game of curling', ['curl']]
 
 darts.n.01 ['noun.act', 'a game in which small pointed missiles are thrown at a dartboard', ['darts']]
 dart.n.01 ['noun.artifact', 'a small narrow pointed missile that is thrown or shot', ['dart']]
@@ -299,7 +282,6 @@ cricket.v.01 ['verb.competition', 'play cricket', ['cricket']]
 
 cycling.n.01 ['noun.act', 'the sport of traveling on a bicycle or motorcycle', ['cycling']]
 bicycle.v.01 ['verb.motion', 'ride a bicycle', ['bicycle', 'cycle', 'bike', 'pedal', 'wheel']]
-
 cycle.v.02 ['verb.motion', 'pass through a cycle', ['cycle']]
 motorbike.v.01 ['verb.motion', 'ride a motorcycle', ['motorbike', 'motorcycle', 'cycle']]
 
@@ -339,15 +321,7 @@ tennis.n.01 ['noun.act', 'a game played with rackets by two or four players who 
 volleyball.n.01 ['noun.act', 'a game in which two teams hit an inflated ball over a high net using their hands', ['volleyball', 'volleyball_game']]
 volleyball.n.02 ['noun.artifact', 'an inflated ball used in playing volleyball', ['volleyball']]
 
-learning.n.01 ['noun.cognition', 'the cognitive process of acquiring skill or knowledge', ['learning', 'acquisition']]
-learn.v.01 ['verb.cognition', 'gain knowledge or skills', ['learn', 'larn', 'acquire']]
-learn.v.04 ['verb.cognition', 'be a student of a certain subject', ['learn', 'study', 'read', 'take']]
-
-teach.v.01 ['verb.communication', 'impart skills or knowledge to', ['teach', 'learn', 'instruct']]
-
 astrology.n.01 ['noun.cognition', 'a pseudoscience claiming divination by the positions of the planets and sun and moon', ['astrology', 'star_divination']]
-
-bird.v.01 ['verb.competition', 'watch and study birds in their natural habitat', ['bird', 'birdwatch']]
 
 meteorology.n.01 ['noun.communication', 'predicting what the weather will be', ['meteorology', 'weather_forecasting']]
 meteorology.n.02 ['noun.cognition', 'the earth science dealing with phenomena of the atmosphere (especially weather)', ['meteorology']]
@@ -355,9 +329,6 @@ meteorology.n.02 ['noun.cognition', 'the earth science dealing with phenomena of
 photography.n.01 ['noun.act', 'the act of taking and printing photographs', ['photography', 'picture_taking']]
 photography.n.02 ['noun.process', 'the process of producing images of objects on photosensitive surfaces', ['photography']]
 photography.n.03 ['noun.act', 'the occupation of taking and printing photographs or making movies', ['photography']]
-
-game.n.01 ['noun.act', 'a contest with rules to determine a winner' ['game']]
-game.n.02 ['noun.act', 'a single play of a sport or other contest' ['game']]
 
 travel.n.01 ['noun.act', 'the act of going from one place to another', ['travel', 'traveling', 'travelling']]
 travel.v.02 ['verb.motion', 'undertake a journey or trip', ['travel', 'journey']]

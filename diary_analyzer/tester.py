@@ -198,7 +198,7 @@ import csv
 #     print()
 # print()
 #
-# for synset in wn.synset('cold_weather.n.01').hyponyms():
+# for synset in wn.synset('shooting.n.01').hyponyms():
 #     print(synset, synset.pos(), synset.offset(), synset.frame_ids(), synset.definition(),
 #           synset.examples(), synset.lexname(), sep=' | ')
 #     for lemma in synset.lemmas():
@@ -207,9 +207,24 @@ import csv
 #     print()
 # print()
 
+def nounify(verb_word):
+    set_of_related_nouns = list()
+    for lemma in wn.lemmas(wn.morphy(verb_word, wn.VERB), pos="v"):
+        for related_form in lemma.derivationally_related_forms():
+            for synset in wn.synsets(related_form.name(), pos=wn.NOUN):
+                # if wn.synset('person.n.01') in synset.closure(lambda s:s.hypernyms()):
+                set_of_related_nouns.append(synset)
+    return set_of_related_nouns
 
+def nounify2(verb_synset):
+    set_of_related_nouns = list()
+    for lemma in verb_synset.lemmas():
+        for related_form in lemma.derivationally_related_forms():
+            for synset in wn.synsets(related_form.name(), pos=wn.NOUN):
+                set_of_related_nouns.append(synset)
+    return set_of_related_nouns
 
-# for synset in wn.synsets('game'):
+# for synset in wn.synsets('milks'):
 #     print(synset, synset.pos(), synset.offset(), synset.frame_ids(), synset.definition(),
 #           synset.examples(), synset.lexname(), sep=' | ')
 #     for lemma in synset.lemmas():
@@ -218,28 +233,49 @@ import csv
 #     print()
 # print()
 
-
-synset = wn.synset('heart.n.08')
-print(synset, synset.pos(), synset.offset(), synset.frame_ids(), synset.definition(),
-      synset.examples(), synset.lexname(), sep=' | ')
-for lemma in synset.lemmas():
-    print('\t', lemma, lemma.name(), lemma.syntactic_marker(), lemma.frame_ids(),
-          lemma.frame_strings(), lemma.count(), sep=' | ')
-print()
-
-for synset in wn.synset('heart.n.08').hypernyms():
-# for synset in wn.synset('side.n.09').hyponyms():
-    print(synset, synset.pos(), synset.offset(), synset.frame_ids(), synset.definition(),
-          synset.examples(), synset.lexname(), sep=' | ')
-    for lemma in synset.lemmas():
-        print('\t', lemma, lemma.name(), lemma.syntactic_marker(), lemma.frame_ids(),
-              lemma.frame_strings(), lemma.count(), sep=' | ')
-    print()
-print()
+# print(nounify('sketch'))
+# print(nounify2(wn.synset('macrame.v.01')))
+# print(nounify2(wn.synset('sculpt.v.01')))
 
 
-# pprint(tagger.tag_pos_doc("I never have been had any pen. I can't find it anywhere. I can find it nowhere."))
+# synset = wn.synset('neck.n.03')
+# print(synset, synset.pos(), synset.offset(), synset.frame_ids(), synset.definition(),
+#       synset.examples(), synset.lexname(), sep=' | ')
+# for lemma in synset.lemmas():
+#     print('\t', lemma, lemma.name(), lemma.syntactic_marker(), lemma.frame_ids(),
+#           lemma.frame_strings(), lemma.count(), sep=' | ')
+# print()
+#
+# for synset in wn.synset('neck.n.03').hypernyms():
+# for synset in wn.synset('meat.n.01').hyponyms():
+#     print(synset, synset.pos(), synset.offset(), synset.frame_ids(), synset.definition(),
+#           synset.examples(), synset.lexname(), sep=' | ')
+#     # for lemma in synset.lemmas():
+#     #     print('\t', lemma, lemma.name(), lemma.syntactic_marker(), lemma.frame_ids(),
+#     #           lemma.frame_strings(), lemma.count(), sep=' | ')
+#     # print()
+# print()
 
+# synset_u = wn.synset('egg.n.02')
+# synset_v = wn.synset('juice.n.01')
+# distance = synset_u.shortest_path_distance(synset_v,
+#         simulate_root=True and synset_u._needs_root())
+# print(distance)
+# pprint(tagger.tag_pos_doc("That puzzles is so fun for us."))
+# pprint(tagger.tag_pos_doc("The puzzle makes us feel excited."))
+# pprint(tagger.tag_pos_doc("I like apple and banana."))
+# pprint(tagger.tag_pos_doc("I like apple and hate grape."))
+# pprint(tagger.tag_pos_doc("I like apple which is well aged."))
+# pprint(tagger.tag_pos_doc("I like apple but I don't like pineapple."))
+# pprint(tagger.tag_pos_doc("I like soccer to enhance friendship."))
+# pprint(tagger.tag_pos_doc("The apple and banana was very delicious, but grape wasn't."))
+# pprint(tagger.tag_pos_doc("The banana was really good to me."))
+# pprint(tagger.tag_pos_doc("Definitely this bread looks delicious."))
+# pprint(tagger.tag_pos_doc("I know what you want."))
+pprint(tagger.tag_pos_doc("What is this very delicious food?"))
+# pprint(tagger.tag_pos_doc("I was repeatedly molested and raped by my stepfather, until I became pregnant when I was sixteen."))
+# pprint(tagger.tag_pos_doc("But recently, I've discovered that what many of us think of as great leardership doesn not work when it comes to leading innovation."))
 
 # for i in range(0, 10)[::-1]:
 #     print(i)
+

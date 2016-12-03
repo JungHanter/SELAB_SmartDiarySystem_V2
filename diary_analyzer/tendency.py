@@ -345,7 +345,6 @@ class TendencyAnalyzer(object):
                 for idx in range(1, len(extracted_words)):
                     print('      ', extracted_words[idx])
             print()
-        return
 
         # step 3
         print("\n##### Step 3. #####")
@@ -511,11 +510,10 @@ class TendencyAnalyzer(object):
                             # print(search_word_comp_list) ##### REMOVE
                             found_synset_list \
                                 = self._find_comp_synsets_in_wordsets(search_word_comp_list, plural)
-                            print(search_word_comp_list, found_synset_list)
                             if found_synset_list and prev_word_idx != -1:
                                 for found_synset in found_synset_list:
-                                    identified_sent_dict[sent_idx].append(found_synset +
-                                      (prev_word_idx, 'n', len(search_word_comp_list)))
+                                    identified_sent_dict[sent_idx].append(found_synset + (prev_word_idx, 'n',
+                                                                                          len(search_word_comp_list)))
                                 is_found = True
                                 break
                             else:
@@ -538,11 +536,10 @@ class TendencyAnalyzer(object):
                                 # print(search_word_comp_list) ##### REMOVE
                                 found_synset_list \
                                     = self._find_comp_synsets_in_wordsets(search_word_comp_list, plural)
-                                print(search_word_comp_list, found_synset_list)
                                 if found_synset_list and prev_word_idx != -1:
                                     for found_synset in found_synset_list:
-                                        identified_sent_dict[sent_idx].append(found_synset +
-                                            (prev_word_idx, 'n', len(search_word_comp_list)))
+                                        identified_sent_dict[sent_idx].append(found_synset + (prev_word_idx, 'n',
+                                                                                          len(search_word_comp_list)))
                                     is_found = True
                                     break
                                 else:
@@ -565,11 +562,10 @@ class TendencyAnalyzer(object):
                                 # print(search_word_comp_list) ##### REMOVE
                                 found_synset_list \
                                     = self._find_comp_synsets_in_wordsets(search_word_comp_list, plural)
-                                print(search_word_comp_list, found_synset_list)
                                 if found_synset_list and prev_word_idx != -1:
                                     for found_synset in found_synset_list:
-                                        identified_sent_dict[sent_idx].append(found_synset +
-                                            (prev_word_idx, 'n', len(search_word_comp_list)))
+                                        identified_sent_dict[sent_idx].append(found_synset + (prev_word_idx, 'n',
+                                                                                          len(search_word_comp_list)))
                                     break
                                 else:
                                     # find next compound word
@@ -590,12 +586,14 @@ class TendencyAnalyzer(object):
 
                     elif word[TAG_WORD_POS].startswith('NN') and \
                             ('subj' in word[TAG_WORD_ROLE] or 'obj' in word[TAG_WORD_ROLE] or
-                                word[TAG_WORD_ROLE] == 'conj'):
+                                 word[TAG_WORD_ROLE is 'conj']):
                         # check the noun is plural
                         plural = False
                         if word[TAG_WORD_POS].endswith('S'):
                             plural = True
                         prev_word_comp_list.append((word[TAG_WORD], word_idx, plural, 'n'))
+
+                        ##this
 
                     # For the compound words with JJ
                     elif (word[TAG_WORD_POS].startswith('JJ') and word[TAG_WORD_ROLE] == 'amod') or \
@@ -696,9 +694,12 @@ class TendencyAnalyzer(object):
                     now_idx = entity_idx
                     while True:
                         now_entity = tagged_sen[now_idx]
+                        print(now_entity)
                         if now_entity[TAG_DEPENDENCY] == None:
                             break
                         dep_idx = int(now_entity[TAG_DEPENDENCY]) - 1
+                        if now_idx == dep_idx:
+                            break
                         if dep_idx in main_entities_idxs:
                             entities_dep_dict[dep_idx].append(entity_idx)
                             break
@@ -1731,13 +1732,13 @@ if __name__ == "__main__":
     # tend_analyzer.analyze_diary(jeniffer_diaries, [('exercise', 'activity')])
     # tend_analyzer.analyze_diary(jeniffer_diaries, [('hobby', 'activity')])
     #
-    # smiley_diaries = list()
-    # for i in range(0, 50):
-    #     diary_tags = tagger.pickle_to_tags("pickles/smiley" + str(i) + ".pkl")
-    #     smiley_diaries.append(diary_tags[1])
-    # print("load smiley diaries done.")
-    # tend_analyzer.analyze_diary(smiley_diaries,
-    #         [('food', 'thing'), ('hobby', 'activity'), ('sport', 'activity')])
+    smiley_diaries = list()
+    for i in range(0, 50):
+        diary_tags = tagger.pickle_to_tags("pickles/smiley" + str(i) + ".pkl")
+        smiley_diaries.append(diary_tags[1])
+    print("load smiley diaries done.")
+    tend_analyzer.analyze_diary(smiley_diaries,
+            [('food', 'thing'), ('hobby', 'activity'), ('sport', 'activity')])
     # tend_analyzer.analyze_diary(smiley_diaries, [('food', 'thing')])
 
     # d_diaries = list()
@@ -1748,12 +1749,12 @@ if __name__ == "__main__":
     # tend_analyzer.analyze_diary(d_diaries,
     #         [('food', 'thing'), ('hobby', 'activity'), ('sport', 'activity')])
 
-    elize_diaries = list()
-    for i in range(1, 5):
-        diary_tags = tagger.pickle_to_tags("diary_pickles/eliz_" + str(i) + ".pkl")
-        elize_diaries.append(diary_tags[1])
-    print("load eliz diaries done.")
-    tend_analyzer.analyze_diary(elize_diaries, [('food', 'thing')])
+    # elize_diaries = list()
+    # for i in range(1, 5):
+    #     diary_tags = tagger.pickle_to_tags("diary_pickles/eliz_" + str(i) + ".pkl")
+    #     elize_diaries.append(diary_tags[1])
+    # print("load eliz diaries done.")
+    # tend_analyzer.analyze_diary(elize_diaries, [('food', 'thing')])
 
     # jeniffer_2015_diaries = list()
     # for i in range(0, 228):
