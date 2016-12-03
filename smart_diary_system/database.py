@@ -33,7 +33,7 @@ class UserManager(DBManager):
         """
         DBManager.__init__(self)
 
-    def create_user(self, user_id, password, name, birthday, gender, email, phone):
+    def create_user(self, user_id, password, name, birthday, gender, email, phone, auth_key):
         """Adding new user to SD DB
         Usually, this method be called
         When User register to SD
@@ -50,12 +50,12 @@ class UserManager(DBManager):
 
         assert self.connected
         query_for_create_user = "INSERT INTO user " \
-                             "(user_id, password, name, birthday, gender, email, phone) " \
-                             "VALUES (%s, %s, %s, %s, %s, %s ,%s)"
+                             "(user_id, password, name, birthday, gender, email, phone, auth_key) " \
+                             "VALUES (%s, %s, %s, %s, %s, %s ,%s, %s)"
         try:
             with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
                 cur.execute(query_for_create_user,
-                            (user_id, password, name, birthday, gender, email, phone))
+                            (user_id, password, name, birthday, gender, email, phone, auth_key))
                 self.conn.commit()
                 # END : for calculating execution time
                 stop = timeit.default_timer()
@@ -68,6 +68,10 @@ class UserManager(DBManager):
             num, error_msg = exp.args
             logger.error("ERROR NO : %s", num)
             logger.error("ERROR MSG : %s", error_msg)
+            if 'PRIMARY' in error_msg:
+                return 'PK'
+            if 'email_UNIQUE' in error_msg:
+                return 'EMAIL'
             return False
 
     def get_user(self, user_id):  # for retrieving user data
@@ -96,7 +100,37 @@ class UserManager(DBManager):
             logger.error("ERROR NO : %s", num)
             logger.error("ERROR MSG : %s", error_msg)
 
-    def update_user(self, user_id, name, password, gender, email, phone, birthday):
+    def get_id_pw_by_email(self, email):  # for retrieving user data
+        """retrieving new user from H.I.S DB
+        Usually, this method be called
+        When User Information need to be display
+
+        :param user_id: id of user of Retrieving Target
+        :rtype: dict contains user's inforamtion
+        """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+        assert self.connected  # Connection Check Flag
+        query_for_get_user = "SELECT user_id, password FROM user WHERE email = %s"
+        try:
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                cur.execute(query_for_get_user, email)
+                # END : for calculating execution time
+                stop = timeit.default_timer()
+                logger.debug("DB : get_id_pw_by_email() - Execution Time : %s", stop - start)
+                result = cur.fetchone()
+                if result:
+                    return result
+                else:
+                    return None
+        except Exception as exp:
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At get_id_pw_by_email()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+
+    def update_user(self, user_id, name, password, gender, phone, birthday):
         """retrieving new user from H.I.S DB
             Usually, this method be called
             When User Information need to be display
@@ -108,11 +142,11 @@ class UserManager(DBManager):
         start = timeit.default_timer()
         assert self.connected  # Connection Check Flag
         query_for_update_user = "UPDATE user SET name = %s, birthday = %s, gender = %s, password = %s," \
-                                " email = %s, phone = %s WHERE user_id = %s"
+                                " phone = %s WHERE user_id = %s"
         try:
             with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
                 affected_rows = cur.execute(query_for_update_user, (name, birthday,
-                                                    gender, password, email, phone,
+                                                    gender, password, phone,
                                                     user_id))
                 self.conn.commit()
                 # END : for calculating execution time
@@ -127,6 +161,40 @@ class UserManager(DBManager):
             num, error_msg = exp.args
             logger.error("ERROR NO : %s", num)
             logger.error("ERROR MSG : %s", error_msg)
+
+    def update_email(self, user_id, password, email, auth_key):
+        """retrieving new user from H.I.S DB
+            Usually, this method be called
+            When User Information need to be display
+
+            :param user_id: id of user of Retrieving Target
+            :rtype: dict contains user's inforamtion
+            """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+        assert self.connected  # Connection Check Flag
+        query_for_update_user = "UPDATE user SET auth_key = %s, email = %s WHERE user_id = %s AND password = %s "
+        try:
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                affected_rows = cur.execute(query_for_update_user, (auth_key, email, user_id, password))
+                self.conn.commit()
+                # END : for calculating execution time
+                stop = timeit.default_timer()
+                logger.debug("DB : update_user() - Execution Time : %s", stop - start)
+                logger.debug("DB : AFFECTED ROWS : %s rows", affected_rows)
+                if affected_rows == 1:
+                    return True
+                else:
+                    return False
+
+
+        except Exception as exp:
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At update_user()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+            return None
 
     def delete_user(self, user_id):
         """retrieving new user from H.I.S DB
@@ -148,7 +216,10 @@ class UserManager(DBManager):
                 stop = timeit.default_timer()
                 logger.debug("DB : delete_user() - Execution Time : %s", stop - start)
                 logger.debug("DB : AFFECTED ROWS : %s rows", affected_rows)
-                return True
+                if affected_rows == 1:
+                    return True
+                else:
+                    return False
 
         except Exception as exp:
             logger.error(">>>MYSQL ERROR<<<")
@@ -157,6 +228,41 @@ class UserManager(DBManager):
             logger.error("ERROR NO : %s", num)
             logger.error("ERROR MSG : %s", error_msg)
             return False
+
+    def auth_user_mail(self, auth_key):
+        """retrieving new user from H.I.S DB
+        Usually, this method be called
+        When User Information need to be display
+
+        :param user_id: id of user of Retrieving Target
+        :rtype: dict contains user's inforamtion
+        """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+        assert self.connected  # Connection Check Flag
+        query_for_select = "SELECT user_id, email FROM user WHERE auth_key = %s"
+        query_for_update_user = "UPDATE user SET auth_key = 0 WHERE auth_key = %s"
+        try:
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                cur.execute(query_for_select, auth_key)
+                result = cur.fetchone()
+                affected_rows = cur.execute(query_for_update_user, auth_key)
+                self.conn.commit()
+                # END : for calculating execution time
+                stop = timeit.default_timer()
+                logger.debug("DB : update_user() - Execution Time : %s", stop - start)
+                logger.debug("DB : AFFECTED ROWS : %s rows", affected_rows)
+                if affected_rows == 1:
+                    return result
+                else:
+                    return False
+
+        except Exception as exp:
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At update_user()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
 
 
 class AudioDiaryManager(DBManager):

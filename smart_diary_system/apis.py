@@ -10,17 +10,21 @@ from diary_analyzer import tagger
 from diary_analyzer import lifestyles
 import pprint
 import operator
+import random
 
 # from diary_nlp import nlp_en
 from langdetect import detect
 import os
 import shutil
 import threading
+import uuid
+from django.template import loader
+from django.shortcuts import render
 
 from django.http import QueryDict
 from django.conf import settings
 from django.http import HttpResponse
-
+from django.core.mail import send_mail
 
 logging.basicConfig(
     format="[%(name)s][%(asctime)s] %(message)s",
@@ -31,7 +35,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(level=logging.DEBUG)
 
 salt = 'lovejesus'
-
+email_auth_url = 'http://203.253.23.7:8000/auth?auth_key='
 
 @csrf_exempt
 def manage_user(request, option=None):
@@ -52,22 +56,40 @@ def manage_user(request, option=None):
                     # Encrypting Password
                     cipher = security.AESCipher(salt)
                     enc = cipher.encrypt(data.get('password'))
+
+                    # generate auth key
+                    auth_key = uuid.uuid4().hex
+
                     # DB Transaction
                     result = user_manager.create_user(user_id=data.get('user_id'), password=enc, name=data.get('name'),
                                                    birthday=data.get('birthday'), gender=data.get('gender'),
-                                                   email=data.get('email'), phone=data.get('phone'))
+                                                   email=data.get('email'), phone=data.get('phone'), auth_key=auth_key)
 
-
-                    if result:
+                    logger.debug('CREATE USER RESULT : %s', result)
+                    if (result != 'PK') and (result != 'EMAIL') and result:
+                        # Making Uploading Folders
                         ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
                         os.mkdir(os.path.join(ROOT_DIR, 'uploaded', str(data.get('user_id'))))
                         os.mkdir(os.path.join(ROOT_DIR, 'pickles', str(data.get('user_id'))))
+
+                        # Sending Authorization Email to User's Email
+                        auth_email_th = threading.Thread(target=send_auth_email, args=(auth_key, data.get('email')))
+                        auth_email_th.start()
+
+
                         return JsonResponse({'register': True})
+                    elif result == 'PK':
+                        logger.debug("SIGN UP FAILED (EXISTED ID) : %s", data.get('user_id'))
+                        return JsonResponse({'register': False, 'reason': 'EXISTED ID'})
+                    elif result == 'EMAIL':
+                        logger.debug("SIGN UP FAILED (EXISTED EMAIL) : %s", data.get('email'))
+                        return JsonResponse({'register': False, 'reason': 'EXISTED EMAIL'})
                     else:
-                        return JsonResponse({'register': False})
+                        logger.debug("SIGN UP FAILED (INTERNAL SERVER ERROR) : %s", data)
+                        return JsonResponse({'register': False, 'reason': 'INTERNAL SERVER ERROR'})
                 except Exception as exp:
                     logger.exception(exp)
-                    return JsonResponse({'register': False})
+                    return JsonResponse({'register': False, 'reason': 'INTERNAL SERVER ERROR'})
 
             elif option == 'login':  # Login
                 try:
@@ -80,7 +102,8 @@ def manage_user(request, option=None):
                     # USER_ID CHECK from DB
                     user_info = user_manager.get_user(data.get('user_id'))
                     if user_info is None:
-                        return JsonResponse({'login': False})
+                        logger.debug("LOGIN FAILED (UNREGISTERED ID) : %s", data.get('user_id'))
+                        return JsonResponse({'login': False, 'reason': 'UNREGISTERED ID'})
                     else:
                         # PASSWORD(encrypted) from DB
                         cipher = security.AESCipher(salt)
@@ -88,19 +111,68 @@ def manage_user(request, option=None):
 
                         if password_from_user is not None:
                             if password_from_user == plain:
-                                tag_manager = database.TagManager()
-                                tag_list = tag_manager.retrieve_tag_by_user_id(user_info['user_id'])
-                                return JsonResponse({'login': True, 'name': user_info['name'],
-                                                     'birthday': user_info['birthday'], 'gender': user_info['gender'],
-                                                     'email': user_info['email'], 'phone': user_info['phone'], 'tag_list': tag_list
-                                                     })
+                                if user_info['auth_key'] == '0':
+                                    tag_manager = database.TagManager()
+                                    tag_list = tag_manager.retrieve_tag_by_user_id(user_info['user_id'])
+                                    logger.debug("LOGIN SUCCESS : %s", data.get('user_id'))
+                                    return JsonResponse({'login': True, 'name': user_info['name'],
+                                                         'birthday': user_info['birthday'], 'gender': user_info['gender'],
+                                                         'email': user_info['email'], 'phone': user_info['phone'], 'tag_list': tag_list
+                                                         })
+                                else:
+                                    logger.debug("LOGIN FAILED (EMAIL AUTH) : %s", data.get('user_id'))
+                                    return JsonResponse({'login': False, 'reason': 'EMAIL AUTH REQUIRED', 'email': user_info['email']})
                             else:
-                                return JsonResponse({'login': False})
+                                logger.debug("LOGIN FAILED (MISMATCH PW) : %s", data.get('user_id'))
+                                return JsonResponse({'login': False, 'reason': 'MISMATCH PW'} )
                         else:
-                            return JsonResponse({'login': False})
+                            logger.debug("LOGIN FAILED (UNREGISTERD ID) : %s", data.get('user_id'))
+                            return JsonResponse({'login': False, 'reason': 'INVALID PW'})
                 except Exception as exp:
                     logger.exception(exp)
                     return JsonResponse({'login': False})
+
+            elif option == 'recovery':
+                try:
+                    data = json.loads(request.body.decode('utf-8'))
+                    logger.debug("INPUT %s", data)
+                    user_manager = database.UserManager()
+                    email = data.get('email')
+                    result = user_manager.get_id_pw_by_email(email)
+                    if result:
+                        cipher = security.AESCipher(salt)
+                        plain = cipher.decrypt(result['password'])
+
+                        email_th = threading.Thread(target=send_recovery_email, args=(result['user_id'], plain, email))
+                        email_th.start()
+
+                        return JsonResponse({'recovery': True})
+                    else:
+                        return JsonResponse({'recovery': False, 'reason': 'NOT REGISTERED'})
+                except Exception as exp:
+                    logger.exception(exp)
+                    return JsonResponse({'recovery': False, 'reason': 'INTERNAL SERVER ERROR'})
+
+            elif option == 'withdraw':
+                try:
+                    data = json.loads(request.body.decode('utf-8'))
+                    logger.debug("INPUT %s", data)
+                    user_manager = database.UserManager()
+                    user_id = data['user_id']
+                    result = user_manager.delete_user(user_id=user_id)
+
+                    if result:
+                        # delete Files
+                        ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+                        shutil.rmtree(os.path.join(ROOT_DIR, 'uploaded', user_id))
+                        shutil.rmtree(os.path.join(ROOT_DIR, 'pickles', user_id))
+                        return JsonResponse({'delete_user': True})
+                    else:
+                        return JsonResponse({'delete_user': False})
+
+                except Exception as exp:
+                    logger.exception(exp)
+                    return JsonResponse({'delete_user': False})
 
     if request.method == 'PUT':
         if option is None:  # Update User Info
@@ -116,7 +188,7 @@ def manage_user(request, option=None):
                 # DB Transaction
                 user_manager = database.UserManager()
                 user_manager.update_user(user_id=put.get('user_id'), name=put.get('name'), gender=put.get('gender'),
-                                         birthday=put.get('birthday'), password=enc, email=put.get('email'),
+                                         birthday=put.get('birthday'), password=enc,
                                          phone=put.get('phone'))
                 return JsonResponse({'update_user': True})
 
@@ -124,29 +196,60 @@ def manage_user(request, option=None):
                 logger.exception(exp)
                 return JsonResponse({'update_user': False})
 
-    if request.method == 'DELETE':
-        if option is None:
+        elif option == 'email':  # Update User Info
             try:
-                delete = json.loads(request.body.decode('utf-8'))
-                logger.debug("INPUT : %s", delete)
+                # Update info from APP
+                put = json.loads(request.body.decode('utf-8'))
+                logger.debug("INPUT : %s", put)
 
+                # Encrypting Password
+                cipher = security.AESCipher(salt)
+                enc = cipher.encrypt(put.get('password'))
+
+                # generate auth key
+                auth_key = uuid.uuid4().hex
+
+                # DB Transaction
                 user_manager = database.UserManager()
-                user_id = delete.get('user_id')
-                result = user_manager.delete_user(user_id=user_id)
-
-                # delete Files
-                ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-                shutil.rmtree(os.path.join(ROOT_DIR, 'uploaded', user_id))
-                shutil.rmtree(os.path.join(ROOT_DIR, 'pickles', user_id))
+                result = user_manager.update_email(put.get('user_id'), enc, put.get('email'), auth_key)
 
                 if result:
-                    return JsonResponse({'delete_user': True})
+                    # Sending Authorization Email to User's Email
+                    auth_email_th = threading.Thread(target=send_auth_email, args=(auth_key, put.get('email')))
+                    auth_email_th.start()
+
+                    return JsonResponse({'update_email': True})
+                elif result is None:
+                    return JsonResponse({'update_email': False, 'reason': 'EXIST EMAIL'})
                 else:
-                    return JsonResponse({'delete_user': False})
+                    return JsonResponse({'update_email': False, 'reason': 'USER NOT FOUND'})
 
             except Exception as exp:
                 logger.exception(exp)
-                return JsonResponse({'delete_user': False})
+                return JsonResponse({'update_email': False})
+
+
+@csrf_exempt
+def auth_email(request):
+    if request.method == 'GET':
+        try:
+            data = json.loads(json.dumps(request.GET))
+            logger.debug("INPUT : %s", data)
+
+            user_manager = database.UserManager()
+            result = user_manager.auth_user_mail(data['auth_key'])
+
+            if result:
+                logger.debug("EMAIL AUTH SUCCESSFUL : %s, %s", result['user_id'], result['email'])
+                return render(request, 'auth_success.html', {'user_id': result['user_id'], 'email': result['email']}, content_type='text/html')
+            else:
+                logger.debug("EMAIL AUTH FAILED")
+                return render(request, 'auth_fail.html', content_type='text/html')
+
+        except Exception as exp:
+            logger.exception(exp)
+            logger.debug("RETURN : FALSE - EXCEPTION")
+            return JsonResponse({'retrieve_diary': False})
 
 
 @csrf_exempt
@@ -312,33 +415,6 @@ def manage_diary(request, option=None):
         except Exception as exp:
             logger.exception(exp)
             return JsonResponse({'update_diary': False})
-
-    # elif request.method == 'DELETE':  # delete diary
-    #     try:
-    #         # input From APP
-    #         data = json.loads(request.body.decode('utf-8'))
-    #         logger.debug("INPUT : %s", data)
-    #         audio_diary_id = data.get('audio_diary_id')
-    #         user_id = data.get('user_id')
-    #
-    #         # Delete Diary
-    #         audio_diary_manager = database.AudioDiaryManager()
-    #         audio_diary_manager.delete_audio_diary(audio_diary_id)
-    #
-    #         # Delete Diary Attachment Files
-    #         ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-    #         audio_path = os.path.join(ROOT_DIR, 'uploaded', user_id, str(audio_diary_id))
-    #         pickle_path = os.path.join(ROOT_DIR, 'pickles', user_id, str(audio_diary_id))
-    #         if os.path.isdir(audio_path):
-    #             shutil.rmtree(audio_path)
-    #         if os.path.isdir(pickle_path):
-    #             shutil.rmtree(pickle_path)
-    #
-    #         return JsonResponse({'delete_diary': True})
-    #
-    #     except Exception as exp:
-    #         logger.exception(exp)
-    #         return JsonResponse({'delete_diary': False})
 
 
 @csrf_exempt
@@ -844,6 +920,31 @@ def pickling(user_id, audio_diary_id, content):
         logger.debug("PICKLE : FAIL")
         audio_diary_manager.update_pickle_state(audio_diary_id, 0)
         return False
+
+
+def send_auth_email(auth_key, email):
+    start = timeit.default_timer()
+    logger.debug("SENDING AUTH E-MAIL TO : %s", email)
+    auth_link = email_auth_url + auth_key
+    html_message = loader.render_to_string('auth_email_form.html', {
+            'auth_link': auth_link
+        }
+    )
+    send_mail('Authorization Email for Smart Diary', '', 'test@abc.com', [email], html_message=html_message)
+    stop = timeit.default_timer()
+    logger.debug("SENDING AUTH E-MAIL : SUCCESSFUL - Execution Time : %s", stop - start)
+
+
+def send_recovery_email(user_id, pw, email):
+    start = timeit.default_timer()
+    html_message = loader.render_to_string('recovery_email_form.html', {
+        'user_id': user_id,
+        'password': pw
+    })
+    logger.debug("SENDING RECOVER E-MAIL TO : %s", email)
+    send_mail('Recovery Email for Smart Diary', '', 'test@abc.com', [email], html_message=html_message)
+    stop = timeit.default_timer()
+    logger.debug("SENDING RECOVER E-MAIL : SUCCESSFUL - Execution Time : %s", stop - start)
 
 
 def parse_lifetype(lifetype):

@@ -32,4 +32,5 @@ urlpatterns = [
     url(r'^api/analyze/(?P<option>\w+)$', apis.manage_analyze),
     url(r'^api/upload$', apis.uploading_test),
     url(r'^api/download$', apis.download),
+    url(r'^auth$', apis.auth_email),
 ]
