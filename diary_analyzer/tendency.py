@@ -345,6 +345,7 @@ class TendencyAnalyzer(object):
                 for idx in range(1, len(extracted_words)):
                     print('      ', extracted_words[idx])
             print()
+        return
 
         # step 3
         print("\n##### Step 3. #####")
@@ -510,9 +511,11 @@ class TendencyAnalyzer(object):
                             # print(search_word_comp_list) ##### REMOVE
                             found_synset_list \
                                 = self._find_comp_synsets_in_wordsets(search_word_comp_list, plural)
+                            print(search_word_comp_list, found_synset_list)
                             if found_synset_list and prev_word_idx != -1:
                                 for found_synset in found_synset_list:
-                                    identified_sent_dict[sent_idx].append(found_synset + (prev_word_idx, 'n'))
+                                    identified_sent_dict[sent_idx].append(found_synset +
+                                      (prev_word_idx, 'n', len(search_word_comp_list)))
                                 is_found = True
                                 break
                             else:
@@ -535,9 +538,11 @@ class TendencyAnalyzer(object):
                                 # print(search_word_comp_list) ##### REMOVE
                                 found_synset_list \
                                     = self._find_comp_synsets_in_wordsets(search_word_comp_list, plural)
+                                print(search_word_comp_list, found_synset_list)
                                 if found_synset_list and prev_word_idx != -1:
                                     for found_synset in found_synset_list:
-                                        identified_sent_dict[sent_idx].append(found_synset + (prev_word_idx, 'n'))
+                                        identified_sent_dict[sent_idx].append(found_synset +
+                                            (prev_word_idx, 'n', len(search_word_comp_list)))
                                     is_found = True
                                     break
                                 else:
@@ -560,9 +565,11 @@ class TendencyAnalyzer(object):
                                 # print(search_word_comp_list) ##### REMOVE
                                 found_synset_list \
                                     = self._find_comp_synsets_in_wordsets(search_word_comp_list, plural)
+                                print(search_word_comp_list, found_synset_list)
                                 if found_synset_list and prev_word_idx != -1:
                                     for found_synset in found_synset_list:
-                                        identified_sent_dict[sent_idx].append(found_synset + (prev_word_idx, 'n'))
+                                        identified_sent_dict[sent_idx].append(found_synset +
+                                            (prev_word_idx, 'n', len(search_word_comp_list)))
                                     break
                                 else:
                                     # find next compound word
@@ -578,19 +585,17 @@ class TendencyAnalyzer(object):
                         found_synset_list \
                             = self._find_synsets_in_wordsets([word[TAG_WORD]])
                         for found_synset in found_synset_list:
-                            identified_sent_dict[sent_idx].append(found_synset + (word_idx, 'v'))
+                            identified_sent_dict[sent_idx].append(found_synset + (word_idx, 'v', 0))
                         prev_word_comp_list.clear()
 
                     elif word[TAG_WORD_POS].startswith('NN') and \
                             ('subj' in word[TAG_WORD_ROLE] or 'obj' in word[TAG_WORD_ROLE] or
-                                 word[TAG_WORD_ROLE is 'conj']):
+                                word[TAG_WORD_ROLE] == 'conj'):
                         # check the noun is plural
                         plural = False
                         if word[TAG_WORD_POS].endswith('S'):
                             plural = True
                         prev_word_comp_list.append((word[TAG_WORD], word_idx, plural, 'n'))
-
-                        ##this
 
                     # For the compound words with JJ
                     elif (word[TAG_WORD_POS].startswith('JJ') and word[TAG_WORD_ROLE] == 'amod') or \
@@ -601,34 +606,28 @@ class TendencyAnalyzer(object):
     ###############################################################################
     # Step 3. Computing Tendency Scores of Things and Activities in Each Diary    #
     ###############################################################################
-    def _compute_tend_scores(self, diary_sent_list, identified_sent_dict, diary_idx=None):
-        scores_pref = dict()
-        scores_pref_sent = defaultdict(lambda: {'score': 0.0, 'count': 0, 'type': None})
+    def _compute_tend_scores(self, diary_sen_list, identified_sen_dict, diary_idx=None):
+        tend_score_counts = defaultdict(lambda: {'sum': 0.0, 'count': 0})
+        ta_types = dict()
+        tend_scores = defaultdict(lambda: {'score': 0.0, 'type': 0})
 
-        # analyze sentence to compute preference score
-        for sent_idx, identified_info_list in identified_sent_dict.items():
-            tagged_sent = diary_sent_list[sent_idx]
+        for sen_idx, identified_info_list in identified_sen_dict.items():
+            tagged_sen = diary_sen_list[sen_idx]
 
-            is_sent_mine = False  # 'I' is subject of sentence
-            is_sent_we = False # 'We'
-            is_sent_subj = False  # the thing or activity is subject of sentence
-            is_sent_neg = False  # the sentence is negative
+            identified_words = defaultdict(lambda: {'freq': 0.0})
 
-            weights_word = defaultdict(lambda: {'type': None, 'weight': 0.0})
-            weight_sent = 0  # weight of sentiment words
-            count_sent = 0  # the number of sentiment words
-            adverb_neg = {'score': 0.0, 'count': 0}
-            adverb_pos = {'score': 0.0, 'count': 0}
-            modifiers_word = defaultdict(lambda: {'score': 0.0, 'count': 0, 'neg': False,
-                                                  'adverb_neg': {'score': 0.0, 'count': 0},
-                                                  'adverb_pos': {'score': 0.0, 'count': 0}})
+            adv_mod_pref = defaultdict(lambda: {'sum': 0.0, 'count': 0, 'score': 0})
+            verb_pref = defaultdict(lambda: {'sum': 0.0, 'count': 0})
+            mod_pref = defaultdict(lambda: {'sum': 0.0, 'count': 0})
+            sen_pref = defaultdict(lambda: {'sum': 0.0, 'count': 0})
+            main_ta_dict = defaultdict(lambda: {'is_subj': False, 'is_mine': False, 'is_neg': False,
+                                           'is_we': False, 'ta_list': list()})
 
             # indices for identified word
+            identified_word_dict = dict()
             identified_word_idxs = list()
+            identified_comp_word_idxs = list()
             for identified_info in identified_info_list:
-                # add index of identified word
-                identified_word_idxs.append(identified_info[3])
-
                 # compute word scores depending on the frequency
                 identified_synset = identified_info[0]
                 word_count = self._count_word_in_corpus(identified_info[1],
@@ -643,92 +642,153 @@ class TendencyAnalyzer(object):
                 if count_sum == 0 or count_for_synset == 0:
                     count_sum = 2
                     count_for_synset = 1
-                word_freq_weight = count_for_synset / count_sum
+                word_freq = count_for_synset / count_sum
                 synset_name = identified_synset.name()
-                weights_word[synset_name]['weight'] = word_freq_weight \
-                    if word_freq_weight > weights_word[synset_name]['weight'] \
-                    else weights_word[synset_name]['weight']
-                weights_word[synset_name]['type'] = identified_info[2]
-                weights_word[synset_name]['idx'] = identified_info[3]
+                identified_words[synset_name]['freq'] = word_freq \
+                    if word_freq > identified_words[synset_name]['freq'] \
+                    else identified_words[synset_name]['freq']
+                identified_words[synset_name]['type'] = identified_info[2]
+                identified_words[synset_name]['idx'] = identified_info[3]
 
-            # print('identified_word_idx', identified_word_idxs)
+                identified_word_dict[identified_info[3]] = identified_info
+                if synset_name not in ta_types.keys():
+                    ta_types[synset_name] = identified_info[2]
 
-            # identify roles, figure out negative, and calculate the degree of sentiment
-            for word_idx in range(0, len(tagged_sent)):
-                word = tagged_sent[word_idx]
+                # add index of identified word (start 0)
+                identified_word_idxs.append(identified_info[3])
+                if identified_info[5] > 1:  # num of words is more than 2
+                    for i in range (1, identified_info[5]):
+                        identified_comp_word_idxs.append(identified_info[3]-i)
 
-                # if already identified word
-                if word_idx in identified_word_idxs:
-                    # check the subject of sentence is the identified word
-                    if 'subj' in word[TAG_WORD_ROLE]:
-                        is_sent_subj = True
+            # identify root, conj of root, clause
+            main_entities_idxs = list()
+            root_idx = -1
+            for entity_idx in range(0, len(tagged_sen)):
+                entity = tagged_sen[entity_idx]
+                if entity[TAG_WORD_ROLE] == 'root':     # root
+                    main_entities_idxs.append(entity_idx)
+                    root_idx = entity_idx
+                    pass
+                elif entity[TAG_WORD_ROLE] == 'conj':
+                    # conj for root
+                    if tagged_sen[int(entity[TAG_DEPENDENCY])-1][TAG_WORD_ROLE] == 'root':
+                        main_entities_idxs.append(entity_idx)
+                        pass
+                elif entity[TAG_WORD_ROLE] == 'ccomp':
+                    # clausal complement (ex, that clause)
+                    if tagged_sen[int(entity[TAG_DEPENDENCY])-1][TAG_WORD_ROLE] == 'root':
+                        main_entities_idxs.append(entity_idx)
+                        pass
+                elif entity[TAG_WORD_ROLE] == 'advcl':
+                    # adverb clause (ex, when clause)
+                    if tagged_sen[int(entity[TAG_DEPENDENCY])-1][TAG_WORD_ROLE] == 'root':
+                        main_entities_idxs.append(entity_idx)
+                        pass
+
+            # find words depend on which main entities
+            entities_dep_dict = defaultdict(lambda: [])
+            for entity_idx in range(0, len(tagged_sen)):
+                if tagged_sen[entity_idx][TAG_WORD_POS] is None:
                     continue
-
-                if word[TAG_WORD_POS] is not None and word[TAG_WORD_ROLE] is not None:
-                    # check the subject of sentence is I
-                    if 'I' == word[TAG_WORD] and 'subj' in word[TAG_WORD_ROLE]:
-                        is_sent_mine = True
-                        continue
-
-                    if 'we' == word[TAG_WORD].lower() and 'subj' in word[TAG_WORD_ROLE]:
-                        is_sent_we = True
-                        continue
-
-                    # check the sentence is negative
-                    elif 'neg' in word[TAG_WORD_ROLE]:
-                        dep_idx = int(word[TAG_DEPENDENCY]) - 1
-                        dep_word = tagged_sent[dep_idx]
-                        if dep_word[TAG_WORD_ROLE] == 'root':
-                            is_sent_neg = True
+                if entity_idx in main_entities_idxs:
+                    entities_dep_dict[entity_idx].append(entity_idx)
+                else:
+                    now_idx = entity_idx
+                    while True:
+                        now_entity = tagged_sen[now_idx]
+                        if now_entity[TAG_DEPENDENCY] == None:
+                            break
+                        dep_idx = int(now_entity[TAG_DEPENDENCY]) - 1
+                        if dep_idx in main_entities_idxs:
+                            entities_dep_dict[dep_idx].append(entity_idx)
+                            break
                         else:
-                            modifiers_word[dep_idx]['neg'] = True
+                            now_idx = dep_idx
+
+            # if a main entity has no child dependency, it means conj of its dependent entity
+            for entity_idx in main_entities_idxs:
+                if entity_idx not in entities_dep_dict.keys():
+                    entity = tagged_sen[entity_idx]
+                    dep_idx = int(entity[TAG_DEPENDENCY]) - 1
+                    if dep_idx in entities_dep_dict.keys():
+                        entities_dep_dict[dep_idx].append(entity_idx)
+                    else:
+                        entities_dep_dict[root_idx].append(entity_idx)
+
+            # identify default thing/activity in the tokens
+            for main_idx, entity_idxs in entities_dep_dict.items():
+                for entity_idx in entity_idxs:
+                    entity = tagged_sen[entity_idx]
+
+                    # if already identified word (thing or activity)
+                    if entity_idx in identified_comp_word_idxs: # for comp words
+                        continue
+                    elif entity_idx in identified_word_idxs:
+                        if 'subj' in entity[TAG_WORD_ROLE]:
+                            main_ta_dict[main_idx]['is_subj'] = True
+                        main_ta_dict[main_idx]['ta_list'].append(entity_idx)
                         continue
 
-                    # check a sentiment score of an adverb in the sentence
-                    elif word[TAG_WORD_POS].startswith('RB'):
-                        dep_idx = int(word[TAG_DEPENDENCY]) - 1
-                        dep_word = tagged_sent[dep_idx]
-                        offsets = _find_offsets_from_word(word[TAG_WORD].lower(), 'r')
+                    if entity[TAG_WORD_POS] is None or entity[TAG_WORD_ROLE] is None:
+                        continue
+
+                    if 'subj' in entity[TAG_WORD_ROLE] and entity[TAG_WORD_POS] == 'PRP':
+                        if 'I' == entity[TAG_WORD].upper():
+                            main_ta_dict[main_idx]['is_mine'] = True
+                        elif 'we' == entity[TAG_WORD].lower():
+                            main_ta_dict[main_idx]['is_we'] = True
+                        continue
+
+                    elif 'neg' in entity[TAG_WORD_ROLE]:
+                        main_ta_dict[main_idx]['is_neg'] = True
+                        continue
+
+            # calculate the adverb pref first
+            for main_idx, entity_idxs in entities_dep_dict.items():
+                for entity_idx in entity_idxs:
+                    entity = tagged_sen[entity_idx]
+
+                    # check adverb modifier
+                    if entity[TAG_WORD_POS].startswith('RB'):
+                        offsets = _find_offsets_from_word(entity[TAG_WORD].lower(), 'r')
+                        pref_score = 0
+                        pref_cnt = 0
                         for offset in offsets:
-                            senti_score = self.senti_wordnet.get_score(offset, 'r')
-                            # if senti_score['positivity'] == 1 and senti_score['negativity'] == 0:
-                            #     continue
-
-                            if dep_word[TAG_WORD_ROLE] == 'root':
-                                adverb_neg['score'] += senti_score['negativity']
-                                adverb_neg['count'] += 1
-                                adverb_pos['score'] += senti_score['positivity']
-                                adverb_pos['count'] += 1
-                            elif dep_idx in identified_word_idxs:
-                                modifiers_word[dep_idx]['adverb_neg']['score'] += senti_score['negativity']
-                                modifiers_word[dep_idx]['adverb_neg']['count'] += 1
-                                modifiers_word[dep_idx]['adverb_pos']['score'] += senti_score['positivity']
-                                modifiers_word[dep_idx]['adverb_pos']['count'] += 1
+                            senti_score_dict = self.senti_wordnet.get_score(offset, 'r')
+                            senti_score = senti_score_dict['positivity'] - senti_score_dict['negativity']
+                            senti_count = senti_score_dict['corpus_count'] + 1
+                            if senti_score == 0:
+                                continue
                             else:
-                                if dep_word[TAG_DEPENDENCY] is not None:
-                                    ddep_idx = int(dep_word[TAG_DEPENDENCY]) - 1    # ex) adverb->adjective->noun
-                                    ddep_word = tagged_sent[ddep_idx]
-                                    if ddep_word[TAG_WORD_ROLE] == 'root':
-                                        adverb_neg['score'] += senti_score['negativity']
-                                        adverb_neg['count'] += 1
-                                        adverb_pos['score'] += senti_score['positivity']
-                                        adverb_pos['count'] += 1
-                                    elif ddep_idx in identified_word_idxs:
-                                        modifiers_word[ddep_idx]['adverb_neg']['score'] += senti_score['negativity']
-                                        modifiers_word[ddep_idx]['adverb_neg']['count'] += 1
-                                        modifiers_word[ddep_idx]['adverb_pos']['score'] += senti_score['positivity']
-                                        modifiers_word[ddep_idx]['adverb_pos']['count'] += 1
+                                pref_score += (senti_score * senti_count)
+                                pref_cnt += senti_count
+                        if pref_cnt == 0:
+                            pref_score = 0
+                        else:
+                            pref_score = pref_score / pref_cnt
+                        if pref_score != 0:
+                            dep_idx = int(entity[TAG_DEPENDENCY]) - 1
+                            if dep_idx == main_idx:
+                                sen_pref[main_idx]['sum'] += pref_score
+                                sen_pref[main_idx]['count'] += 1
+                            else:
+                                adv_mod_pref[dep_idx]['sum'] += pref_score
+                                adv_mod_pref[dep_idx]['count'] += 1
+            for entity_idx in adv_mod_pref.keys():
+                adv_mod_pref[entity_idx]['score'] = adv_mod_pref[entity_idx]['sum'] / adv_mod_pref[entity_idx]['count']
 
-                    # check a sentiment score of a verb in the sentence
-                    elif 'VB' in word[TAG_WORD_POS]:
-                        verb_weight = 0.5
-                        sent_score = 0
-                        if word[TAG_WORD_ROLE] == 'root':  # main verb...
-                            verb_weight = 1
-                        elif word[TAG_WORD_ROLE] == 'conj':
-                            verb_weight = 0.8
-                        offsets = _find_offsets_from_word(word[TAG_WORD].lower(), 'v')
-                        word_cnt = 0
+            # calculate the tendency score for words
+            for main_idx, entity_idxs in entities_dep_dict.items():
+                # print(tagged_sen)
+                # print(sen_idx, main_idx, entity_idxs)
+                for entity_idx in entity_idxs:
+                    entity = tagged_sen[entity_idx]
+
+                    # check verb
+                    if 'VB' in entity[TAG_WORD_POS]:
+                        offsets = _find_offsets_from_word(entity[TAG_WORD].lower(), 'v')
+                        pref_score = 0
+                        pref_cnt = 0
                         for offset in offsets:
                             senti_score_dict = self.senti_wordnet.get_score(offset, 'v')
                             senti_score = senti_score_dict['positivity'] - senti_score_dict['negativity']
@@ -736,34 +796,41 @@ class TendencyAnalyzer(object):
                             if senti_score == 0:
                                 continue
                             else:
-                                sent_score += (senti_score * senti_count)
-                                word_cnt += senti_count
-                        if word_cnt == 0:
-                            sent_score = 0
+                                pref_score += (senti_score * senti_count)
+                                pref_cnt += senti_count
+                        if pref_cnt == 0:
+                            pref_score = 0
                         else:
-                            # average of sent score of sentiment word considering count in corpus
-                            sent_score = sent_score / word_cnt
-                        if sent_score is not 0:
-                            weight_sent += verb_weight * sent_score
-                            count_sent += 1
+                            pref_score = pref_score / pref_cnt
+                        if pref_score != 0:
+                            if entity_idx == main_idx:
+                                verb_pref[main_idx]['sum'] += pref_score + adv_mod_pref[entity_idx]['score']
+                                verb_pref[main_idx]['count'] += 1
+                            else:
+                                dep_idx = int(entity[TAG_DEPENDENCY]) - 1
+                                if dep_idx == main_idx and dep_idx in entity_idxs:
+                                    #entity idx? or dep idx?
+                                    verb_pref[main_idx]['sum'] += pref_score + adv_mod_pref[entity_idx]['score']
+                                    verb_pref[main_idx]['count'] += 1
+                                else:   # how i handle..?
+                                    if tagged_sen[entity_idx][TAG_WORD_ROLE] == 'acl:relcl':    # 관계대명사절
+                                        if dep_idx in main_ta_dict[main_idx]['ta_list']:
+                                            mod_pref[dep_idx]['sum'] += pref_score + adv_mod_pref[entity_idx]['score']
+                                            mod_pref[dep_idx]['count'] += 1
+                                    else:
+                                        # SHOULD ENHANCE
+                                        if dep_idx == main_idx:
+                                            verb_pref[main_idx]['sum'] += pref_score + adv_mod_pref[entity_idx]['score']
+                                            verb_pref[main_idx]['count'] += 1
+                                        else:
+                                            # print('VERB...?', main_idx, entity_idx, dep_idx)
+                                            pass
 
-                    # Check a sentiment score of an adjective in the sentence
-                    elif 'JJ' in word[TAG_WORD_POS]:
-                        adjective_weight = 1
-                        sent_score = 0
-
-                        if word[TAG_WORD_ROLE] == 'root':
-                            adjective_weight = 1
-                        elif 'amod' in word[TAG_WORD_ROLE]:
-                            adjective_weight = 0.75
-                        elif 'mod' in word[TAG_WORD_ROLE]:
-                            adjective_weight = 0.5
-                        else:
-                            continue
-
-                        offsets = _find_offsets_from_word(word[TAG_WORD].lower(), 'a')
-                        word_cnt = 0
-
+                    # check adjective modifier
+                    elif entity[TAG_WORD_POS].startswith('RB'):
+                        offsets = _find_offsets_from_word(entity[TAG_WORD].lower(), 'a')
+                        pref_score = 0
+                        pref_cnt = 0
                         for offset in offsets:
                             senti_score_dict = self.senti_wordnet.get_score(offset, 'a')
                             senti_score = senti_score_dict['positivity'] - senti_score_dict['negativity']
@@ -771,147 +838,76 @@ class TendencyAnalyzer(object):
                             if senti_score == 0:
                                 continue
                             else:
-                                sent_score += (senti_score * senti_count)
-                                word_cnt += senti_count
-                        if word_cnt == 0:
-                            sent_score = 0
+                                pref_score += (senti_score * senti_count)
+                                pref_cnt += senti_count
+                        if pref_cnt == 0:
+                            pref_score = 0
                         else:
-                            # average of sent score of sentiment word considering count in corpus
-                            sent_score = sent_score / word_cnt
-                        if self.DEBUG:
-                            print(word, sent_score)
-                        if sent_score is not 0:
-                            # apply only for modifier target noun (dependency)
-                            if word[TAG_WORD_ROLE] == 'root':
-                                weight_sent += adjective_weight * sent_score
-                                count_sent += 1
+                            pref_score = pref_score / pref_cnt
+                        if pref_score != 0:
+                            if entity_idx == main_idx:
+                                for ta_entity_idx in main_ta_dict[main_idx]['ta_list']:
+                                    mod_pref[ta_entity_idx]['sum'] += pref_score + adv_mod_pref[entity_idx]['score']
+                                    mod_pref[ta_entity_idx]['count'] += 1
                             else:
-                                # modifers_word[synset_name]['score'] += adjective_weight * sent_score
-                                dep_idx = int(word[TAG_DEPENDENCY]) - 1
-                                dep_word = tagged_sent[dep_idx]
-
-                                if dep_word[TAG_WORD_ROLE] == 'root':
-                                    weight_sent += adjective_weight * sent_score
-                                    count_sent += 1
-                                elif dep_idx in identified_word_idxs:
-                                    modifiers_word[dep_idx]['score'] += sent_score
-                                    modifiers_word[dep_idx]['count'] += 1
-                    if self.DEBUG:
-                        print(word[TAG_WORD], weight_sent)
+                                dep_idx = int(entity[TAG_DEPENDENCY]) - 1
+                                if dep_idx in main_ta_dict[main_idx]['ta_list']:
+                                    mod_pref[dep_idx]['sum'] += pref_score + adv_mod_pref[entity_idx]['score']
+                                    mod_pref[dep_idx]['count'] += 1
+                                else:   # how i handle..?
+                                    # print('ADJECTIVE...?', main_idx, entity_idx, dep_idx)
+                                    pass
 
             if self.DEBUG:
-                print(word[TAG_WORD], weight_sent)
+                print('dep_dict')
+                pprint(entities_dep_dict)
+                print('main_ta_dict')
+                pprint(main_ta_dict)
+                print('verb_pref')
+                pprint(verb_pref)
+                print('mod_pref')
+                pprint(mod_pref)
+                print('sen_pref')
+                pprint(sen_pref)
+                print()
 
-            # calculate weight of subjectivity
-            # weight_subj = 1 if (is_sent_mine or is_sent_we) else (0.8 if is_sent_subj else 0.1)
-            weight_subj = 1 if is_sent_mine else (0.8 if is_sent_subj or is_sent_we else 0)
-            if weight_subj == 0:
-                continue
-            weight_subj *= -0.8 if is_sent_neg else 1
-            if self.DEBUG:
-                print('weight_subj: %s' % weight_subj)
+            # compute tend score for sentence
+            for main_idx, ta_dict in main_ta_dict.items():
+                # calculate weight of subjectivity
+                weight_subj = 1 if (ta_dict['is_mine'] or ta_dict['is_we']) else (0.8 if ta_dict['is_subj'] else 0)
+                if weight_subj == 0:
+                    continue
+                weight_subj *= -1 if ta_dict['is_neg'] else 1
 
-            # apply preference score of things and activities in the sentence
-            for synset_name, word_weight in weights_word.items():
-                if self.DEBUG:
-                    print('================')
-                    print('sentence_idx: %s' % sent_idx)
-                    print('word_name: %s' % synset_name)
-                    print('word_weight: %s' % word_weight)
+                # calculate tend score
+                for ta_entity_idx in ta_dict['ta_list']:
+                    avg_pref = 0
+                    if verb_pref[main_idx]['count'] + mod_pref[ta_entity_idx]['count'] != 0:
+                        avg_pref = (verb_pref[main_idx]['sum'] + mod_pref[ta_entity_idx]['sum']) / \
+                                   (verb_pref[main_idx]['count'] + mod_pref[ta_entity_idx]['count'])
+                    if 0 <= avg_pref < 0.15:
+                        avg_pref = 0.15
+                    if sen_pref[main_idx]['count'] == 0:
+                        sen_tend_score = weight_subj * avg_pref
+                    else:
+                        sen_tend_score = weight_subj * (avg_pref + sen_pref[main_idx]['sum'] / sen_pref[main_idx]['count'])
 
-                synset_weight_subj = weight_subj
-                synset_weight_sent = weight_sent
-                synset_count_sent = count_sent
+                    # synset_name = entity[0].name()
+                    synset_name = identified_word_dict[ta_entity_idx][0].name()
+                    tend_score_counts[synset_name]['sum'] += sen_tend_score
+                    tend_score_counts[synset_name]['count'] += 1
 
-                word_idx = word_weight['idx']
-                if word_idx in modifiers_word.keys():
-                    if self.DEBUG:
-                        print(modifiers_word[word_idx])
-                    if modifiers_word[word_idx]['neg']:
-                        synset_weight_subj *= -1
-                    synset_weight_sent += modifiers_word[word_idx]['score']
-                    synset_count_sent += modifiers_word[word_idx]['count']
-
-                avg_weight_sent = 0
-                # calculate average of weight of sentiment words
-                if count_sent > 0:
-                    avg_weight_sent = synset_weight_sent / synset_count_sent
-                if avg_weight_sent < 0.25 and avg_weight_sent >= 0:
-                    avg_weight_sent = 0.25  # the minimum neutral weight of sent
-                if self.DEBUG:
-                    print('avg_weight_sent: %s (%s)' % (avg_weight_sent, synset_count_sent))
-
-                sent_score = synset_weight_subj * avg_weight_sent
-                if self.DEBUG:
-                    print('sent_score: %s (subj*sent)' % sent_score)
-
-                s_adverb_pos_score = adverb_pos['score']
-                s_adverb_pos_count = adverb_pos['count']
-                s_adverb_neg_score = adverb_neg['score']
-                s_adverb_neg_count = adverb_neg['count']
-                if word_idx in modifiers_word.keys():
-                    s_adverb_pos_score += modifiers_word[word_idx]['adverb_pos']['score']
-                    s_adverb_pos_count += modifiers_word[word_idx]['adverb_pos']['score']
-                    s_adverb_neg_score += modifiers_word[word_idx]['adverb_neg']['count']
-                    s_adverb_neg_count += modifiers_word[word_idx]['adverb_neg']['count']
-
-                adverb_score = 0
-                adverb_neg_score = 0
-                adverb_neg_flag = False
-                if sent_score >= 0:
-                    if s_adverb_pos_count > 0:
-                        adverb_score = sent_score * (s_adverb_pos_score / s_adverb_pos_count)
-                    if s_adverb_neg_count > 0 and s_adverb_neg_score > s_adverb_pos_score:
-                        adverb_neg_score = (adverb_score + sent_score) * \
-                                           (s_adverb_neg_score / s_adverb_neg_count) * -1
-                        adverb_neg_flag = True
-                else:
-                    if s_adverb_pos_count > 0:
-                        adverb_score = sent_score * (s_adverb_pos_score / s_adverb_pos_count) * -1
-                    if s_adverb_neg_count > 0 and s_adverb_neg_score > s_adverb_pos_score:
-                        adverb_neg_score = (adverb_score + sent_score) * \
-                                           (s_adverb_neg_score / s_adverb_neg_count) * -1
-                        adverb_neg_flag = True
-                if self.DEBUG: print('adverb_pos_score: %s' % adverb_score)
-                if self.DEBUG: print('adverb_neg_score %s' % adverb_neg_score)
-
-                score = 0
-                if sent_score >= 0:
-                    # score = (word_weight['weight'] * 0.5) + (sent_score * word_weight['weight'] * 0.5)
-                    score = (word_weight['weight'] * 0.25) + (sent_score * word_weight['weight'] * 0.75)
-                    if self.DEBUG:
-                        print('word score with sent: %s = (%s*0.5) + (%s*%s*0.5)' %
-                              (score, word_weight['weight'], sent_score, word_weight['weight']))
-                else:
-                    # score = -(word_weight['weight'] * 0.5) + (sent_score * word_weight['weight'] * 0.5)
-                    score = -(word_weight['weight'] * 0.25) + (sent_score * word_weight['weight'] * 0.75)
-                    if self.DEBUG:
-                        print('word score with sent: %s = -(%s*0.5) + (%s*%s*0.5)' %
-                              (score, word_weight['weight'], sent_score, word_weight['weight']))
-                score = (score + adverb_score) * (adverb_neg_score if adverb_neg_flag else 1)
-                if self.DEBUG: print('result score applying adverb: %s' % score)
-
-                # scores_word[synset_name] = score
-                scores_pref_sent[synset_name]['score'] += score
-                scores_pref_sent[synset_name]['count'] += 1
-                if not scores_pref_sent[synset_name]['type']:
-                    scores_pref_sent[synset_name]['type'] = word_weight['type']
-
-        # compute preference scores for diaries
-        for synset_name, sent_dict in scores_pref_sent.items():
-            scores_pref[synset_name] = dict()
-            if diary_idx is not None:
-                scores_pref[synset_name]['diary_idx'] = diary_idx
-            # not just average, if the word is refered many times, it have to multiply weight
-            scores_pref[synset_name]['score'] = sent_dict['score'] / sent_dict['count'] * \
-                                                (1 + ((sent_dict['count']-1) / 11)) # 1+(count-1/11) weight
-            if scores_pref[synset_name]['score'] > 1:
-                scores_pref[synset_name]['score'] = 1
-            elif scores_pref[synset_name]['score'] < -1:
-                scores_pref[synset_name]['score'] = -1
-            scores_pref[synset_name]['type'] = sent_dict['type']
-
-        return scores_pref
+        # compute tendency scores for diary
+        for synset_name, count_dict in tend_score_counts.items():
+            tend_scores[synset_name]['score'] = count_dict['sum'] / count_dict['count'] * \
+                                                (1 + ((count_dict['count']-1) / 11))    # 1+(count-1/11) weight
+            if tend_scores[synset_name]['score'] > 1:
+                tend_scores[synset_name]['score'] = 1
+            elif tend_scores[synset_name]['score'] < -1:
+                tend_scores[synset_name]['score'] = -1
+            tend_scores[synset_name]['type'] = ta_types[synset_name]
+            tend_scores[synset_name]['diary_idx'] = diary_idx
+        return tend_scores
 
     ###############################################################################
     # Step 4. Clustering the Things and Activities                                #
@@ -950,13 +946,13 @@ class TendencyAnalyzer(object):
 
         # feature extraction
         # filtering with things and activities which there is only one item (with low score)
-        count_dict = defaultdict(int)
-        for pref_ta in pref_ta_list:
-            count_dict[pref_ta[0]] += 1
-        for i in range(0, len(pref_ta_list))[::-1]:
-            if count_dict[pref_ta_list[i][0]] < 2:
-            # if count_dict[pref_ta_list[i][0]] < 2 and abs(pref_ta_list[i][1]) < 0.2:
-                pref_ta_list.pop(i)
+        # count_dict = defaultdict(int)
+        # for pref_ta in pref_ta_list:
+        #     count_dict[pref_ta[0]] += 1
+        # for i in range(0, len(pref_ta_list))[::-1]:
+        #     if count_dict[pref_ta_list[i][0]] < 2:
+        #     # if count_dict[pref_ta_list[i][0]] < 2 and abs(pref_ta_list[i][1]) < 0.2:
+        #         pref_ta_list.pop(i)
 
         # filtering with things and activities which has more than 0.01 preference score
         for i in range(0, len(pref_ta_list))[::-1]:
@@ -1069,10 +1065,10 @@ class TendencyAnalyzer(object):
         pos_ta_score_dict = dict()
         neg_ta_score_dict = dict()
 
-        min_cluter_item = diary_num / 30.0
+        min_cluster_item = diary_num / 30.0
         for cluster in clusters:
             # if the number of the items in cluster is a few
-            # if len(cluster) < min_cluter_item:
+            # if len(cluster) < min_cluster_item:
             #     continue
 
             target = cluster[0][2]
@@ -1089,9 +1085,9 @@ class TendencyAnalyzer(object):
                 count_dict[ta[0]]['count'] += 1
                 count_dict[ta[0]]['sum'] += ta[1]
                 # for hypernyms
-                if ta[5] is not None:
-                    count_dict[ta[5]]['count'] += 1
-                    count_dict[ta[5]]['sum'] += ta[1]
+                # if ta[5] is not None:
+                #     count_dict[ta[5]]['count'] += 1
+                #     count_dict[ta[5]]['sum'] += ta[1]
             count_weight_dict = dict()
             for ta_name, count in count_dict.items():
                 if count['count'] >= 2:
@@ -1105,11 +1101,11 @@ class TendencyAnalyzer(object):
             already_exist_ta_list = list()
             for i in range(0, len(cluster))[::-1]:
                 ta = cluster[i]
-                if ta[5] in already_exist_ta_list:
-                    pass
-                elif ta[5] in count_weight_dict.keys():
-                    cluster.append([ta[5], count_weight_dict[ta[5]], ta[2], ta[3], ta[4], None])
-                    already_exist_ta_list.append(ta[5])
+                # if ta[5] in already_exist_ta_list:
+                #     pass
+                # elif ta[5] in count_weight_dict.keys():
+                #     cluster.append([ta[5], count_weight_dict[ta[5]], ta[2], ta[3], ta[4], None])
+                #     already_exist_ta_list.append(ta[5])
 
                 if ta[0] in already_exist_ta_list:
                     cluster.pop(i)
@@ -1415,7 +1411,6 @@ class TendencyAnalyzer(object):
     def _find_common_hypernyms(cls, ta_name_list, corpus_retriever, search_level=3):
         if len(ta_name_list) == 0:
             return []
-
         is_all_same = True
         first_ta_name = ta_name_list[0]
         for ta_name in ta_name_list:
@@ -1723,13 +1718,13 @@ if __name__ == "__main__":
     # tend_analyzer.analyze_diary(joanne_diaries,
     #         [('food', 'thing'), ('hobby', 'activity'), ('sport', 'activity')])
 
-    jeniffer_diaries = list()
-    for i in range(1, 37):
-        diary_tags = tagger.pickle_to_tags("diary_pickles/jennifer_" + str(i) + ".pkl")
-        jeniffer_diaries.append(diary_tags[1])
-    print("load jeniffer diaries done.")
-    tend_analyzer.analyze_diary(jeniffer_diaries,
-            [('food', 'thing'), ('hobby', 'activity'), ('sport', 'activity')])
+    # jeniffer_diaries = list()
+    # for i in range(1, 37):
+    #     diary_tags = tagger.pickle_to_tags("diary_pickles/jennifer_" + str(i) + ".pkl")
+    #     jeniffer_diaries.append(diary_tags[1])
+    # print("load jeniffer diaries done.")
+    # tend_analyzer.analyze_diary(jeniffer_diaries,
+    #         [('food', 'thing'), ('hobby', 'activity'), ('sport', 'activity')])
     # tend_analyzer.analyze_diary(jeniffer_diaries, [('food', 'thing')])
     # tend_analyzer.analyze_diary(jeniffer_diaries, [('exercise', 'activity'),
     #                                                ('food', 'thing')])
@@ -1753,12 +1748,12 @@ if __name__ == "__main__":
     # tend_analyzer.analyze_diary(d_diaries,
     #         [('food', 'thing'), ('hobby', 'activity'), ('sport', 'activity')])
 
-    # elize_diaries = list()
-    # for i in range(1, 5):
-    #     diary_tags = tagger.pickle_to_tags("diary_pickles/eliz_" + str(i) + ".pkl")
-    #     elize_diaries.append(diary_tags[1])
-    # print("load eliz diaries done.")
-    # tend_analyzer.analyze_diary(elize_diaries, [('food', 'thing')])
+    elize_diaries = list()
+    for i in range(1, 5):
+        diary_tags = tagger.pickle_to_tags("diary_pickles/eliz_" + str(i) + ".pkl")
+        elize_diaries.append(diary_tags[1])
+    print("load eliz diaries done.")
+    tend_analyzer.analyze_diary(elize_diaries, [('food', 'thing')])
 
     # jeniffer_2015_diaries = list()
     # for i in range(0, 228):
@@ -1777,10 +1772,9 @@ if __name__ == "__main__":
     # print(diary_tags5)
     # print()
     #
-    # TEST_DIARY4 = "First to arrive was kinda cured Welsh Wild Salmon served with creamy. She says the summer truffles at those are so it would be Jelly and some fresh Japanese airabs. This salmon had a lovely creamy texture and combined nicely with that. She says those that had a lovely touch of the city great flavor and aroma from the small mountain of finely grated summer Triple. A wonderful dish with fresh and elegant flavors and then I sent if smoking is from the Jelly second course now in the clear blue Leon with pieces of lightly charred seculert lobster lobster. Corleto food lately pickled see lettuce and garnished with the can only if the Boolean had been delicately flavored with the needle and seaweed and I'll get dish with lovely texturising. I love the Red Lobster Coral Speckles in the tofu next step for 3 pieces of us music. Nitcher modern sushi, red bullet with the target in pesto. Brown crab with Courgette in Leo, staying with. Ginger sauce 3. Fantastic pieces of sushi with precise phlavors motionbox. Fish was served next tender steak steamed abalone from well served with juicy couture jet in the delicate avalonian ginger sauce. How lovely dish, but the ginger flavours were a bit too subtle for my taste of course, Hashizume Cornish cuttlefish with caviar. Mittsu bit and then ori the needle and then ignore sauce served on a wooden spoon lovely build up of flavors. First gorgeous creamy cuttlefish followed by the salty caviar and to move money from the Noorian finally a lovely fish from the vinegar."
+    # TEST_DIARY4 = "The apple and banana was very delicious, but grape wasn't. I like apple but I don't like pineapple."
     # diary_tags4 = tagger.tag_pos_doc(TEST_DIARY4)
     # print(diary_tags4)
-    # tagger.tags_to_pickle(diary_tags4, "pickles/eliz3.pkl")
     # tend_analyzer.analyze_diary([diary_tags4[1]], [('food', 'thing')])
 
     # pprint(tagger.tag_pos_doc("Sue brought a 1000 piece puzzle for us to do as a family and a good sized bottle of Columbia Crest Chardonnay for dinner."))
