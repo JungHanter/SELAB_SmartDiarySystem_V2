@@ -307,7 +307,7 @@ class SentiWordNetRetriever(object):
 
 class TendencyAnalyzer(object):
     """Perform Tendency analysis"""
-`    DEBUG = True
+    DEBUG = True
 
     SIMILAR_PATH_MAX_HYPERNYM = 2
     SIMILAR_PATH_MAX_HYPONYM = 1
@@ -501,6 +501,7 @@ class TendencyAnalyzer(object):
                     if len(prev_word_comp_list) > 0:
                         is_found = False
                         search_idx_start = 0
+                        search_idx_end = len(prev_word_comp_list)
                         # find things and activities as noun
                         # search by backward
                         while True:
@@ -531,7 +532,6 @@ class TendencyAnalyzer(object):
                         # search by forward
                         if not is_found and len(prev_word_comp_list) > 1:
                             search_idx_start = len(prev_word_comp_list) - 1
-                            search_idx_end = 0
 
                             while True:
                                 search_word_comp_list = prev_word_comp_list[search_idx_end:search_idx_start]
@@ -544,7 +544,7 @@ class TendencyAnalyzer(object):
                                 if found_synset_list and prev_word_idx != -1:
                                     for found_synset in found_synset_list:
                                         identified_sent_dict[sent_idx].append(found_synset + (prev_word_idx, 'n',
-                                                                                          len(search_word_comp_list)))
+                                                                              len(search_word_comp_list)))
                                         print('found', found_synset) ##### REMOVE
                                     is_found = True
                                     break
