@@ -307,7 +307,7 @@ class SentiWordNetRetriever(object):
 
 class TendencyAnalyzer(object):
     """Perform Tendency analysis"""
-    DEBUG = False
+`    DEBUG = True
 
     SIMILAR_PATH_MAX_HYPERNYM = 2
     SIMILAR_PATH_MAX_HYPONYM = 1
@@ -345,6 +345,7 @@ class TendencyAnalyzer(object):
                 for idx in range(1, len(extracted_words)):
                     print('      ', extracted_words[idx])
             print()
+        return
 
         # step 3
         print("\n##### Step 3. #####")
@@ -499,78 +500,86 @@ class TendencyAnalyzer(object):
                     # end of single or compound noun
                     if len(prev_word_comp_list) > 0:
                         is_found = False
-                        search_idx = 0
+                        search_idx_start = 0
                         # find things and activities as noun
                         # search by backward
                         while True:
-                            search_word_comp_list = prev_word_comp_list[search_idx:]
+                            search_word_comp_list = prev_word_comp_list[search_idx_start:]
                             last_word = search_word_comp_list[len(search_word_comp_list)-1]
                             prev_word_idx = last_word[1]
                             plural = last_word[2]
-                            # print(search_word_comp_list) ##### REMOVE
+                            print(search_word_comp_list) ##### REMOVE
                             found_synset_list \
                                 = self._find_comp_synsets_in_wordsets(search_word_comp_list, plural)
                             if found_synset_list and prev_word_idx != -1:
                                 for found_synset in found_synset_list:
                                     identified_sent_dict[sent_idx].append(found_synset + (prev_word_idx, 'n',
                                                                                           len(search_word_comp_list)))
+                                    print('found', found_synset)  ##### REMOVE
                                 is_found = True
                                 break
                             else:
                                 # find in common word
                                 if self._check_comp_synsets_in_common(search_word_comp_list, plural):
                                     is_found = True
+                                    print('found in common')  ##### REMOVE
                                     break
                                 # find next compound word
-                                search_idx += 1
-                                if search_idx >= len(prev_word_comp_list): # there is no thing or activity
+                                search_idx_start += 1
+                                if search_idx_start >= len(prev_word_comp_list): # there is no thing or activity
                                     break
                         # search by forward
                         if not is_found and len(prev_word_comp_list) > 1:
-                            search_idx = len(prev_word_comp_list) - 1
+                            search_idx_start = len(prev_word_comp_list) - 1
+                            search_idx_end = 0
+
                             while True:
-                                search_word_comp_list = prev_word_comp_list[:search_idx]
+                                search_word_comp_list = prev_word_comp_list[search_idx_end:search_idx_start]
                                 last_word = search_word_comp_list[len(search_word_comp_list) - 1]
                                 prev_word_idx = last_word[1]
                                 plural = last_word[2]
-                                # print(search_word_comp_list) ##### REMOVE
+                                print(search_word_comp_list) ##### REMOVE
                                 found_synset_list \
                                     = self._find_comp_synsets_in_wordsets(search_word_comp_list, plural)
                                 if found_synset_list and prev_word_idx != -1:
                                     for found_synset in found_synset_list:
                                         identified_sent_dict[sent_idx].append(found_synset + (prev_word_idx, 'n',
                                                                                           len(search_word_comp_list)))
+                                        print('found', found_synset) ##### REMOVE
                                     is_found = True
                                     break
                                 else:
                                     # find in common word
                                     if self._check_comp_synsets_in_common(search_word_comp_list, plural):
                                         is_found = True
+                                        print('found in common')  ##### REMOVE
                                         break
                                     # find next compound word
-                                    search_idx -= 1
-                                    if search_idx <= 0:  # there is no thing or activity
+                                    search_idx_start -= 1
+                                    if search_idx_start <= 0:  # there is no thing or activity
                                         break
                         # search by one by one
                         if not is_found and len(prev_word_comp_list) > 2:
-                            search_idx = 1
+                            search_idx_start = 1
                             while True:
-                                search_word_comp_list = prev_word_comp_list[search_idx:search_idx+1]
+                                search_word_comp_list = prev_word_comp_list[search_idx_start:search_idx_start+1]
                                 last_word = search_word_comp_list[0]
                                 prev_word_idx = last_word[1]
                                 plural = last_word[2]
-                                # print(search_word_comp_list) ##### REMOVE
+                                print(search_word_comp_list) ##### REMOVE
                                 found_synset_list \
                                     = self._find_comp_synsets_in_wordsets(search_word_comp_list, plural)
                                 if found_synset_list and prev_word_idx != -1:
                                     for found_synset in found_synset_list:
-                                        identified_sent_dict[sent_idx].append(found_synset + (prev_word_idx, 'n',
-                                                                                          len(search_word_comp_list)))
+                                        if found_synset[3] == 'n':
+                                            identified_sent_dict[sent_idx].append(found_synset + (prev_word_idx, 'n',
+                                                                                  len(search_word_comp_list)))
+                                        print('found', found_synset)  ##### REMOVE
                                     break
                                 else:
                                     # find next compound word
-                                    search_idx += 1
-                                    if search_idx >= len(prev_word_comp_list)-1:  # there is no thing or activity
+                                    search_idx_start += 1
+                                    if search_idx_start >= len(prev_word_comp_list)-1:  # there is no thing or activity
                                         break
                         prev_word_comp_list.clear()
 
@@ -1732,13 +1741,13 @@ if __name__ == "__main__":
     # tend_analyzer.analyze_diary(jeniffer_diaries, [('exercise', 'activity')])
     # tend_analyzer.analyze_diary(jeniffer_diaries, [('hobby', 'activity')])
     #
-    smiley_diaries = list()
-    for i in range(0, 50):
-        diary_tags = tagger.pickle_to_tags("pickles/smiley" + str(i) + ".pkl")
-        smiley_diaries.append(diary_tags[1])
-    print("load smiley diaries done.")
-    tend_analyzer.analyze_diary(smiley_diaries,
-            [('food', 'thing'), ('hobby', 'activity'), ('sport', 'activity')])
+    # smiley_diaries = list()
+    # for i in range(0, 50):
+    #     diary_tags = tagger.pickle_to_tags("pickles/smiley" + str(i) + ".pkl")
+    #     smiley_diaries.append(diary_tags[1])
+    # print("load smiley diaries done.")
+    # tend_analyzer.analyze_diary(smiley_diaries,
+    #         [('food', 'thing'), ('hobby', 'activity'), ('sport', 'activity')])
     # tend_analyzer.analyze_diary(smiley_diaries, [('food', 'thing')])
 
     # d_diaries = list()
@@ -1753,6 +1762,8 @@ if __name__ == "__main__":
     # for i in range(1, 5):
     #     diary_tags = tagger.pickle_to_tags("diary_pickles/eliz_" + str(i) + ".pkl")
     #     elize_diaries.append(diary_tags[1])
+    #     print(diary_tags)
+    #     print()
     # print("load eliz diaries done.")
     # tend_analyzer.analyze_diary(elize_diaries, [('food', 'thing')])
 
@@ -1774,9 +1785,10 @@ if __name__ == "__main__":
     # print()
     #
     # TEST_DIARY4 = "The apple and banana was very delicious, but grape wasn't. I like apple but I don't like pineapple."
-    # diary_tags4 = tagger.tag_pos_doc(TEST_DIARY4)
-    # print(diary_tags4)
-    # tend_analyzer.analyze_diary([diary_tags4[1]], [('food', 'thing')])
+    TEST_DIARY4 = "Fantastic pieces of sushi with precise phlavors motionbox. Fish was served next tender steak steamed abalone from well served with juicy couture jet in the delicate avalonian ginger sauce. How lovely dish, but the ginger flavours were a bit too subtle for my taste of course, Hashizume Cornish cuttlefish with caviar."
+    diary_tags4 = tagger.tag_pos_doc(TEST_DIARY4)
+    print(diary_tags4)
+    tend_analyzer.analyze_diary([diary_tags4[1]], [('food', 'thing')])
 
     # pprint(tagger.tag_pos_doc("Sue brought a 1000 piece puzzle for us to do as a family and a good sized bottle of Columbia Crest Chardonnay for dinner."))
     # pprint(tagger.tag_pos_doc("An hour later, the 3 of us were pouring over the damn puzzle."))
