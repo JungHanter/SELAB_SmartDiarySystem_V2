@@ -25,7 +25,7 @@ class WordSetCorpusRetriever(object):
         self.categoricals_lemma = self._get_lemmas(categoricals)
 
     @classmethod
-    def _get_lemmas(self, synset_names):
+    def _get_lemmas(cls, synset_names):
         lemmas = list()
         for synset_name in synset_names:
             lemmas.extend(_lemmas_to_name_list(wn.synset(synset_name).lemmas()))
@@ -307,7 +307,7 @@ class SentiWordNetRetriever(object):
 
 class TendencyAnalyzer(object):
     """Perform Tendency analysis"""
-    DEBUG = True
+    DEBUG = False
 
     SIMILAR_PATH_MAX_HYPERNYM = 2
     SIMILAR_PATH_MAX_HYPONYM = 1
@@ -330,14 +330,14 @@ class TendencyAnalyzer(object):
         diary_len = len(diary_tags_list)
 
         # step 1
-        self._load_word_corpora(target_types)
+        self.load_word_corpora(target_types)
 
         # step 2
         print("\n##### Step 2. #####")
         extracted_sent_dict_list = list()
         for diary_idx in range(0, diary_len):
             diary_tags = diary_tags_list[diary_idx]
-            extracted_sent_dict = self._extract_sentences(diary_tags)
+            extracted_sent_dict = self.extract_sentences(diary_tags)
             extracted_sent_dict_list.append(extracted_sent_dict)
             print("Diary #%s" % (diary_idx+1))
             for sent_id, extracted_words in extracted_sent_dict.items():
@@ -345,7 +345,6 @@ class TendencyAnalyzer(object):
                 for idx in range(1, len(extracted_words)):
                     print('      ', extracted_words[idx])
             print()
-        return
 
         # step 3
         print("\n##### Step 3. #####")
@@ -353,7 +352,7 @@ class TendencyAnalyzer(object):
         for diary_idx in range(0, diary_len):
             diary_tags = diary_tags_list[diary_idx]
             extracted_sent_dict = extracted_sent_dict_list[diary_idx]
-            scores_tend = self._compute_tend_scores(diary_tags, extracted_sent_dict, diary_idx + 1)
+            scores_tend = self.compute_tend_scores(diary_tags, extracted_sent_dict, diary_idx + 1)
             scores_tend_list.append(scores_tend)
             print("Diary #%s" % (diary_idx+1))
             pprint(scores_tend)
@@ -365,7 +364,7 @@ class TendencyAnalyzer(object):
         tend_list = list()
         for diary_idx in range(0, diary_len):
             scores_tend = scores_tend_list[diary_idx]
-            converted_tends = self._convert_scores_dict_to_list(scores_tend)
+            converted_tends = self.convert_scores_dict_to_list(scores_tend)
             tend_list += converted_tends
 
         # group by category and type
@@ -375,7 +374,7 @@ class TendencyAnalyzer(object):
             if len(tend_group_list) < 10:
                 continue
             print("Clustering for %s->%s" % (type[1].capitalize(), type[0].capitalize()))
-            clusters, pref_num = self._perform_clustering(tend_group_list)
+            clusters, pref_num = self.perform_clustering(tend_group_list)
             clustering_dict[type] = {'clusters': clusters, 'pref_num': pref_num}
             print("Number of Clusters: %s" % len(clusters))
             for idx in range(0, len(clusters)):
@@ -395,7 +394,6 @@ class TendencyAnalyzer(object):
                 print("Cluster #%s: %s (count: %s, avg_score: %s)" %
                       ((idx+1), self._label_for_cluster(cluster, self.words_corpora[type]),
                        len(cluster), score_avg))
-                # pprint(cluster)
                 for ta in cluster:
                     print(ta)
                 print()
@@ -405,9 +403,9 @@ class TendencyAnalyzer(object):
         pos_tendency = dict()
         neg_tendency = dict()
         for type, clustering_info in clustering_dict.items():
-            pos_results, neg_result = self._figure_out_best_ta(clustering_info['clusters'],
-                                                               len(diary_tags_list),
-                                                               clustering_info['pref_num'])
+            pos_results, neg_result = self.figure_out_best_ta(clustering_info['clusters'],
+                                                              len(diary_tags_list),
+                                                              clustering_info['pref_num'])
             if len(pos_results) > 0:
                 pos_tendency[type] = pos_results
             if len(neg_result) > 0:
@@ -431,7 +429,7 @@ class TendencyAnalyzer(object):
     ###############################################################################
     # Step 1. Retrieving Corpora about Things, Activities, and Preferences        #
     ###############################################################################
-    def _load_word_corpora(self, type_corpora):
+    def load_word_corpora(self, type_corpora):
         sw_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'wordset',
                               'SentiWordNet_3.0.0_20130122.txt')
         senti_wordnet = SentiWordNetRetriever(sw_path)
@@ -481,7 +479,7 @@ class TendencyAnalyzer(object):
     ###############################################################################
     # Step 2. Identifying Sentences including Things and Activities in Each Diary #
     ###############################################################################
-    def _extract_sentences(self, diary_tags):
+    def extract_sentences(self, diary_tags):
         identified_sent_dict = defaultdict(lambda: list())
         for sent_idx in range(0, len(diary_tags)):
             tagged_sent = diary_tags[sent_idx]
@@ -498,90 +496,118 @@ class TendencyAnalyzer(object):
                 # find word as noun
                 if word[TAG_WORD_POS] is None or not word[TAG_WORD_POS].startswith('NN'):
                     # end of single or compound noun
-                    if len(prev_word_comp_list) > 0:
+                    if len(prev_word_comp_list) >= 1:
                         is_found = False
                         search_idx_start = 0
                         search_idx_end = len(prev_word_comp_list)
+                        last_idx_start = search_idx_start
+                        last_idx_end = search_idx_end
                         # find things and activities as noun
                         # search by backward
                         while True:
-                            search_word_comp_list = prev_word_comp_list[search_idx_start:]
+                            now_found = False
+                            search_word_comp_list = prev_word_comp_list[search_idx_start:search_idx_end]
                             last_word = search_word_comp_list[len(search_word_comp_list)-1]
                             prev_word_idx = last_word[1]
                             plural = last_word[2]
-                            print(search_word_comp_list) ##### REMOVE
+                            # print(search_word_comp_list) ##### REMOVE
                             found_synset_list \
                                 = self._find_comp_synsets_in_wordsets(search_word_comp_list, plural)
                             if found_synset_list and prev_word_idx != -1:
                                 for found_synset in found_synset_list:
                                     identified_sent_dict[sent_idx].append(found_synset + (prev_word_idx, 'n',
                                                                                           len(search_word_comp_list)))
-                                    print('found', found_synset)  ##### REMOVE
+                                    # print('A: found', found_synset)  ##### REMOVE
                                 is_found = True
-                                break
+                                now_found = True
                             else:
                                 # find in common word
                                 if self._check_comp_synsets_in_common(search_word_comp_list, plural):
                                     is_found = True
-                                    print('found in common')  ##### REMOVE
+                                    now_found = True
+                                    # print('A: found in common')  ##### REMOVE
+
+                            # enxt check
+                            if now_found:
+                                search_idx_end = search_idx_start
+                                search_idx_start = 0
+                                last_idx_end = search_idx_end
+                                if search_idx_end - search_idx_start <= 1:
                                     break
+                            else:
                                 # find next compound word
-                                search_idx_start += 1
-                                if search_idx_start >= len(prev_word_comp_list): # there is no thing or activity
+                                if search_idx_end - search_idx_start <= 2:  # there is no more compound thing or activity
                                     break
+                                else:
+                                    search_idx_start += 1
+
                         # search by forward
-                        if not is_found and len(prev_word_comp_list) > 1:
-                            search_idx_start = len(prev_word_comp_list) - 1
+                        if (not is_found or search_idx_end - search_idx_start >= 2) and len(prev_word_comp_list) > 2:
+                            if is_found:
+                                search_idx_end = last_idx_end
+                            else:
+                                search_idx_end = len(prev_word_comp_list) - 1
+                            search_idx_start = 0
 
                             while True:
-                                search_word_comp_list = prev_word_comp_list[search_idx_end:search_idx_start]
+                                now_found = False
+                                search_word_comp_list = prev_word_comp_list[search_idx_start:search_idx_end]
                                 last_word = search_word_comp_list[len(search_word_comp_list) - 1]
                                 prev_word_idx = last_word[1]
                                 plural = last_word[2]
-                                print(search_word_comp_list) ##### REMOVE
+                                # print(search_word_comp_list) ##### REMOVE
                                 found_synset_list \
                                     = self._find_comp_synsets_in_wordsets(search_word_comp_list, plural)
                                 if found_synset_list and prev_word_idx != -1:
                                     for found_synset in found_synset_list:
                                         identified_sent_dict[sent_idx].append(found_synset + (prev_word_idx, 'n',
                                                                               len(search_word_comp_list)))
-                                        print('found', found_synset) ##### REMOVE
+                                        # print('B: found', found_synset) ##### REMOVE
                                     is_found = True
-                                    break
+                                    now_found = True
                                 else:
                                     # find in common word
                                     if self._check_comp_synsets_in_common(search_word_comp_list, plural):
                                         is_found = True
-                                        print('found in common')  ##### REMOVE
+                                        now_found = True
+                                        # print('B: found in common')  ##### REMOVE
+
+                                # enxt check
+                                if now_found:
+                                    search_idx_start = search_idx_end
+                                    search_idx_end = last_idx_end
+                                    last_idx_start = search_idx_start
+                                    if search_idx_end - search_idx_start <= 1:
                                         break
+                                else:
                                     # find next compound word
-                                    search_idx_start -= 1
-                                    if search_idx_start <= 0:  # there is no thing or activity
+                                    if search_idx_end - search_idx_start <= 2:  # there is no more compound thing or activity
                                         break
+                                    else:
+                                        search_idx_end -= 1
+
                         # search by one by one
-                        if not is_found and len(prev_word_comp_list) > 2:
-                            search_idx_start = 1
+                        if not is_found or (last_idx_end - last_idx_start >= 1):
+                            search_idx = last_idx_start
                             while True:
-                                search_word_comp_list = prev_word_comp_list[search_idx_start:search_idx_start+1]
+                                search_word_comp_list = prev_word_comp_list[search_idx:search_idx+1]
                                 last_word = search_word_comp_list[0]
                                 prev_word_idx = last_word[1]
                                 plural = last_word[2]
-                                print(search_word_comp_list) ##### REMOVE
+                                # print(search_word_comp_list) ##### REMOVE
                                 found_synset_list \
                                     = self._find_comp_synsets_in_wordsets(search_word_comp_list, plural)
                                 if found_synset_list and prev_word_idx != -1:
                                     for found_synset in found_synset_list:
-                                        if found_synset[3] == 'n':
-                                            identified_sent_dict[sent_idx].append(found_synset + (prev_word_idx, 'n',
-                                                                                  len(search_word_comp_list)))
-                                        print('found', found_synset)  ##### REMOVE
+                                        identified_sent_dict[sent_idx].append(found_synset + (prev_word_idx, 'n',
+                                                                              len(search_word_comp_list)))
+                                        # print('C: found', found_synset)  ##### REMOVE
+                                # find next compound word
+                                search_idx += 1
+                                if search_idx >= last_idx_end:  # there is no thing or activity
                                     break
-                                else:
-                                    # find next compound word
-                                    search_idx_start += 1
-                                    if search_idx_start >= len(prev_word_comp_list)-1:  # there is no thing or activity
-                                        break
                         prev_word_comp_list.clear()
+                        continue
 
                 # a word have pos and role
                 if word[TAG_WORD_POS] is not None and word[TAG_WORD_ROLE] is not None:
@@ -595,7 +621,8 @@ class TendencyAnalyzer(object):
 
                     elif word[TAG_WORD_POS].startswith('NN') and \
                             ('subj' in word[TAG_WORD_ROLE] or 'obj' in word[TAG_WORD_ROLE] or
-                                 word[TAG_WORD_ROLE is 'conj']):
+                                     word[TAG_WORD_ROLE] == 'conj' or word[TAG_WORD_ROLE] == 'nmod' or
+                                     word[TAG_WORD_ROLE] == 'compound'):
                         # check the noun is plural
                         plural = False
                         if word[TAG_WORD_POS].endswith('S'):
@@ -608,12 +635,16 @@ class TendencyAnalyzer(object):
                     elif (word[TAG_WORD_POS].startswith('JJ') and word[TAG_WORD_ROLE] == 'amod') or \
                             (word[TAG_WORD_POS].startswith('NN') and word[TAG_WORD_ROLE] == 'compound'):
                         prev_word_comp_list.append((word[TAG_WORD], -1, False, 'a'))
+
+                else:
+                    prev_word_comp_list.clear()
+
         return identified_sent_dict
 
     ###############################################################################
     # Step 3. Computing Tendency Scores of Things and Activities in Each Diary    #
     ###############################################################################
-    def _compute_tend_scores(self, diary_sen_list, identified_sen_dict, diary_idx=None):
+    def compute_tend_scores(self, diary_sen_list, identified_sen_dict, diary_idx=None):
         tend_score_counts = defaultdict(lambda: {'sum': 0.0, 'count': 0})
         ta_types = dict()
         tend_scores = defaultdict(lambda: {'score': 0.0, 'type': 0})
@@ -703,7 +734,7 @@ class TendencyAnalyzer(object):
                     now_idx = entity_idx
                     while True:
                         now_entity = tagged_sen[now_idx]
-                        print(now_entity)
+                        # print(now_entity)
                         if now_entity[TAG_DEPENDENCY] == None:
                             break
                         dep_idx = int(now_entity[TAG_DEPENDENCY]) - 1
@@ -922,7 +953,7 @@ class TendencyAnalyzer(object):
     ###############################################################################
     # Step 4. Clustering the Things and Activities                                #
     ###############################################################################
-    def _perform_clustering(self, pref_ta_list):
+    def perform_clustering(self, pref_ta_list):
         def calc_distance(u, v):
             synset_u = wn.synset(u[0])
             synset_v = wn.synset(v[0])
@@ -956,13 +987,13 @@ class TendencyAnalyzer(object):
 
         # feature extraction
         # filtering with things and activities which there is only one item (with low score)
-        # count_dict = defaultdict(int)
-        # for pref_ta in pref_ta_list:
-        #     count_dict[pref_ta[0]] += 1
-        # for i in range(0, len(pref_ta_list))[::-1]:
-        #     if count_dict[pref_ta_list[i][0]] < 2:
-        #     # if count_dict[pref_ta_list[i][0]] < 2 and abs(pref_ta_list[i][1]) < 0.2:
-        #         pref_ta_list.pop(i)
+        count_dict = defaultdict(int)
+        for pref_ta in pref_ta_list:
+            count_dict[pref_ta[0]] += 1
+        for i in range(0, len(pref_ta_list))[::-1]:
+            if count_dict[pref_ta_list[i][0]] < 2:
+            # if count_dict[pref_ta_list[i][0]] < 2 and abs(pref_ta_list[i][1]) < 0.2:
+                pref_ta_list.pop(i)
 
         # filtering with things and activities which has more than 0.01 preference score
         for i in range(0, len(pref_ta_list))[::-1]:
@@ -1071,7 +1102,7 @@ class TendencyAnalyzer(object):
     ###############################################################################
     # Step 5. Figuring out Things and Activities having the Best Preference Score #
     ###############################################################################
-    def _figure_out_best_ta(self, clusters, diary_num, pref_num):
+    def figure_out_best_ta(self, clusters, diary_num, pref_num):
         pos_ta_score_dict = dict()
         neg_ta_score_dict = dict()
 
@@ -1397,7 +1428,7 @@ class TendencyAnalyzer(object):
         return min_dist
 
     @classmethod
-    def _convert_scores_dict_to_list(cls, scores_pref):
+    def convert_scores_dict_to_list(cls, scores_pref):
         pref_ta_list = list()
         for synset_name, score_dict in scores_pref.items():
             if 'diary_idx' in score_dict:
@@ -1758,14 +1789,12 @@ if __name__ == "__main__":
     # tend_analyzer.analyze_diary(d_diaries,
     #         [('food', 'thing'), ('hobby', 'activity'), ('sport', 'activity')])
 
-    # elize_diaries = list()
-    # for i in range(1, 5):
-    #     diary_tags = tagger.pickle_to_tags("diary_pickles/eliz_" + str(i) + ".pkl")
-    #     elize_diaries.append(diary_tags[1])
-    #     print(diary_tags)
-    #     print()
-    # print("load eliz diaries done.")
-    # tend_analyzer.analyze_diary(elize_diaries, [('food', 'thing')])
+    elize_diaries = list()
+    for i in range(1, 5):
+        diary_tags = tagger.pickle_to_tags("diary_pickles/eliz_" + str(i) + ".pkl")
+        elize_diaries.append(diary_tags[1])
+    print("load eliz diaries done.")
+    tend_analyzer.analyze_diary(elize_diaries, [('food', 'thing')])
 
     # jeniffer_2015_diaries = list()
     # for i in range(0, 228):
@@ -1785,10 +1814,9 @@ if __name__ == "__main__":
     # print()
     #
     # TEST_DIARY4 = "The apple and banana was very delicious, but grape wasn't. I like apple but I don't like pineapple."
-    TEST_DIARY4 = "Fantastic pieces of sushi with precise phlavors motionbox. Fish was served next tender steak steamed abalone from well served with juicy couture jet in the delicate avalonian ginger sauce. How lovely dish, but the ginger flavours were a bit too subtle for my taste of course, Hashizume Cornish cuttlefish with caviar."
-    diary_tags4 = tagger.tag_pos_doc(TEST_DIARY4)
-    print(diary_tags4)
-    tend_analyzer.analyze_diary([diary_tags4[1]], [('food', 'thing')])
+    # diary_tags4 = tagger.tag_pos_doc(TEST_DIARY4)
+    # print(diary_tags4)
+    # tend_analyzer.analyze_diary([diary_tags4[1]], [('food', 'thing')])
 
     # pprint(tagger.tag_pos_doc("Sue brought a 1000 piece puzzle for us to do as a family and a good sized bottle of Columbia Crest Chardonnay for dinner."))
     # pprint(tagger.tag_pos_doc("An hour later, the 3 of us were pouring over the damn puzzle."))
