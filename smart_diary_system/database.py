@@ -1646,4 +1646,378 @@ class TendencyManager(DBManager):
             return False
 
 
+class DBStatisticsManager(DBManager):
+    def __init__(self):
+        """DB Model Class for smartaudio_diary.sentence table
+
+        """
+        DBManager.__init__(self)
+
+    def retrieve_num_of_analytics(self, user_id):
+        pass
+
+    def retrieve_num_of_audio_diares(self, user_id):
+        """Creating new audio_diary to SD DB
+        Usually, this method be called
+        When User creating new audio_diary
+
+
+
+        :type audio_diary_info: dict contains user_id, timestamp_from, timestamp_to
+        :rtype query result[list] or false:
+        """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+        assert self.connected
+        query_for_get_num = "SELECT COUNT(*) as cnt FROM audio_diary WHERE user_id = %s"
+        try:
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                cur.execute(query_for_get_num, user_id)
+                result = cur.fetchone()
+                # END : for calculating execution time
+                stop = timeit.default_timer()
+                logger.debug("DB : retrieve_num_of_audio_diares() - Execution Time : %s", stop - start)
+                logger.debug('DB RESULT : %s', result)
+                return result['cnt']
+
+
+        except pymysql.MySQLError as exp:
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At retrieve_num_of_audio_diares()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+            return -1
+
+    def retrieve_most_diary_month(self, user_id):
+        """Creating new audio_diary to SD DB
+        Usually, this method be called
+        When User creating new audio_diary
+
+
+
+        :type audio_diary_info: dict contains user_id, timestamp_from, timestamp_to
+        :rtype query result[list] or false:
+        """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+        assert self.connected
+        query_for_get_num = "SELECT DATE_FORMAT(FROM_UNIXTIME(created_date / 1000), '%%Y-%%c') as DATE, COUNT(*) as CNT FROM audio_diary WHERE user_id = %s " \
+                            "GROUP BY DATE_FORMAT(FROM_UNIXTIME(created_date / 1000), '%%Y-%%c') ORDER BY CNT DESC "
+        try:
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                cur.execute(query_for_get_num, user_id)
+                result = cur.fetchone()
+                # END : for calculating execution time
+                stop = timeit.default_timer()
+                logger.debug("DB : retrieve_most_diary_month() - Execution Time : %s", stop - start)
+                logger.debug('DB RESULT : %s', result)
+                return result['DATE']
+
+
+        except pymysql.MySQLError as exp:
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At retrieve_most_diary_month()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+            return False
+
+    def retrieve_diaries_per_week(self, user_id):
+        """Creating new audio_diary to SD DB
+        Usually, this method be called
+        When User creating new audio_diary
+
+
+
+        :type audio_diary_info: dict contains user_id, timestamp_from, timestamp_to
+        :rtype query result[list] or false:
+        """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+        assert self.connected
+        # query_for_get_num = "SELECT AVG(d.CNT) FROM (SELECT DATE_FORMAT(FROM_UNIXTIME(created_date / 1000), '%%Y-%%u') as DATE, COUNT(*) as CNT FROM audio_diary WHERE user_id = %s " \
+        #                     "GROUP BY DATE_FORMAT(FROM_UNIXTIME(created_date / 1000), '%%Y-%%u') ORDER BY CNT DESC ) as d"
+        query_for_get_num = "SELECT DATE_FORMAT(FROM_UNIXTIME(created_date / 1000), '%%Y-%%u') as DATE, COUNT(*) as CNT FROM audio_diary WHERE user_id = %s " \
+                            "GROUP BY DATE_FORMAT(FROM_UNIXTIME(created_date / 1000), '%%Y-%%u') ORDER BY CNT DESC"
+        try:
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                cur.execute(query_for_get_num, user_id)
+                result = cur.fetchall()
+                # END : for calculating execution time
+                stop = timeit.default_timer()
+                logger.debug("DB : retrieve_diaries_per_week() - Execution Time : %s", stop - start)
+                logger.debug('DB RESULT : %s', result)
+                if result:
+                    return result
+                else:
+                    return []
+
+
+        except pymysql.MySQLError as exp:
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At retrieve_diaries_per_week()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+            return False
+
+    def retrieve_avg_num_of_sentence_per_diary(self, user_id):
+        """Creating new audio_diary to SD DB
+        Usually, this method be called
+        When User creating new audio_diary
+
+
+
+        :type audio_diary_info: dict contains user_id, timestamp_from, timestamp_to
+        :rtype query result[list] or false:
+        """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+        assert self.connected
+        query_for_get_num = "SELECT COUNT(sentence.sentence_id) as s_num, COUNT(DISTINCT audio_diary.audio_diary_id) as a_num " \
+                            "FROM audio_diary JOIN text_diary JOIN sentence " \
+                            "WHERE user_id = %s "
+        try:
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                cur.execute(query_for_get_num, user_id)
+                result = cur.fetchone()
+                # END : for calculating execution time
+                stop = timeit.default_timer()
+                logger.debug("DB : retrieve_avg_num_of_sentence_per_diary() - Execution Time : %s", stop - start)
+                logger.debug('DB RESULT : %s', result)
+                if result['a_num']:  # zero divide check
+                    return result['s_num'] / result['a_num']
+                else:
+                    return -1
+
+
+        except pymysql.MySQLError as exp:
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At retrieve_avg_num_of_sentence_per_diary()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+            return -1
+
+    def retrieve_max_num_of_sentence(self, user_id):
+        """Creating new audio_diary to SD DB
+        Usually, this method be called
+        When User creating new audio_diary
+
+
+
+        :type audio_diary_info: dict contains user_id, timestamp_from, timestamp_to
+        :rtype query result[list] or false:
+        """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+        assert self.connected
+        query_for_get_num = "SELECT COUNT(sentence.sentence_id) as s_num " \
+                            "FROM audio_diary NATURAL LEFT JOIN text_diary NATURAL LEFT JOIN sentence " \
+                            "WHERE user_id = %s " \
+                            "GROUP BY audio_diary.audio_diary_id " \
+                            "ORDER BY s_num DESC "
+        try:
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                cur.execute(query_for_get_num, user_id)
+                result = cur.fetchone()
+                # END : for calculating execution time
+                stop = timeit.default_timer()
+                logger.debug("DB : retrieve_max_num_of_sentence() - Execution Time : %s", stop - start)
+                logger.debug('DB RESULT : %s', result)
+                return result['s_num']
+
+
+        except pymysql.MySQLError as exp:
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At retrieve_max_num_of_sentence()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+            return -1
+
+    def retrieve_total_num_of_sentence(self, user_id):
+        """Creating new audio_diary to SD DB
+        Usually, this method be called
+        When User creating new audio_diary
+
+
+
+        :type audio_diary_info: dict contains user_id, timestamp_from, timestamp_to
+        :rtype query result[list] or false:
+        """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+        assert self.connected
+        query_for_get_num = "SELECT COUNT(sentence.sentence_id) as s_num " \
+                            "FROM audio_diary NATURAL LEFT JOIN text_diary NATURAL LEFT JOIN sentence " \
+                            "WHERE user_id = %s "
+
+        try:
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                cur.execute(query_for_get_num, user_id)
+                result = cur.fetchone()
+                # END : for calculating execution time
+                stop = timeit.default_timer()
+                logger.debug("DB : retrieve_total_num_of_sentence() - Execution Time : %s", stop - start)
+                logger.debug('DB RESULT : %s', result)
+                return result['s_num']
+
+
+        except pymysql.MySQLError as exp:
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At retrieve_total_num_of_sentence()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+            return -1
+
+    def retrieve_total_num_of_media_context(self, user_id):
+        """Creating new audio_diary to SD DB
+        Usually, this method be called
+        When User creating new audio_diary
+
+
+
+        :type audio_diary_info: dict contains user_id, timestamp_from, timestamp_to
+        :rtype query result[list] or false:
+        """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+        assert self.connected
+        query_for_get_num = "SELECT COUNT(media_context.media_context_id) as m_num " \
+                            "FROM audio_diary NATURAL LEFT JOIN media_context " \
+                            "WHERE user_id = %s "
+
+        try:
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                cur.execute(query_for_get_num, user_id)
+                result = cur.fetchone()
+                # END : for calculating execution time
+                stop = timeit.default_timer()
+                logger.debug("DB : retrieve_total_num_of_media_context() - Execution Time : %s", stop - start)
+                logger.debug('DB RESULT : %s', result)
+                return result['m_num']
+
+
+        except pymysql.MySQLError as exp:
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At retrieve_total_num_of_media_context()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+            return -1
+
+    def retrieve_num_of_total_media_context_per_type(self, user_id):
+        """Creating new audio_diary to SD DB
+        Usually, this method be called
+        When User creating new audio_diary
+
+
+
+        :type audio_diary_info: dict contains user_id, timestamp_from, timestamp_to
+        :rtype query result[list] or false:
+        """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+        assert self.connected
+        query_for_get_num = "SELECT COUNT(media_context.media_context_id) as value, media_context.type " \
+                            "FROM audio_diary NATURAL LEFT JOIN media_context " \
+                            "WHERE user_id = %s AND type != '' " \
+                            "GROUP BY media_context.type "
+
+        try:
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                cur.execute(query_for_get_num, user_id)
+                result = cur.fetchall()
+                # END : for calculating execution time
+                stop = timeit.default_timer()
+                logger.debug("DB : retrieve_num_of_total_media_context_per_type() - Execution Time : %s", stop - start)
+                logger.debug('DB RESULT : %s', result)
+                return result
+
+
+        except pymysql.MySQLError as exp:
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At retrieve_num_of_total_media_context_per_type()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+            return False
+
+    def retrieve_total_num_of_tag(self, user_id):
+        """Creating new audio_diary to SD DB
+        Usually, this method be called
+        When User creating new audio_diary
+
+
+
+        :type audio_diary_info: dict contains user_id, timestamp_from, timestamp_to
+        :rtype query result[list] or false:
+        """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+        assert self.connected
+        query_for_get_num = "SELECT COUNT(tag.tag_id) as t_num " \
+                            "FROM audio_diary NATURAL LEFT JOIN tag " \
+                            "WHERE user_id = %s "
+
+        try:
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                cur.execute(query_for_get_num, user_id)
+                result = cur.fetchone()
+                # END : for calculating execution time
+                stop = timeit.default_timer()
+                logger.debug("DB : retrieve_total_num_of_tag() - Execution Time : %s", stop - start)
+                logger.debug('DB RESULT : %s', result)
+                return result['t_num']
+
+
+        except pymysql.MySQLError as exp:
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At retrieve_total_num_of_tag()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+            return -1
+
+    def retrieve_total_referencing_of_each_tag(self, user_id):
+        """Creating new audio_diary to SD DB
+        Usually, this method be called
+        When User creating new audio_diary
+
+
+
+        :type audio_diary_info: dict contains user_id, timestamp_from, timestamp_to
+        :rtype query result[list] or false:
+        """
+        # START : for calculating execution time
+        start = timeit.default_timer()
+        assert self.connected
+        query_for_get_num = "SELECT COUNT(tag.tag_id) as num, tag.value as tag " \
+                            "FROM audio_diary NATURAL LEFT JOIN tag " \
+                            "WHERE user_id = %s AND value != '' " \
+                            "GROUP BY tag.value "
+
+        try:
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                cur.execute(query_for_get_num, user_id)
+                result = cur.fetchall()
+                # END : for calculating execution time
+                stop = timeit.default_timer()
+                logger.debug("DB : retrieve_total_referencing_of_each_tag() - Execution Time : %s", stop - start)
+                logger.debug('DB RESULT : %s', result)
+                return result
+
+
+        except pymysql.MySQLError as exp:
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At retrieve_total_referencing_of_each_tag()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+            return False
+
+
 
