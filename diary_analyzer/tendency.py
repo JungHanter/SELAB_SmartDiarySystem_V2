@@ -34,8 +34,8 @@ class WordSetCorpusRetriever(object):
     def get_list(self):
         return self.synset_list
 
-    def find_synset(self, synset):
-        if synset.name() in self.categoricals:
+    def find_synset(self, synset, check_cat=False):
+        if synset.name() in self.categoricals and not check_cat:
             return None
         for item in self.synset_list:
             if synset.name() == item[self.IDX_SYNSET].name():
@@ -48,8 +48,8 @@ class WordSetCorpusRetriever(object):
         else:
             return False
 
-    def find_word(self, word):
-        if word in self.categoricals_lemma:
+    def find_word(self, word, check_cat=False, pos='n'):
+        if word in self.categoricals_lemma and not check_cat:
             return None
         for item in self.synset_list:
             if word in item[self.IDX_LEMMA_WORDS]:  # lemma list
@@ -62,16 +62,16 @@ class WordSetCorpusRetriever(object):
         else:
             return False
 
-    def get_item_word(self, word):
-        if word in self.categoricals_lemma:
+    def get_item_word(self, word, check_cat=False, pos='n'):
+        if word in self.categoricals_lemma and not check_cat:
             return None
         for item in self.synset_list:
             if word in item[self.IDX_LEMMA_WORDS]:  # lemma list
                 return item
         return None
 
-    def get_item_synset(self, synset):
-        if synset.name() in self.categoricals:
+    def get_item_synset(self, synset, check_cat=False):
+        if synset.name() in self.categoricals and not check_cat:
             return None
         for item in self.synset_list:
             if synset.name() == item[self.IDX_SYNSET].name():
@@ -201,15 +201,16 @@ class SynsetListFileCorpusRetriever(WordSetCorpusRetriever):
                     return synset_group[0]
         return None
 
-    def find_word(self, word):
+    def find_word(self, word, check_cat=False, pos='n'):
         for item in self.synset_list:
             synset_group = item[self.IDX_SYNSET]
             for s in synset_group:
                 if word in item[self.IDX_LEMMA_WORDS]:
+                    print(item)
                     return synset_group[0]
         return None
 
-    def get_item_word(self, word):
+    def get_item_word(self, word, check_cat=False, pos='n'):
         for item in self.synset_list:
             synset_group = item[self.IDX_SYNSET]
             for s in synset_group:
@@ -307,7 +308,7 @@ class SentiWordNetRetriever(object):
 
 class TendencyAnalyzer(object):
     """Perform Tendency analysis"""
-    DEBUG = False
+    DEBUG = True
 
     SIMILAR_PATH_MAX_HYPERNYM = 2
     SIMILAR_PATH_MAX_HYPONYM = 1
@@ -345,6 +346,7 @@ class TendencyAnalyzer(object):
                 for idx in range(1, len(extracted_words)):
                     print('      ', extracted_words[idx])
             print()
+        return
 
         # step 3
         print("\n##### Step 3. #####")
@@ -434,13 +436,13 @@ class TendencyAnalyzer(object):
                               'SentiWordNet_3.0.0_20130122.txt')
         senti_wordnet = SentiWordNetRetriever(sw_path)
         foods_categoricals = ['cut.n.06', 'cold_cuts.n.01', 'nutriment.n.01', 'foodstuff.n.02', 'dish.n.02',
-                              'course.n.07', 'game.n.07', 'halal.n.01', 'horsemeat.n.01',
+                              'course.n.07', 'game.n.07', 'halal.n.01', 'horsemeat.n.01', 'broth.n.01',
                               'date.n.08', 'side.n.09', 'pop.n.02', 'bird.n.02', 'carbonado.n.02',]
         foods_categoricals.extend(list(_get_hypernyms_name(wn.synset('cut.n.06'))))
         foods = HyponymCorpusRetriever(wn.synset('food.n.02'), wn.synset('food.n.01'),
                                        max_level=10,
                                        excepts=['slop.n.04', 'loaf.n.02', 'leftovers.n.01',
-                                          'convenience_food.n.01',
+                                          'convenience_food.n.01', 'concentrate.n.02',
                                           'miraculous_food.n.01', 'micronutrient.n.01',
                                           'feed.n.01', 'fare.n.04',
                                           'culture_medium.n.01', 'comestible.n.01',
@@ -714,14 +716,21 @@ class TendencyAnalyzer(object):
                         pass
                 elif entity[TAG_WORD_ROLE] == 'ccomp':
                     # clausal complement (ex, that clause)
-                    if tagged_sen[int(entity[TAG_DEPENDENCY])-1][TAG_WORD_ROLE] == 'root':
-                        main_entities_idxs.append(entity_idx)
-                        pass
+                    # if tagged_sen[int(entity[TAG_DEPENDENCY])-1][TAG_WORD_ROLE] == 'root':
+                    #     main_entities_idxs.append(entity_idx)
+                    #     pass
+                    main_entities_idxs.append(entity_idx)
+
                 elif entity[TAG_WORD_ROLE] == 'advcl':
                     # adverb clause (ex, when clause)
-                    if tagged_sen[int(entity[TAG_DEPENDENCY])-1][TAG_WORD_ROLE] == 'root':
-                        main_entities_idxs.append(entity_idx)
-                        pass
+                    # if tagged_sen[int(entity[TAG_DEPENDENCY])-1][TAG_WORD_ROLE] == 'root':
+                    #     main_entities_idxs.append(entity_idx)
+                    #     pass
+                    main_entities_idxs.append(entity_idx)
+
+                elif entity[TAG_WORD_ROLE] == 'parataxis':
+                    # parataxis clauses
+                    main_entities_idxs.append(entity_idx)
 
             # find words depend on which main entities
             entities_dep_dict = defaultdict(lambda: [])
@@ -790,7 +799,7 @@ class TendencyAnalyzer(object):
                     entity = tagged_sen[entity_idx]
 
                     # check adverb modifier
-                    if entity[TAG_WORD_POS].startswith('RB'):
+                    if entity[TAG_WORD_POS].startswith('RB') and entity[TAG_WORD_ROLE] != 'neg':
                         offsets = _find_offsets_from_word(entity[TAG_WORD].lower(), 'r')
                         pref_score = 0
                         pref_cnt = 0
@@ -868,8 +877,16 @@ class TendencyAnalyzer(object):
                                             pass
 
                     # check adjective modifier
-                    elif entity[TAG_WORD_POS].startswith('RB'):
-                        offsets = _find_offsets_from_word(entity[TAG_WORD].lower(), 'a')
+                    elif entity[TAG_WORD_POS].startswith('JJ'):
+                        word = entity[TAG_WORD].lower()
+
+                        # exceptional cases
+                        if word == 'few' or word == 'little':
+                            # a little and a few
+                            if entity_idx >= 1 and tagged_sen[entity_idx-1][TAG_WORD] == 'a':
+                                continue
+
+                        offsets = _find_offsets_from_word(word, 'a')
                         pref_score = 0
                         pref_cnt = 0
                         for offset in offsets:
@@ -901,7 +918,8 @@ class TendencyAnalyzer(object):
 
             if self.DEBUG:
                 print('dep_dict')
-                pprint(entities_dep_dict)
+                for entity_idx, dep_list in entities_dep_dict.items():
+                    print(str(entity_idx)+':', dep_list)
                 print('main_ta_dict')
                 pprint(main_ta_dict)
                 print('verb_pref')
@@ -926,8 +944,9 @@ class TendencyAnalyzer(object):
                     if verb_pref[main_idx]['count'] + mod_pref[ta_entity_idx]['count'] != 0:
                         avg_pref = (verb_pref[main_idx]['sum'] + mod_pref[ta_entity_idx]['sum']) / \
                                    (verb_pref[main_idx]['count'] + mod_pref[ta_entity_idx]['count'])
-                    if 0 <= avg_pref < 0.15:
-                        avg_pref = 0.15
+                    # avg tend score
+                    # if 0 <= avg_pref < 0.15:
+                    #     avg_pref = 0.15
                     if sen_pref[main_idx]['count'] == 0:
                         sen_tend_score = weight_subj * avg_pref
                     else:
@@ -987,13 +1006,13 @@ class TendencyAnalyzer(object):
 
         # feature extraction
         # filtering with things and activities which there is only one item (with low score)
-        count_dict = defaultdict(int)
-        for pref_ta in pref_ta_list:
-            count_dict[pref_ta[0]] += 1
-        for i in range(0, len(pref_ta_list))[::-1]:
-            if count_dict[pref_ta_list[i][0]] < 2:
-            # if count_dict[pref_ta_list[i][0]] < 2 and abs(pref_ta_list[i][1]) < 0.2:
-                pref_ta_list.pop(i)
+        # count_dict = defaultdict(int)
+        # for pref_ta in pref_ta_list:
+        #     count_dict[pref_ta[0]] += 1
+        # for i in range(0, len(pref_ta_list))[::-1]:
+        #     if count_dict[pref_ta_list[i][0]] < 2:
+        #     # if count_dict[pref_ta_list[i][0]] < 2 and abs(pref_ta_list[i][1]) < 0.2:
+        #         pref_ta_list.pop(i)
 
         # filtering with things and activities which has more than 0.01 preference score
         for i in range(0, len(pref_ta_list))[::-1]:
@@ -1002,6 +1021,7 @@ class TendencyAnalyzer(object):
 
         # hypernyms to hyponym extraction
         pref_ta_features = list()
+        check_hyper_set = set()  # check already lower
         for i in range(0, len(pref_ta_list)):
             pref_ta = pref_ta_list[i]
             hypo_pref_set = set()
@@ -1016,9 +1036,14 @@ class TendencyAnalyzer(object):
                 for pref_hypo_name in hypo_pref_set:
                     pref_feature = [pref_hypo_name, pref_ta[1], pref_ta[2], pref_ta[3], pref_ta[4], pref_ta[0]]
                     pref_ta_features.append(pref_feature)
+                    check_hyper_set.add(pref_ta[0])
             else:
                 pref_feature = list(pref_ta) + [None]
                 pref_ta_features.append(pref_feature)
+        for i in range(0, len(pref_ta_features))[::-1]:
+            pref_ta = pref_ta_features[i]
+            if pref_ta[0] in check_hyper_set:
+                pref_ta_features.pop(i)
 
         # for i in range(0, len(pref_ta_list)):
         #     pref_ta_features.append(list(pref_ta_list[i]))
@@ -1287,7 +1312,7 @@ class TendencyAnalyzer(object):
                 for tend in tend_list:
                     data_x.append(tend[1])
                     data_y.append(type_cnt+1)
-                    labels.append(_get_default_lemma(tend[0]))
+                    labels.append('%s (%.3f)' % (tend[0], tend[1]))
                     label_y.append(label_y_dist)
                     label_y_dist += 15
                     colors.append(color_list[type_cnt])
@@ -1297,12 +1322,13 @@ class TendencyAnalyzer(object):
                 for tend in tend_list:
                     data_x.append(tend[1])
                     data_y.append(type_cnt+1)
-                    labels.append(_get_default_lemma(tend[0]))
+                    labels.append('%s (%.3f)' % (tend[0], tend[1]))
                     label_y.append(label_y_dist)
                     label_y_dist += 15
                     colors.append(color_list[type_cnt])
             ticks.append(type_cnt+1)
-            ticklables.append('{0}->{1}'.format(type[1],type[0]))
+            ticklables.append('{0}'.format(type[0]))
+            # ticklables.append('{0}->{1}'.format(type[1],type[0]))
             type_cnt += 1
 
         plt.scatter(data_x, data_y, marker='o', c=colors, s=200)
@@ -1332,6 +1358,7 @@ class TendencyAnalyzer(object):
             found_synset, lemma_word = \
                 self._find_synset_by_word_list(words_set, finding_word_list, plural)
             if found_synset:
+                print(finding_word_list, found_synset, lemma_word)
                 synset_list.append((found_synset, lemma_word, words_set_type))
         return synset_list
 
@@ -1383,6 +1410,7 @@ class TendencyAnalyzer(object):
         lemma_word = _word_list_to_lemma_form(finding_word_list).lower()
         synset = words_set.find_word(lemma_word)
         if synset is not None:
+            print(synset, lemma_word)
             return synset, lemma_word
 
         length = len(finding_word_list)
@@ -1449,7 +1477,7 @@ class TendencyAnalyzer(object):
         return tend_dict
 
     @classmethod
-    def _find_common_hypernyms(cls, ta_name_list, corpus_retriever, search_level=3):
+    def _find_common_hypernyms(cls, ta_name_list, corpus_retriever, search_level=3, check_cat=False):
         if len(ta_name_list) == 0:
             return []
         is_all_same = True
@@ -1473,11 +1501,12 @@ class TendencyAnalyzer(object):
             if synset:
                 hypernyms = _get_hypernyms(synset, search_level)
                 for hypernym in hypernyms:
-                    hypernym_item = corpus_retriever.get_item_synset(hypernym)
+                    hypernym_item = corpus_retriever.get_item_synset(hypernym, check_cat=check_cat)
                     if hypernym_item:
                         hypernym_count_dict[hypernym.name()]['count'] += 1
                         hypernym_count_dict[hypernym.name()]['level'] \
                             = hypernym_item[WordSetCorpusRetriever.IDX_LEVEL]
+        # pprint(hypernym_count_dict)
 
         # hypernym_count_dict_common = dict()
         # for common_synset_name in hypernym_count_dict.keys():
@@ -1505,7 +1534,7 @@ class TendencyAnalyzer(object):
                     max_hypernym_list.append(hypernym_name)
                 elif max_hypernym_level == count_dict['level']:
                     max_hypernym_list.append(hypernym_name)
-        # print(max_hypernym_list)
+        # pprint(max_hypernym_list)
         if max_hypernym_count >= len(ta_name_list):
             max_hypernym_list_in_origin = list()
             for hypernym_name in max_hypernym_list:
@@ -1525,7 +1554,8 @@ class TendencyAnalyzer(object):
         for ta in cluster:
             synset_name_list.append(ta[0])
         common_hypernyms = cls._find_common_hypernyms(synset_name_list,
-                                                      corpus_retriever)
+                                                      corpus_retriever,
+                                                      check_cat=True)
         if common_hypernyms:
             for idx in range(0, len(common_hypernyms)):
                 hypernym_name = common_hypernyms[idx]
@@ -1789,12 +1819,12 @@ if __name__ == "__main__":
     # tend_analyzer.analyze_diary(d_diaries,
     #         [('food', 'thing'), ('hobby', 'activity'), ('sport', 'activity')])
 
-    elize_diaries = list()
-    for i in range(1, 5):
-        diary_tags = tagger.pickle_to_tags("diary_pickles/eliz_" + str(i) + ".pkl")
-        elize_diaries.append(diary_tags[1])
-    print("load eliz diaries done.")
-    tend_analyzer.analyze_diary(elize_diaries, [('food', 'thing')])
+    # elize_diaries = list()
+    # for i in range(1, 5):
+    #     diary_tags = tagger.pickle_to_tags("diary_pickles/eliz_" + str(i) + ".pkl")
+    #     elize_diaries.append(diary_tags[1])
+    # print("load eliz diaries done.")
+    # tend_analyzer.analyze_diary(elize_diaries, [('food', 'thing')])
 
     # jeniffer_2015_diaries = list()
     # for i in range(0, 228):
@@ -1813,10 +1843,13 @@ if __name__ == "__main__":
     # print(diary_tags5)
     # print()
     #
-    # TEST_DIARY4 = "The apple and banana was very delicious, but grape wasn't. I like apple but I don't like pineapple."
-    # diary_tags4 = tagger.tag_pos_doc(TEST_DIARY4)
-    # print(diary_tags4)
-    # tend_analyzer.analyze_diary([diary_tags4[1]], [('food', 'thing')])
+    # TEST_DIARY4 = "Pork roast never looked so good."
+    TEST_DIARY4 = "Snookie wants to go to the Olive Garden today."
+    diary_tags4 = tagger.tag_pos_doc(TEST_DIARY4)
+    print(diary_tags4)
+    tend_analyzer.analyze_diary([diary_tags4[1]], [('hobby', 'activity')])
+    # for i in range(0, len(diary_tags4[1][0])):
+    #     print(str(i+1)+':', diary_tags4[1][0][i])
 
     # pprint(tagger.tag_pos_doc("Sue brought a 1000 piece puzzle for us to do as a family and a good sized bottle of Columbia Crest Chardonnay for dinner."))
     # pprint(tagger.tag_pos_doc("An hour later, the 3 of us were pouring over the damn puzzle."))
