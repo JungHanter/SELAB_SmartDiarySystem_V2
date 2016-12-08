@@ -42,8 +42,8 @@ class WordSetCorpusRetriever(object):
                 return item[self.IDX_SYNSET]
         return None
 
-    def check_synset_in(self, synset):
-        if self.find_synset(synset) is not None:
+    def check_synset_in(self, synset, check_cat=False):
+        if self.find_synset(synset, check_cat) is not None:
             return True
         else:
             return False
@@ -52,12 +52,13 @@ class WordSetCorpusRetriever(object):
         if word in self.categoricals_lemma and not check_cat:
             return None
         for item in self.synset_list:
-            if word in item[self.IDX_LEMMA_WORDS]:  # lemma list
-                return item[self.IDX_SYNSET]  # synset
+            if pos in item[self.IDX_LEMMA_WORDS].keys():
+                if word in item[self.IDX_LEMMA_WORDS][pos]:  # lemma list
+                    return item[self.IDX_SYNSET]  # synset
         return None
 
-    def check_word_in(self, word):
-        if self.find_word(word) is not None:
+    def check_word_in(self, word, check_cat=False, pos='n'):
+        if self.find_word(word, check_cat, pos) is not None:
             return True
         else:
             return False
@@ -66,8 +67,9 @@ class WordSetCorpusRetriever(object):
         if word in self.categoricals_lemma and not check_cat:
             return None
         for item in self.synset_list:
-            if word in item[self.IDX_LEMMA_WORDS]:  # lemma list
-                return item
+            if pos in item[self.IDX_LEMMA_WORDS].keys():
+                if word in item[self.IDX_LEMMA_WORDS][pos]:  # lemma list
+                    return item
         return None
 
     def get_item_synset(self, synset, check_cat=False):
@@ -102,7 +104,9 @@ class HyponymCorpusRetriever(WordSetCorpusRetriever):
                 continue
 
             # tuple (sysnet, level, lemma_words)
-            hyponym_list.append((hyponym, now_level, _lemmas_to_name_list(hyponym.lemmas())))
+            lemma_words = {}
+            lemma_words[hyponym.pos()] = _lemmas_to_name_list(hyponym.lemmas())
+            hyponym_list.append((hyponym, now_level, lemma_words))
             hyponym_list = hyponym_list + self._collect_hyponyms(hyponym, max_level, now_level)
         return hyponym_list
 
@@ -129,7 +133,9 @@ class HypernymCorpusRetriever(WordSetCorpusRetriever):
                 continue
 
             # tuple (sysnet, level, lemma_words)
-            hypernym_list.append((hypernym, now_level, _lemmas_to_name_list(hypernym.lemmas())))
+            lemma_words = {}
+            lemma_words[hypernym.pos()] = _lemmas_to_name_list(hypernym.lemmas())
+            hypernym_list.append((hypernym, now_level, lemma_words))
             hypernym_list = hypernym_list + self._collect_hyponyms(hypernym, max_level, now_level)
         return hypernym_list
 
@@ -152,7 +158,9 @@ class ListFileCorpusRetriever(WordSetCorpusRetriever):
                     break
                 line = _text_to_lemma_format(line.strip())
                 for synset in wn.synsets(line):
-                    synset_list.append((synset, 0, _lemmas_to_name_list(synset.lemmas()),
+                    lemma_words = {}
+                    lemma_words[synset.pos()] = _lemmas_to_name_list(synset.lemmas())
+                    synset_list.append((synset, 0, lemma_words,
                                         synset.lexname(), synset.definition()))
             file.close()
         return synset_list
@@ -174,12 +182,15 @@ class SynsetListFileCorpusRetriever(WordSetCorpusRetriever):
                     break
                 if line == '\n':
                     synsets = []
-                    lemmas = []
+                    # lemmas = []
+                    lemmas = {}
                     for synset_name in synset_group:
                         synset = wn.synset(synset_name)
                         if synset:
                             synsets.append(wn.synset(synset_name))
-                            lemmas.extend(_lemmas_to_name_list(synset.lemmas()))
+                            if synset.pos() not in lemmas.keys():
+                                lemmas[synset.pos()] = list()
+                            lemmas[synset.pos()].extend(_lemmas_to_name_list(synset.lemmas()))
                     synset_list.append((synsets, 0, lemmas))
 
                     synset_group = [] # init
@@ -205,17 +216,19 @@ class SynsetListFileCorpusRetriever(WordSetCorpusRetriever):
         for item in self.synset_list:
             synset_group = item[self.IDX_SYNSET]
             for s in synset_group:
-                if word in item[self.IDX_LEMMA_WORDS]:
-                    print(item)
-                    return synset_group[0]
+                if pos in item[self.IDX_LEMMA_WORDS].keys():
+                    if word in item[self.IDX_LEMMA_WORDS][pos]:
+                        print(item)
+                        return synset_group[0]
         return None
 
     def get_item_word(self, word, check_cat=False, pos='n'):
         for item in self.synset_list:
             synset_group = item[self.IDX_SYNSET]
             for s in synset_group:
-                if word in item[self.IDX_LEMMA_WORDS]:
-                    return item
+                if pos in item[self.IDX_LEMMA_WORDS].keys():
+                    if word in item[self.IDX_LEMMA_WORDS][pos]:
+                        return item
         return None
 
     def get_item_synset(self, synset):
@@ -346,7 +359,6 @@ class TendencyAnalyzer(object):
                 for idx in range(1, len(extracted_words)):
                     print('      ', extracted_words[idx])
             print()
-        return
 
         # step 3
         print("\n##### Step 3. #####")
@@ -514,7 +526,7 @@ class TendencyAnalyzer(object):
                             plural = last_word[2]
                             # print(search_word_comp_list) ##### REMOVE
                             found_synset_list \
-                                = self._find_comp_synsets_in_wordsets(search_word_comp_list, plural)
+                                = self._find_comp_synsets_in_wordsets(search_word_comp_list, 'n', plural)
                             if found_synset_list and prev_word_idx != -1:
                                 for found_synset in found_synset_list:
                                     identified_sent_dict[sent_idx].append(found_synset + (prev_word_idx, 'n',
@@ -559,7 +571,7 @@ class TendencyAnalyzer(object):
                                 plural = last_word[2]
                                 # print(search_word_comp_list) ##### REMOVE
                                 found_synset_list \
-                                    = self._find_comp_synsets_in_wordsets(search_word_comp_list, plural)
+                                    = self._find_comp_synsets_in_wordsets(search_word_comp_list, 'n', plural)
                                 if found_synset_list and prev_word_idx != -1:
                                     for found_synset in found_synset_list:
                                         identified_sent_dict[sent_idx].append(found_synset + (prev_word_idx, 'n',
@@ -598,7 +610,7 @@ class TendencyAnalyzer(object):
                                 plural = last_word[2]
                                 # print(search_word_comp_list) ##### REMOVE
                                 found_synset_list \
-                                    = self._find_comp_synsets_in_wordsets(search_word_comp_list, plural)
+                                    = self._find_comp_synsets_in_wordsets(search_word_comp_list, 'n', plural)
                                 if found_synset_list and prev_word_idx != -1:
                                     for found_synset in found_synset_list:
                                         identified_sent_dict[sent_idx].append(found_synset + (prev_word_idx, 'n',
@@ -616,7 +628,7 @@ class TendencyAnalyzer(object):
                     if 'VB' in word[TAG_WORD_POS]:
                         # find activities as verb
                         found_synset_list \
-                            = self._find_synsets_in_wordsets([word[TAG_WORD]])
+                            = self._find_synsets_in_wordsets([word[TAG_WORD]], pos='v')
                         for found_synset in found_synset_list:
                             identified_sent_dict[sent_idx].append(found_synset + (word_idx, 'v', 0))
                         prev_word_comp_list.clear()
@@ -1352,21 +1364,21 @@ class TendencyAnalyzer(object):
         pass
 
     # return a list of (found_synset, lemma_word, words_set_type)
-    def _find_synsets_in_wordsets(self, finding_word_list, plural=False):
+    def _find_synsets_in_wordsets(self, finding_word_list, pos='n', plural=False):
         synset_list = list()
         for words_set_type, words_set in self.words_corpora.items():
             found_synset, lemma_word = \
-                self._find_synset_by_word_list(words_set, finding_word_list, plural)
+                self._find_synset_by_word_list(words_set, finding_word_list, pos, plural)
             if found_synset:
                 print(finding_word_list, found_synset, lemma_word)
                 synset_list.append((found_synset, lemma_word, words_set_type))
         return synset_list
 
-    def _find_comp_synsets_in_wordsets(self, finding_comp_word_list, plural=False):
+    def _find_comp_synsets_in_wordsets(self, finding_comp_word_list, pos='n', plural=False):
         finding_word_list = list()
         for finding_comp_word in finding_comp_word_list:
             finding_word_list.append(finding_comp_word[0])
-        return self._find_synsets_in_wordsets(finding_word_list, plural)
+        return self._find_synsets_in_wordsets(finding_word_list, pos, plural)
 
     def _check_synsets_in_common(self, finding_word_list, plural=False):
         lemma_word = _word_list_to_lemma_form(finding_word_list)
@@ -1406,9 +1418,9 @@ class TendencyAnalyzer(object):
                 cls._score_to_hyponyms(hyponym, subscore, score_sentiments)
 
     @classmethod
-    def _find_synset_by_word_list(cls, words_set, finding_word_list, plural=False):
+    def _find_synset_by_word_list(cls, words_set, finding_word_list, pos='n', plural=False):
         lemma_word = _word_list_to_lemma_form(finding_word_list).lower()
-        synset = words_set.find_word(lemma_word)
+        synset = words_set.find_word(lemma_word, pos=pos)
         if synset is not None:
             print(synset, lemma_word)
             return synset, lemma_word
@@ -1422,7 +1434,7 @@ class TendencyAnalyzer(object):
                 morphys = wn._morphy(finding_word_list[length - 1], wn.NOUN)
                 plural_noun = morphys[len(morphys)-1]
                 finding_word_list[length - 1] = plural_noun
-                return cls._find_synset_by_word_list(words_set, finding_word_list, False)
+                return cls._find_synset_by_word_list(words_set, finding_word_list, pos, False)
             except Exception as e:  # list index out of range exception -> no matching synset
                 return None, None
         return None, None
@@ -1789,13 +1801,13 @@ if __name__ == "__main__":
     # tend_analyzer.analyze_diary(joanne_diaries,
     #         [('food', 'thing'), ('hobby', 'activity'), ('sport', 'activity')])
 
-    # jeniffer_diaries = list()
-    # for i in range(1, 37):
-    #     diary_tags = tagger.pickle_to_tags("diary_pickles/jennifer_" + str(i) + ".pkl")
-    #     jeniffer_diaries.append(diary_tags[1])
-    # print("load jeniffer diaries done.")
-    # tend_analyzer.analyze_diary(jeniffer_diaries,
-    #         [('food', 'thing'), ('hobby', 'activity'), ('sport', 'activity')])
+    jeniffer_diaries = list()
+    for i in range(1, 37):
+        diary_tags = tagger.pickle_to_tags("diary_pickles/jennifer_" + str(i) + ".pkl")
+        jeniffer_diaries.append(diary_tags[1])
+    print("load jeniffer diaries done.")
+    tend_analyzer.analyze_diary(jeniffer_diaries,
+            [('food', 'thing'), ('hobby', 'activity'), ('sport', 'activity')])
     # tend_analyzer.analyze_diary(jeniffer_diaries, [('food', 'thing')])
     # tend_analyzer.analyze_diary(jeniffer_diaries, [('exercise', 'activity'),
     #                                                ('food', 'thing')])
@@ -1844,10 +1856,10 @@ if __name__ == "__main__":
     # print()
     #
     # TEST_DIARY4 = "Pork roast never looked so good."
-    TEST_DIARY4 = "Snookie wants to go to the Olive Garden today."
-    diary_tags4 = tagger.tag_pos_doc(TEST_DIARY4)
-    print(diary_tags4)
-    tend_analyzer.analyze_diary([diary_tags4[1]], [('hobby', 'activity')])
+    # TEST_DIARY4 = "Snookie wants to go to the Olive Garden today."
+    # diary_tags4 = tagger.tag_pos_doc(TEST_DIARY4)
+    # print(diary_tags4)
+    # tend_analyzer.analyze_diary([diary_tags4[1]], [('hobby', 'activity')])
     # for i in range(0, len(diary_tags4[1][0])):
     #     print(str(i+1)+':', diary_tags4[1][0][i])
 
