@@ -1922,7 +1922,7 @@ if __name__ == "__main__":
 
     as_travel_diaries = list()
     for i in range(1, 56):
-        diary_tags = tagger.pickle_to_tags("diary_pickles/as_travel" + str(i) + ".pkl")
+        diary_tags = tagger.pickle_to_tags("diary_pickles/as_travel_" + str(i) + ".pkl")
         as_travel_diaries.append(diary_tags[1])
     print("load as travel diaries done.")
     tend_analyzer.analyze_diary(as_travel_diaries,
