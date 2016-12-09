@@ -40,9 +40,6 @@ electronics.n.01 ['noun.cognition', 'the branch of physics that deals with the e
 
 fashion.n.03 ['noun.cognition', 'the latest and most admired style in clothes and cosmetics and behavior', ['fashion']]
 
-game.n.01 ['noun.act', 'a contest with rules to determine a winner' ['game']]
-game.n.02 ['noun.act', 'a single play of a sport or other contest' ['game']]
-
 genealogy.n.02 ['noun.cognition', 'the study or investigation of ancestry and family history', ['genealogy']]
 
 ice_skating.n.01 ['noun.act', 'skating on ice', ['ice_skating']]
@@ -185,11 +182,8 @@ run.v.34 ['verb.motion', 'travel rapidly, by any (unspecified) means', ['run']]
 ply.v.03 ['verb.motion', 'travel a route regularly', ['ply', 'run']]
 race.v.02 ['verb.competition', 'compete in a race', ['race', 'run']]
 
-seafaring.n.01 ['noun.act', 'the work of a sailor', ['seafaring', 'navigation', 'sailing']]
 sailing.n.02 ['noun.act', 'riding in a sailboat', ['sailing']]
 sail.v.03 ['verb.motion', 'travel on water propelled by wind', ['sail']]
-
-glide.n.03 ['noun.act', 'the activity of flying a glider', ['glide', 'gliding', 'sailplaning', 'soaring', 'sailing']]
 
 scouting.n.01 ['noun.act', 'exploring in order to gain information', ['scouting', 'exploratory_survey', 'reconnoitering', 'reconnoitring']]
 scout.v.01 ['verb.perception', 'explore, often with the goal of finding something or somebody', ['scout', 'reconnoiter', 'reconnoitre']]
@@ -235,9 +229,6 @@ badminton.n.01 ['noun.act', 'a game played on a court with light long-handled ra
 billiards.n.01 ['noun.act', 'any of several games played on rectangular cloth-covered table (with cushioned edges) in which long tapering cue sticks are used to propel ivory (or composition) balls', ['billiards']]
 
 bowling.n.01 ['noun.act', 'a game in which balls are rolled at an object or group of objects with the aim of knocking them over or moving them', ['bowling']]
-
-packing.n.02 ['noun.act', 'the enclosure of something in a package or box', ['packing', 'boxing']]
-box.v.01 ['verb.contact', 'put into a box', ['box', 'package']]
 
 cheerlead.v.01 ['verb.communication', 'act as a cheerleader in a sports event', ['cheerlead']]
 

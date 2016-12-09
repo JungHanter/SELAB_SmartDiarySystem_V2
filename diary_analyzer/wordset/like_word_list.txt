@@ -1,0 +1,80 @@
+@ 0.8
+love
+admire
+care for
+cherish
+
+@ 0.6
+like
+appreciate
+go for
+adore
+approve
+esteem
+exclaim
+fancy
+prize
+relish
+savor
+prefer
+amuse
+
+@ 0.4
+go for
+prize
+wish
+want
+appeal to
+attract
+concern
+charm
+cheer
+delight
+please
+satisfy
+interest
+affect
+engage
+engross
+entertain
+excite
+fascinate
+intrigue
+involve
+tempt
+appeal
+arouse
+enjoy
+
+@ 0.2
+commend
+compliment
+praise
+appreciate
+relish
+revel in
+savor
+worship
+adopt
+choose
+promote
+treasure
+select
+suggest
+advance
+aggrandize
+cull
+desire
+elect
+adulate
+canonize
+deify
+esteem
+exalt
+enchant
+enrapture
+entertain
+fascinate
+gratify
+rejoice
+thrill

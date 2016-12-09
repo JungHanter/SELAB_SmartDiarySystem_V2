@@ -224,21 +224,21 @@ def nounify2(verb_synset):
                 set_of_related_nouns.append(synset)
     return set_of_related_nouns
 
-# for synset in wn.synsets('milks'):
-#     print(synset, synset.pos(), synset.offset(), synset.frame_ids(), synset.definition(),
-#           synset.examples(), synset.lexname(), sep=' | ')
-#     for lemma in synset.lemmas():
-#         print('\t', lemma, lemma.name(), lemma.syntactic_marker(), lemma.frame_ids(),
-#               lemma.frame_strings(), lemma.count(), sep=' | ')
-#     print()
-# print()
+for synset in wn.synsets('sailed'):
+    print(synset, synset.pos(), synset.offset(), synset.frame_ids(), synset.definition(),
+          synset.examples(), synset.lexname(), sep=' | ')
+    for lemma in synset.lemmas():
+        print('\t', lemma, lemma.name(), lemma.syntactic_marker(), lemma.frame_ids(),
+              lemma.frame_strings(), lemma.count(), sep=' | ')
+    print()
+print()
 
 # print(nounify('sketch'))
 # print(nounify2(wn.synset('macrame.v.01')))
 # print(nounify2(wn.synset('sculpt.v.01')))
 
 
-# synset = wn.synset('neck.n.03')
+# synset = wn.synset('gardening.n.01')
 # print(synset, synset.pos(), synset.offset(), synset.frame_ids(), synset.definition(),
 #       synset.examples(), synset.lexname(), sep=' | ')
 # for lemma in synset.lemmas():
@@ -246,14 +246,22 @@ def nounify2(verb_synset):
 #           lemma.frame_strings(), lemma.count(), sep=' | ')
 # print()
 #
-# for synset in wn.synset('neck.n.03').hypernyms():
-# for synset in wn.synset('meat.n.01').hyponyms():
+
+# for synset in wn.synset('dislike.v.01').hypernyms():
 #     print(synset, synset.pos(), synset.offset(), synset.frame_ids(), synset.definition(),
 #           synset.examples(), synset.lexname(), sep=' | ')
-#     # for lemma in synset.lemmas():
-#     #     print('\t', lemma, lemma.name(), lemma.syntactic_marker(), lemma.frame_ids(),
-#     #           lemma.frame_strings(), lemma.count(), sep=' | ')
-#     # print()
+#     for lemma in synset.lemmas():
+#         print('\t', lemma, lemma.name(), lemma.syntactic_marker(), lemma.frame_ids(),
+#               lemma.frame_strings(), lemma.count(), sep=' | ')
+#     print()
+# print()
+# for synset in wn.synset('dislike.v.01').hyponyms():
+#     print(synset, synset.pos(), synset.offset(), synset.frame_ids(), synset.definition(),
+#           synset.examples(), synset.lexname(), sep=' | ')
+#     for lemma in synset.lemmas():
+#         print('\t', lemma, lemma.name(), lemma.syntactic_marker(), lemma.frame_ids(),
+#               lemma.frame_strings(), lemma.count(), sep=' | ')
+#     print()
 # print()
 
 # synset_u = wn.synset('egg.n.02')
@@ -272,7 +280,7 @@ def nounify2(verb_synset):
 # pprint(tagger.tag_pos_doc("The banana was really good to me."))
 # pprint(tagger.tag_pos_doc("Definitely this bread looks delicious."))
 # pprint(tagger.tag_pos_doc("I know what you want."))
-pprint(tagger.tag_pos_doc("What is this very delicious food?"))
+# pprint(tagger.tag_pos_doc("What is this very delicious food?"))
 # pprint(tagger.tag_pos_doc("I was repeatedly molested and raped by my stepfather, until I became pregnant when I was sixteen."))
 # pprint(tagger.tag_pos_doc("But recently, I've discovered that what many of us think of as great leardership doesn not work when it comes to leading innovation."))
 

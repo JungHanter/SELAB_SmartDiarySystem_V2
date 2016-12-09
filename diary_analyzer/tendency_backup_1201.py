@@ -353,7 +353,7 @@ class TendencyAnalyzer(object):
         for diary_idx in range(0, diary_len):
             diary_tags = diary_tags_list[diary_idx]
             extracted_sent_dict = extracted_sent_dict_list[diary_idx]
-            scores_tend = self._compute_tend_scores(diary_tags, extracted_sent_dict, diary_idx + 1)
+            scores_tend = self.compute_tend_scores(diary_tags, extracted_sent_dict, diary_idx + 1)
             scores_tend_list.append(scores_tend)
             print("Diary #%s" % (diary_idx+1))
             pprint(scores_tend)
@@ -365,7 +365,7 @@ class TendencyAnalyzer(object):
         tend_list = list()
         for diary_idx in range(0, diary_len):
             scores_tend = scores_tend_list[diary_idx]
-            converted_tends = self._convert_scores_dict_to_list(scores_tend)
+            converted_tends = self.convert_scores_dict_to_list(scores_tend)
             tend_list += converted_tends
 
         # group by category and type
@@ -375,7 +375,7 @@ class TendencyAnalyzer(object):
             if len(tend_group_list) < 10:
                 continue
             print("Clustering for %s->%s" % (type[1].capitalize(), type[0].capitalize()))
-            clusters, pref_num = self._perform_clustering(tend_group_list)
+            clusters, pref_num = self.perform_clustering(tend_group_list)
             clustering_dict[type] = {'clusters': clusters, 'pref_num': pref_num}
             print("Number of Clusters: %s" % len(clusters))
             for idx in range(0, len(clusters)):
@@ -405,9 +405,9 @@ class TendencyAnalyzer(object):
         pos_tendency = dict()
         neg_tendency = dict()
         for type, clustering_info in clustering_dict.items():
-            pos_results, neg_result = self._figure_out_best_ta(clustering_info['clusters'],
-                                                               len(diary_tags_list),
-                                                               clustering_info['pref_num'])
+            pos_results, neg_result = self.figure_out_best_ta(clustering_info['clusters'],
+                                                              len(diary_tags_list),
+                                                              clustering_info['pref_num'])
             if len(pos_results) > 0:
                 pos_tendency[type] = pos_results
             if len(neg_result) > 0:
