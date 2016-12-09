@@ -144,10 +144,15 @@ class HypernymCorpusRetriever(WordSetCorpusRetriever):
 
 
 class ListFileCorpusRetriever(WordSetCorpusRetriever):
-    def __init__(self, file_path):
+    def __init__(self, file_path, pos_fliter=('n','a','v','r','s'),
+                 excepts=[], categoricals=[]):
         self.synset_list = list()
+        self.pos_fliter = pos_fliter
         if file_path:
             self.synset_list = self._load_list_file(file_path)
+        self.excepts = excepts
+        self.categoricals = categoricals
+        self.categoricals_lemma = self._get_lemmas(categoricals)
 
     def _load_list_file(self, file_path):
         synset_list = list()
@@ -156,8 +161,12 @@ class ListFileCorpusRetriever(WordSetCorpusRetriever):
                 line = file.readline()
                 if not line:
                     break
+                if line[0] == '#':
+                    continue
                 line = _text_to_lemma_format(line.strip())
                 for synset in wn.synsets(line):
+                    if synset.pos() not in self.pos_fliter:
+                        continue
                     lemma_words = {}
                     lemma_words[synset.pos()] = _lemmas_to_name_list(synset.lemmas())
                     synset_list.append((synset, 0, lemma_words,
@@ -167,10 +176,13 @@ class ListFileCorpusRetriever(WordSetCorpusRetriever):
 
 
 class SynsetListFileCorpusRetriever(WordSetCorpusRetriever):
-    def __init__(self, file_path):
+    def __init__(self, file_path, excepts=[], categoricals=[]):
         self.synset_list = list()
         if file_path:
             self.synset_list = self._load_list_file(file_path)
+        self.excepts = excepts
+        self.categoricals = categoricals
+        self.categoricals_lemma = self._get_lemmas(categoricals)
 
     def _load_list_file(self, file_path):
         synset_list = list()
@@ -204,7 +216,9 @@ class SynsetListFileCorpusRetriever(WordSetCorpusRetriever):
     def get_list(self):
         return self.synset_list
 
-    def find_synset(self, synset):
+    def find_synset(self, synset, check_cat=False):
+        if synset.name() in self.categoricals and not check_cat:
+            return None
         for item in self.synset_list:
             synset_group = item[self.IDX_SYNSET]
             for s in synset_group:
@@ -213,16 +227,19 @@ class SynsetListFileCorpusRetriever(WordSetCorpusRetriever):
         return None
 
     def find_word(self, word, check_cat=False, pos='n'):
+        if word in self.categoricals_lemma and not check_cat:
+            return None
         for item in self.synset_list:
             synset_group = item[self.IDX_SYNSET]
             for s in synset_group:
                 if pos in item[self.IDX_LEMMA_WORDS].keys():
                     if word in item[self.IDX_LEMMA_WORDS][pos]:
-                        print(item)
                         return synset_group[0]
         return None
 
     def get_item_word(self, word, check_cat=False, pos='n'):
+        if word in self.categoricals_lemma and not check_cat:
+            return None
         for item in self.synset_list:
             synset_group = item[self.IDX_SYNSET]
             for s in synset_group:
@@ -231,13 +248,57 @@ class SynsetListFileCorpusRetriever(WordSetCorpusRetriever):
                         return item
         return None
 
-    def get_item_synset(self, synset):
+    def get_item_synset(self, synset, check_cat=False):
+        if synset.name() in self.categoricals and not check_cat:
+            return None
         for item in self.synset_list:
             synset_group = item[self.IDX_SYNSET]
             for s in synset_group:
                 if synset.name() == s.name():
                     return item
         return None
+
+
+class PreferenceVerbCorpusRetriever(ListFileCorpusRetriever):
+    def __init__(self, like_file_path, dislike_file_path, excepts=[]):
+        self.synset_list = list()
+        self.excepts = excepts
+        if like_file_path and dislike_file_path:
+            self.synset_list = self._load_list_file(like_file_path)
+            self.synset_list.extend(self._load_list_file(dislike_file_path))
+
+    def _load_list_file(self, file_path):
+        synset_list = list()
+        with open(file_path, "r") as file:
+            now_score = 0
+            while True:
+                line = file.readline()
+                if not line:
+                    break
+                if line[0] == '#' or line == '\n':
+                    continue
+
+                if line[0] == '@':
+                    now_score = float(line.split(' ')[1])
+
+                line = _text_to_lemma_format(line.strip())
+                for synset in wn.synsets(line):
+                    if synset.pos() != 'v':
+                        continue
+                    if synset.name() in self.excepts:
+                        continue
+                    lemma_words = {}
+                    lemma_words[synset.pos()] = _lemmas_to_name_list(synset.lemmas())
+                    synset_list.append((synset, 0, lemma_words,
+                                        synset.lexname(), synset.definition(), now_score))
+            file.close()
+        return synset_list
+
+    def get_score(self, lemma_word):
+        for pref_synset in self.synset_list:
+            if lemma_word in pref_synset[2]['v']:
+                return pref_synset[5]
+        return 0
 
 
 class SentiWordNetRetriever(object):
@@ -321,7 +382,7 @@ class SentiWordNetRetriever(object):
 
 class TendencyAnalyzer(object):
     """Perform Tendency analysis"""
-    DEBUG = True
+    DEBUG = False
 
     SIMILAR_PATH_MAX_HYPERNYM = 2
     SIMILAR_PATH_MAX_HYPONYM = 1
@@ -332,6 +393,7 @@ class TendencyAnalyzer(object):
 
     def __init__(self, senti_wordnet=None):
         self.senti_wordnet = senti_wordnet
+        self.pref_verb_corpus = None
         self.words_corpora = defaultdict(lambda: None)
         # and more word set ...
 
@@ -369,7 +431,7 @@ class TendencyAnalyzer(object):
             scores_tend = self.compute_tend_scores(diary_tags, extracted_sent_dict, diary_idx + 1)
             scores_tend_list.append(scores_tend)
             print("Diary #%s" % (diary_idx+1))
-            pprint(scores_tend)
+            pprint(dict(scores_tend))
             print()
 
         # step 4
@@ -447,7 +509,13 @@ class TendencyAnalyzer(object):
         sw_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'wordset',
                               'SentiWordNet_3.0.0_20130122.txt')
         senti_wordnet = SentiWordNetRetriever(sw_path)
-        foods_categoricals = ['cut.n.06', 'cold_cuts.n.01', 'nutriment.n.01', 'foodstuff.n.02', 'dish.n.02',
+        pv_like_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'wordset',
+                                    'like_word_list.txt')
+        pv_dislike_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'wordset',
+                                       'dislike_word_list.txt')
+        pref_verbs = PreferenceVerbCorpusRetriever(pv_like_path, pv_dislike_path,
+                                                   excepts=['sleep_together.v.01', 'visualize.v.01'])
+        foods_categoricals = ['cut.n.06', 'cold_cuts.n.01', 'nutriment.n.01', 'foodstuff.n.02', 'dish.n.02', 'plate.n.07',
                               'course.n.07', 'game.n.07', 'halal.n.01', 'horsemeat.n.01', 'broth.n.01',
                               'date.n.08', 'side.n.09', 'pop.n.02', 'bird.n.02', 'carbonado.n.02',]
         foods_categoricals.extend(list(_get_hypernyms_name(wn.synset('cut.n.06'))))
@@ -473,6 +541,7 @@ class TendencyAnalyzer(object):
         sports = SynsetListFileCorpusRetriever("wordset/sports_wiki_wordnet.txt")
 
         self.senti_wordnet = senti_wordnet
+        self.pref_verb_corpus = pref_verbs
 
         for type in type_corpora:
             word_set_corpus = None
@@ -504,11 +573,11 @@ class TendencyAnalyzer(object):
                 tagged_sent.append((None, None, None, None, None))
 
             prev_word_comp_list = [] # for compound word
-            for word_idx in range(0, len(tagged_sent)):
-                word = tagged_sent[word_idx]
+            for entity_idx in range(0, len(tagged_sent)):
+                entity = tagged_sent[entity_idx]
 
                 # find word as noun
-                if word[TAG_WORD_POS] is None or not word[TAG_WORD_POS].startswith('NN'):
+                if entity[TAG_WORD_POS] is None or not entity[TAG_WORD_POS].startswith('NN'):
                     # end of single or compound noun
                     if len(prev_word_comp_list) >= 1:
                         is_found = False
@@ -624,31 +693,31 @@ class TendencyAnalyzer(object):
                         continue
 
                 # a word have pos and role
-                if word[TAG_WORD_POS] is not None and word[TAG_WORD_ROLE] is not None:
-                    if 'VB' in word[TAG_WORD_POS]:
+                if entity[TAG_WORD_POS] is not None and entity[TAG_WORD_ROLE] is not None:
+                    if 'VB' in entity[TAG_WORD_POS]:
                         # find activities as verb
                         found_synset_list \
-                            = self._find_synsets_in_wordsets([word[TAG_WORD]], pos='v')
+                            = self._find_synsets_in_wordsets([entity[TAG_WORD]], pos='v')
                         for found_synset in found_synset_list:
-                            identified_sent_dict[sent_idx].append(found_synset + (word_idx, 'v', 0))
+                            identified_sent_dict[sent_idx].append(found_synset + (entity_idx, 'v', 0))
                         prev_word_comp_list.clear()
 
-                    elif word[TAG_WORD_POS].startswith('NN') and \
-                            ('subj' in word[TAG_WORD_ROLE] or 'obj' in word[TAG_WORD_ROLE] or
-                                     word[TAG_WORD_ROLE] == 'conj' or word[TAG_WORD_ROLE] == 'nmod' or
-                                     word[TAG_WORD_ROLE] == 'compound'):
+                    elif entity[TAG_WORD_POS].startswith('NN') and \
+                            ('subj' in entity[TAG_WORD_ROLE] or 'obj' in entity[TAG_WORD_ROLE] or
+                                     entity[TAG_WORD_ROLE] == 'conj' or entity[TAG_WORD_ROLE] == 'nmod' or
+                                     entity[TAG_WORD_ROLE] == 'compound'):
                         # check the noun is plural
                         plural = False
-                        if word[TAG_WORD_POS].endswith('S'):
+                        if entity[TAG_WORD_POS].endswith('S'):
                             plural = True
-                        prev_word_comp_list.append((word[TAG_WORD], word_idx, plural, 'n'))
+                        prev_word_comp_list.append((entity[TAG_WORD], entity_idx, plural, 'n'))
 
                         ##this
 
                     # For the compound words with JJ
-                    elif (word[TAG_WORD_POS].startswith('JJ') and word[TAG_WORD_ROLE] == 'amod') or \
-                            (word[TAG_WORD_POS].startswith('NN') and word[TAG_WORD_ROLE] == 'compound'):
-                        prev_word_comp_list.append((word[TAG_WORD], -1, False, 'a'))
+                    elif (entity[TAG_WORD_POS].startswith('JJ') and entity[TAG_WORD_ROLE] == 'amod') or \
+                            (entity[TAG_WORD_POS].startswith('NN') and entity[TAG_WORD_ROLE] == 'compound'):
+                        prev_word_comp_list.append((entity[TAG_WORD], -1, False, 'a'))
 
                 else:
                     prev_word_comp_list.clear()
@@ -673,7 +742,7 @@ class TendencyAnalyzer(object):
             mod_pref = defaultdict(lambda: {'sum': 0.0, 'count': 0})
             sen_pref = defaultdict(lambda: {'sum': 0.0, 'count': 0})
             main_ta_dict = defaultdict(lambda: {'is_subj': False, 'is_mine': False, 'is_neg': False,
-                                           'is_we': False, 'ta_list': list()})
+                                           'is_we': False, 'is_subj_none': True, 'ta_list': list()})
 
             # indices for identified word
             identified_word_dict = dict()
@@ -794,11 +863,13 @@ class TendencyAnalyzer(object):
                     if entity[TAG_WORD_POS] is None or entity[TAG_WORD_ROLE] is None:
                         continue
 
-                    if 'subj' in entity[TAG_WORD_ROLE] and entity[TAG_WORD_POS] == 'PRP':
-                        if 'I' == entity[TAG_WORD].upper():
-                            main_ta_dict[main_idx]['is_mine'] = True
-                        elif 'we' == entity[TAG_WORD].lower():
-                            main_ta_dict[main_idx]['is_we'] = True
+                    if 'subj' in entity[TAG_WORD_ROLE]:
+                        if entity[TAG_WORD_POS] == 'PRP':
+                            if 'I' == entity[TAG_WORD].upper():
+                                main_ta_dict[main_idx]['is_mine'] = True
+                            elif 'we' == entity[TAG_WORD].lower():
+                                main_ta_dict[main_idx]['is_we'] = True
+                        main_ta_dict[main_idx]['is_subj_none'] = False  # no subj -> may be subj is I
                         continue
 
                     elif 'neg' in entity[TAG_WORD_ROLE]:
@@ -828,6 +899,10 @@ class TendencyAnalyzer(object):
                             pref_score = 0
                         else:
                             pref_score = pref_score / pref_cnt
+
+                        if self.DEBUG:
+                            print(entity, pref_score)
+
                         if pref_score != 0:
                             dep_idx = int(entity[TAG_DEPENDENCY]) - 1
                             if dep_idx == main_idx:
@@ -848,22 +923,38 @@ class TendencyAnalyzer(object):
 
                     # check verb
                     if 'VB' in entity[TAG_WORD_POS]:
-                        offsets = _find_offsets_from_word(entity[TAG_WORD].lower(), 'v')
                         pref_score = 0
                         pref_cnt = 0
-                        for offset in offsets:
-                            senti_score_dict = self.senti_wordnet.get_score(offset, 'v')
-                            senti_score = senti_score_dict['positivity'] - senti_score_dict['negativity']
-                            senti_count = senti_score_dict['corpus_count'] + 1
-                            if senti_score == 0:
-                                continue
+                        need_find_in_senti = True
+
+                        if self.pref_verb_corpus:
+                            lemma_form = _text_to_lemma_format(entity[TAG_WORD])
+                            pref_score = self.pref_verb_corpus.get_score(lemma_form)
+                            if pref_score != 0:
+                                pref_cnt = 1
+                                need_find_in_senti = False
+                                # print('########', entity, pref_score, '########')
+
+                        if need_find_in_senti:
+                            offsets = _find_offsets_from_word(entity[TAG_WORD].lower(), 'v')
+
+                            for offset in offsets:
+                                senti_score_dict = self.senti_wordnet.get_score(offset, 'v')
+                                senti_score = senti_score_dict['positivity'] - senti_score_dict['negativity']
+                                senti_count = senti_score_dict['corpus_count'] + 1
+                                if senti_score == 0:
+                                    continue
+                                else:
+                                    pref_score += (senti_score * senti_count)
+                                    pref_cnt += senti_count
+                            if pref_cnt == 0:
+                                pref_score = 0
                             else:
-                                pref_score += (senti_score * senti_count)
-                                pref_cnt += senti_count
-                        if pref_cnt == 0:
-                            pref_score = 0
-                        else:
-                            pref_score = pref_score / pref_cnt
+                                pref_score = pref_score / pref_cnt
+
+                        if self.DEBUG:
+                            print(entity, need_find_in_senti, pref_score)
+
                         if pref_score != 0:
                             if entity_idx == main_idx:
                                 verb_pref[main_idx]['sum'] += pref_score + adv_mod_pref[entity_idx]['score']
@@ -914,6 +1005,10 @@ class TendencyAnalyzer(object):
                             pref_score = 0
                         else:
                             pref_score = pref_score / pref_cnt
+
+                        if self.DEBUG:
+                            print(entity, pref_score)
+
                         if pref_score != 0:
                             if entity_idx == main_idx:
                                 for ta_entity_idx in main_ta_dict[main_idx]['ta_list']:
@@ -945,7 +1040,8 @@ class TendencyAnalyzer(object):
             # compute tend score for sentence
             for main_idx, ta_dict in main_ta_dict.items():
                 # calculate weight of subjectivity
-                weight_subj = 1 if (ta_dict['is_mine'] or ta_dict['is_we']) else (0.8 if ta_dict['is_subj'] else 0)
+                weight_subj = 1 if (ta_dict['is_mine'] or ta_dict['is_we'] or ta_dict['is_subj_none']) \
+                    else (0.8 if ta_dict['is_subj'] else 0)
                 if weight_subj == 0:
                     continue
                 weight_subj *= -1 if ta_dict['is_neg'] else 1
@@ -1326,7 +1422,7 @@ class TendencyAnalyzer(object):
                     data_y.append(type_cnt+1)
                     labels.append('%s (%.3f)' % (tend[0], tend[1]))
                     label_y.append(label_y_dist)
-                    label_y_dist += 15
+                    label_y_dist += 20
                     colors.append(color_list[type_cnt])
             label_y_dist = 20
             if type in neg_tendency.keys():
@@ -1336,7 +1432,7 @@ class TendencyAnalyzer(object):
                     data_y.append(type_cnt+1)
                     labels.append('%s (%.3f)' % (tend[0], tend[1]))
                     label_y.append(label_y_dist)
-                    label_y_dist += 15
+                    label_y_dist += 20
                     colors.append(color_list[type_cnt])
             ticks.append(type_cnt+1)
             ticklables.append('{0}'.format(type[0]))
@@ -1370,7 +1466,6 @@ class TendencyAnalyzer(object):
             found_synset, lemma_word = \
                 self._find_synset_by_word_list(words_set, finding_word_list, pos, plural)
             if found_synset:
-                print(finding_word_list, found_synset, lemma_word)
                 synset_list.append((found_synset, lemma_word, words_set_type))
         return synset_list
 
@@ -1419,13 +1514,21 @@ class TendencyAnalyzer(object):
 
     @classmethod
     def _find_synset_by_word_list(cls, words_set, finding_word_list, pos='n', plural=False):
+        length = len(finding_word_list)
         lemma_word = _word_list_to_lemma_form(finding_word_list).lower()
         synset = words_set.find_word(lemma_word, pos=pos)
+
         if synset is not None:
-            print(synset, lemma_word)
             return synset, lemma_word
 
-        length = len(finding_word_list)
+        elif synset is None and pos == 'v':
+            # find original form of the verb
+            synsets = wn.synsets(lemma_word, pos='v')
+            for s in synsets:
+                synset = words_set.find_synset(s)
+                if synset is not None:
+                    return synset, lemma_word
+
         # if lemma is not found, but the noun in lemma is plural
         # if plural and length >= 2:
         if plural:
@@ -1760,29 +1863,8 @@ def _nounify(verb_synset):
 
 
 if __name__ == "__main__":
-    # TEST_DIARY = "I like a banana. I really like an apple. I don't like a grape. I hate a sweet potato."
-    # TEST_DIARY2 = """My main course was a half the dishes. Cumbul Ackard Cornish card little gym lettuce. Fresh Peas Mousser on mushrooms, Cocles and a cream sauce finished with a drizzle of olive oil wonderfully tender, and moist card. But I'm really intensify the flavor of the card there by providing a nice flavor contrast to the rich cream sauce. Lovely freshness, and texture from the little gym lettuce. A well executed dish with bags of flavour. Next, a very elegant vanilla, yogurt and strawberries and Candy Basil different strawberry preparations delivered a wonderful variety of flavor. Intensities is there was a sweet and tart lemon curd and yogurt sorbet buttery, Pepper Pastry Cramble Candied Lemons. Testing broken mrang the lemon curd had a wonderfully creamy texture and then ring was perfectly light and Chrissy and wonderful dessert with a great balance of flavors and textures. It's got sweetness. It's got scrunch. It's got acidity. It's got freshness."""
-    # TEST_DIARY3 = "I like apples and bananas."
-    # TEST_DIARY4 = "I don't like sweet potato. It makes me full!"
-    # diary_tags = tagger.tag_pos_doc(TEST_DIARY)
-    # diary_tags2 = tagger.tag_pos_doc(TEST_DIARY2)
-    # diary_tags3 = tagger.tag_pos_doc(TEST_DIARY3)
-    # diary_tags4 = tagger.tag_pos_doc(TEST_DIARY4)
-    #
-    # diary_tags = [[['I', 'PRP', '2', 'nsubj'], ['like', 'VBP', '0', 'root'], ['a', 'DT', '4', 'det'], ['banana', 'NN', '2', 'dobj'], ['.', None, None, None]], [['I', 'PRP', '3', 'nsubj'], ['really', 'RB', '3', 'advmod'], ['like', 'VBP', '0', 'root'], ['an', 'DT', '5', 'det'], ['apple', 'NN', '3', 'dobj'], ['.', None, None, None]], [['I', 'PRP', '4', 'nsubj'], ['do', 'VBP', '4', 'aux'], ["n't", 'RB', '4', 'neg'], ['like', 'VB', '0', 'root'], ['a', 'DT', '6', 'det'], ['grape', 'NN', '4', 'dobj'], ['.', None, None, None]], [['I', 'PRP', '2', 'nsubj'], ['hate', 'VBP', '0', 'root'], ['a', 'DT', '5', 'det'], ['sweet', 'JJ', '5', 'amod'], ['potato', 'NN', '2', 'dobj'], ['.', None, None, None]]]
-    # diary_tags2 = [[['My', 'PRP$', '3', 'nmod:poss'], ['main', 'JJ', '3', 'amod'], ['course', 'NN', '6', 'nsubj'], ['was', 'VBD', '6', 'cop'], ['a', 'DT', '6', 'det'], ['half', 'NN', '0', 'root'], ['the', 'DT', '8', 'det'], ['dishes', 'NNS', '6', 'dep'], ['.', None, None, None]], [['Cumbul', 'NNP', '3', 'compound'], ['Ackard', 'NNP', '3', 'compound'], ['Cornish', 'NNP', '4', 'nsubj'], ['card', 'VBZ', '0', 'root'], ['little', 'JJ', '7', 'amod'], ['gym', 'NN', '7', 'compound'], ['lettuce', 'NN', '4', 'dobj'], ['.', None, None, None]], [['Fresh', 'NNP', '3', 'compound'], ['Peas', 'NNPS', '3', 'compound'], ['Mousser', 'NNP', '12', 'nsubj'], ['on', 'IN', '5', 'case'], ['mushrooms', 'NNS', '3', 'nmod'], [',', None, None, None], ['Cocles', 'NNP', '5', 'conj'], ['and', 'CC', '5', 'cc'], ['a', 'DT', '11', 'det'], ['cream', 'NN', '11', 'compound'], ['sauce', 'NN', '5', 'conj'], ['finished', 'VBD', '0', 'root'], ['with', 'IN', '15', 'case'], ['a', 'DT', '15', 'det'], ['drizzle', 'NN', '12', 'nmod'], ['of', 'IN', '20', 'case'], ['olive', 'JJ', '20', 'amod'], ['oil', 'NN', '20', 'compound'], ['wonderfully', 'NN', '20', 'compound'], ['tender', 'NN', '15', 'nmod'], [',', None, None, None], ['and', 'CC', '20', 'cc'], ['moist', 'NN', '24', 'compound'], ['card', 'NN', '20', 'conj'], ['.', None, None, None]], [['But', 'CC', '5', 'cc'], ['I', 'PRP', '5', 'nsubj'], ["'m", 'VBP', '5', 'aux'], ['really', 'RB', '5', 'advmod'], ['intensify', 'VBG', '0', 'root'], ['the', 'DT', '7', 'det'], ['flavor', 'NN', '5', 'dobj'], ['of', 'IN', '10', 'case'], ['the', 'DT', '10', 'det'], ['card', 'NN', '7', 'nmod'], ['there', 'RB', '5', 'advmod'], ['by', 'IN', '13', 'mark'], ['providing', 'VBG', '5', 'advcl'], ['a', 'DT', '17', 'det'], ['nice', 'JJ', '17', 'amod'], ['flavor', 'NN', '17', 'compound'], ['contrast', 'NN', '13', 'dobj'], ['to', 'TO', '22', 'case'], ['the', 'DT', '22', 'det'], ['rich', 'JJ', '22', 'amod'], ['cream', 'NN', '22', 'compound'], ['sauce', 'NN', '13', 'nmod'], ['.', None, None, None]], [['Lovely', 'NNP', '2', 'nsubj'], ['freshness', 'VBZ', '0', 'root'], [',', None, None, None], ['and', 'CC', '2', 'cc'], ['texture', 'NN', '2', 'conj'], ['from', 'IN', '10', 'case'], ['the', 'DT', '10', 'det'], ['little', 'JJ', '10', 'amod'], ['gym', 'NN', '10', 'compound'], ['lettuce', 'NN', '5', 'nmod'], ['.', None, None, None]], [['A', 'DT', '2', 'det'], ['well', 'NN', '3', 'nsubj'], ['executed', 'VBD', '0', 'root'], ['dish', 'NN', '3', 'dobj'], ['with', 'IN', '6', 'case'], ['bags', 'NNS', '3', 'nmod'], ['of', 'IN', '8', 'case'], ['flavour', 'NN', '6', 'nmod'], ['.', None, None, None]], [['Next', 'RB', '17', 'advmod'], [',', None, None, None], ['a', 'DT', '6', 'det'], ['very', 'RB', '6', 'advmod'], ['elegant', 'JJ', '6', 'dep'], ['vanilla', 'NN', '17', 'nsubj'], [',', None, None, None], ['yogurt', 'NN', '6', 'conj'], ['and', 'CC', '6', 'cc'], ['strawberries', 'NNS', '6', 'conj'], ['and', 'CC', '6', 'cc'], ['Candy', 'NNP', '13', 'compound'], ['Basil', 'NNP', '16', 'compound'], ['different', 'JJ', '16', 'amod'], ['strawberry', 'JJ', '16', 'amod'], ['preparations', 'NNS', '6', 'conj'], ['delivered', 'VBD', '0', 'root'], ['a', 'DT', '20', 'det'], ['wonderful', 'JJ', '20', 'amod'], ['variety', 'NN', '17', 'dobj'], ['of', 'IN', '22', 'case'], ['flavor', 'NN', '20', 'nmod'], ['.', None, None, None]], [['Intensities', 'NNS', '2', 'nsubj'], ['is', 'VBZ', '0', 'root'], ['there', 'EX', '4', 'expl'], ['was', 'VBD', '2', 'ccomp'], ['a', 'DT', '10', 'det'], ['sweet', 'JJ', '10', 'amod'], ['and', 'CC', '6', 'cc'], ['tart', 'JJ', '6', 'conj'], ['lemon', 'JJ', '10', 'amod'], ['curd', 'NN', '4', 'nsubj'], ['and', 'CC', '10', 'cc'], ['yogurt', 'NN', '14', 'compound'], ['sorbet', 'NN', '14', 'compound'], ['buttery', 'NN', '10', 'conj'], [',', None, None, None], ['Pepper', 'NNP', '20', 'compound'], ['Pastry', 'NNP', '20', 'compound'], ['Cramble', 'NNP', '20', 'compound'], ['Candied', 'NNP', '20', 'compound'], ['Lemons', 'NNP', '10', 'appos'], ['.', None, None, None]], [['Testing', 'NNP', '7', 'nsubj'], ['broken', 'VBN', '1', 'acl'], ['mrang', 'VBG', '2', 'xcomp'], ['the', 'DT', '6', 'det'], ['lemon', 'JJ', '6', 'amod'], ['curd', 'NN', '3', 'dobj'], ['had', 'VBD', '0', 'root'], ['a', 'DT', '11', 'det'], ['wonderfully', 'RB', '11', 'advmod'], ['creamy', 'JJ', '11', 'amod'], ['texture', 'NN', '7', 'dobj'], ['and', 'CC', '7', 'cc'], ['then', 'RB', '22', 'advmod'], ['ring', 'NN', '22', 'nsubj'], ['was', 'VBD', '22', 'cop'], ['perfectly', 'RB', '17', 'advmod'], ['light', 'JJ', '22', 'amod'], ['and', 'CC', '17', 'cc'], ['Chrissy', 'JJ', '17', 'conj'], ['and', 'CC', '19', 'cc'], ['wonderful', 'JJ', '19', 'conj'], ['dessert', 'NN', '7', 'conj'], ['with', 'IN', '26', 'case'], ['a', 'DT', '26', 'det'], ['great', 'JJ', '26', 'amod'], ['balance', 'NN', '22', 'nmod'], ['of', 'IN', '28', 'case'], ['flavors', 'NNS', '26', 'nmod'], ['and', 'CC', '28', 'cc'], ['textures', 'NNS', '28', 'conj'], ['.', None, None, None]], [['It', 'PRP', '3', 'nsubjpass'], ["'s", 'VBZ', '3', 'auxpass'], ['got', 'VBN', '0', 'root'], ['sweetness', 'NN', '3', 'dobj'], ['.', None, None, None]], [['It', 'PRP', '3', 'nsubjpass'], ["'s", 'VBZ', '3', 'auxpass'], ['got', 'VBN', '0', 'root'], ['scrunch', 'RB', '3', 'advmod'], ['.', None, None, None]], [['It', 'PRP', '3', 'nsubjpass'], ["'s", 'VBZ', '3', 'auxpass'], ['got', 'VBN', '0', 'root'], ['acidity', 'RB', '3', 'advmod'], ['.', None, None, None]], [['It', 'PRP', '3', 'nsubjpass'], ["'s", 'VBZ', '3', 'auxpass'], ['got', 'VBN', '0', 'root'], ['freshness', 'NN', '3', 'dobj'], ['.', None, None, None]]]
-    # diary_tags3 = [[['I', 'PRP', '2', 'nsubj'], ['like', 'VBP', '0', 'root'], ['apples', 'NNS', '2', 'dobj'], ['and', 'CC', '3', 'cc'], ['bananas', 'NNS', '3', 'conj'], ['.', None, None, None]]]
-    # diary_tags4 = [[['I', 'PRP', '4', 'nsubj'], ['do', 'VBP', '4', 'aux'], ["n't", 'RB', '4', 'neg'], ['like', 'VB', '0', 'root'], ['sweet', 'JJ', '6', 'amod'], ['potato', 'NN', '4', 'dobj'], ['.', None, None, None]], [['It', 'PRP', '2', 'nsubj'], ['makes', 'VBZ', '0', 'root'], ['me', 'PRP', '4', 'nsubj'], ['full', 'JJ', '2', 'xcomp'], ['!', None, None, None]]]
-
-    # tend_analyzer.analyze_diary([diary_tags])
-    # tend_analyzer.analyze_diary([diary_tags, diary_tags2, diary_tags3, diary_tags4])
-    # tend_analyzer.analyze_diary([diary_tags, diary_tags3, diary_tags4])
-    # tend_analyzer.analyze_diary([diary_tags, diary_tags3])
-    # tend_analyzer.analyze_diary([diary_tags3])
-
     JENIIFER_DIARY = [
     ]
-
     # for i in range(0, len(JENIIFER_DIARY)):
     #     diary = JENIIFER_DIARY[i]
     #     print("start tagging diary #%s" % i)
@@ -1801,13 +1883,13 @@ if __name__ == "__main__":
     # tend_analyzer.analyze_diary(joanne_diaries,
     #         [('food', 'thing'), ('hobby', 'activity'), ('sport', 'activity')])
 
-    jeniffer_diaries = list()
-    for i in range(1, 37):
-        diary_tags = tagger.pickle_to_tags("diary_pickles/jennifer_" + str(i) + ".pkl")
-        jeniffer_diaries.append(diary_tags[1])
-    print("load jeniffer diaries done.")
-    tend_analyzer.analyze_diary(jeniffer_diaries,
-            [('food', 'thing'), ('hobby', 'activity'), ('sport', 'activity')])
+    # jeniffer_diaries = list()
+    # for i in range(1, 37):
+    #     diary_tags = tagger.pickle_to_tags("diary_pickles/jennifer_" + str(i) + ".pkl")
+    #     jeniffer_diaries.append(diary_tags[1])
+    # print("load jeniffer diaries done.")
+    # tend_analyzer.analyze_diary(jeniffer_diaries,
+    #         [('food', 'thing'), ('hobby', 'activity'), ('sport', 'activity')])
     # tend_analyzer.analyze_diary(jeniffer_diaries, [('food', 'thing')])
     # tend_analyzer.analyze_diary(jeniffer_diaries, [('exercise', 'activity'),
     #                                                ('food', 'thing')])
@@ -1838,6 +1920,14 @@ if __name__ == "__main__":
     # print("load eliz diaries done.")
     # tend_analyzer.analyze_diary(elize_diaries, [('food', 'thing')])
 
+    as_travel_diaries = list()
+    for i in range(1, 56):
+        diary_tags = tagger.pickle_to_tags("diary_pickles/as_travel" + str(i) + ".pkl")
+        as_travel_diaries.append(diary_tags[1])
+    print("load as travel diaries done.")
+    tend_analyzer.analyze_diary(as_travel_diaries,
+                                [('food', 'thing'), ('hobby', 'activity'), ('sport', 'activity')])
+
     # jeniffer_2015_diaries = list()
     # for i in range(0, 228):
     #     if i == 144:
@@ -1855,20 +1945,24 @@ if __name__ == "__main__":
     # print(diary_tags5)
     # print()
     #
-    # TEST_DIARY4 = "Pork roast never looked so good."
-    # TEST_DIARY4 = "Snookie wants to go to the Olive Garden today."
+    # TEST_DIARY4 = "Pork roast never looked so good.
+    # TEST_DIARY4 = "In the evening we visited the local fish restaurant for local fish, calamari, and scallops! "
+    # TEST_DIARY4 = "Sailed From Bribie Island to Mooloolaba."
+    # TEST_DIARY4 = "After Champagne we had barbecued pork belly with all the trimmings, plenty of wine and a home made Creme Brulee, all on the boat!!"
     # diary_tags4 = tagger.tag_pos_doc(TEST_DIARY4)
     # print(diary_tags4)
-    # tend_analyzer.analyze_diary([diary_tags4[1]], [('hobby', 'activity')])
     # for i in range(0, len(diary_tags4[1][0])):
     #     print(str(i+1)+':', diary_tags4[1][0][i])
+    # print()
+    # tend_analyzer.analyze_diary([diary_tags4[1]], [('hobby', 'activity')])
+    # tend_analyzer.analyze_diary([diary_tags4[1]], [('food', 'thing')])
 
     # pprint(tagger.tag_pos_doc("Sue brought a 1000 piece puzzle for us to do as a family and a good sized bottle of Columbia Crest Chardonnay for dinner."))
     # pprint(tagger.tag_pos_doc("An hour later, the 3 of us were pouring over the damn puzzle."))
     # pprint(tagger.tag_pos_doc("She hate me."))
     # pprint(tagger.tag_pos_doc("She doesn't want to cook dinner for me."))
 
-    # sports = HyponymRetriever(wn.synset('sport.n.02'), max_level=12)
-    # for s in sports.get_list():
-    #     print(s[0].namec(), [s[0].lexname(), s[0].definition(), s[2]])
+    # likes = PreferenceVerbCorpusRetriever('wordset/like_word_list.txt', 'wordset/dislike_word_list.txt')
+    # for s in likes.get_list():
+    #     print(s[0].name(), [s[0].lexname(), s[0].definition(), s[5], s[2]['v']])
 
