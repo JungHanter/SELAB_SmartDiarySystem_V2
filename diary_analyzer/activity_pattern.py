@@ -13,6 +13,7 @@ from nltk import StanfordTokenizer, StanfordPOSTagger, WordNetLemmatizer, Porter
 from nltk.parse.stanford import StanfordDependencyParser
 from nltk.tag.stanford import StanfordNERTagger
 
+from diary_analyzer import tools
 from smart_diary_system import settings
 
 ELEMENT_SUBJECT = "Subject"
@@ -22,7 +23,6 @@ ELEMENT_COMPLEMENT = "Complement"
 ELEMENT_ADVERB = "Adverb"
 ELEMENT_AUXILIARYVERB = "Auxiliary Verb"
 
-os.environ['JAVAHOME'] = r'C:\Program Files\Java\jdk1.8.0_77\bin'
 lemmatizer = WordNetLemmatizer()
 stemmer = PorterStemmer()
 
@@ -276,19 +276,20 @@ def extract_activities(diaries, diary_dates, activity_word_set):
 class ActivityPatternAnalyzer(object):
 
     def preprocess(self, diaries):
-        tokenizer = StanfordTokenizer(path_to_jar=os.path.join(settings.BASE_DIR,
-                                                               'jars/stanford-postagger-full-2015-04-20/stanford-postagger-3.5.2.jar'))
-        tagger = StanfordPOSTagger(path_to_jar=os.path.join(settings.BASE_DIR,
-                                                            'jars/stanford-postagger-full-2015-04-20/stanford-postagger-3.5.2.jar'),
-                                   model_filename=os.path.join(settings.BASE_DIR,
-                                                               'jars/stanford-postagger-full-2015-04-20/models/english-bidirectional-distsim.tagger'))
-        parser = StanfordDependencyParser(
-            path_to_jar=os.path.join(settings.BASE_DIR, 'jars/stanford-parser-full-2015-04-20/stanford-parser.jar'),
-            path_to_models_jar=os.path.join(settings.BASE_DIR,
-                                            'jars/stanford-parser-full-2015-04-20/stanford-parser-3.5.2-models.jar'))
-        ner_tagger = StanfordNERTagger(os.path.join(settings.BASE_DIR,
-                                                    'jars/stanford-ner-2015-12-09/classifiers/english.muc.7class.distsim.crf.ser.gz'),
-                                       os.path.join(settings.BASE_DIR, 'jars/stanford-ner-2015-12-09/stanford-ner.jar'))
+        # tokenizer = StanfordTokenizer(path_to_jar=os.path.join(settings.BASE_DIR,
+        #                                                        'jars/stanford-postagger-full-2015-04-20/stanford-postagger-3.5.2.jar'))
+        # pos_tagger = StanfordPOSTagger(path_to_jar=os.path.join(settings.BASE_DIR,
+        #                                                     'jars/stanford-postagger-full-2015-04-20/stanford-postagger-3.5.2.jar'),
+        #                            model_filename=os.path.join(settings.BASE_DIR,
+        #                                                        'jars/stanford-postagger-full-2015-04-20/models/english-bidirectional-distsim.tagger'))
+        # dep_parser = StanfordDependencyParser(
+        #     path_to_jar=os.path.join(settings.BASE_DIR, 'jars/stanford-parser-full-2015-04-20/stanford-parser.jar'),
+        #     path_to_models_jar=os.path.join(settings.BASE_DIR,
+        #                                     'jars/stanford-parser-full-2015-04-20/stanford-parser-3.5.2-models.jar'))
+        # ner_tagger = StanfordNERTagger(os.path.join(settings.BASE_DIR,
+        #                                             'jars/stanford-ner-2015-12-09/classifiers/english.muc.7class.distsim.crf.ser.gz'),
+        #                                os.path.join(settings.BASE_DIR, 'jars/stanford-ner-2015-12-09/stanford-ner.jar'))
+        tokenizer, pos_tagger, dep_parser, ner_tagger = tools.tokenizer, tools.pos_tagger, tools.dep_parser, tools.ner_tagger
 
         preprocessed_diaries = []
         for diary in diaries:
@@ -299,10 +300,10 @@ class ActivityPatternAnalyzer(object):
             token_list_2d = [tokenizer.tokenize(sent) for sent in sent_list]
 
             # 3. POS Tagging
-            token_list_2d_pos = [tagger.tag(token_list) for token_list in token_list_2d]
+            token_list_2d_pos = [pos_tagger.tag(token_list) for token_list in token_list_2d]
 
             # 4. Dependency Parsing
-            token_list_2d_dep = [tag_dep(token_list, parser) for token_list in token_list_2d_pos]
+            token_list_2d_dep = [tag_dep(token_list, dep_parser) for token_list in token_list_2d_pos]
 
             # 5. Lemmatization
             # token_list_2d_lemma = [lemmatize(token_list) for token_list in token_list_2d_role]
