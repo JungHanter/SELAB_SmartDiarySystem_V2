@@ -13,6 +13,7 @@ from diary_analyzer.tagger import TAG_WORD, TAG_WORD_POS, \
     TAG_DEPENDENCY, TAG_WORD_ROLE, TAG_NAMED_ENTITY
 
 
+# abstract class for WordSet Corpus Retriever
 class WordSetCorpusRetriever(object):
     IDX_SYNSET = 0
     IDX_LEVEL = 1
@@ -81,6 +82,7 @@ class WordSetCorpusRetriever(object):
         return None
 
 
+# class for retrieving word set based on WordNet hyponyms
 class HyponymCorpusRetriever(WordSetCorpusRetriever):
     def __init__(self, *root_synsets, max_level=10, excepts=[], categoricals=[]):
         if type(root_synsets[0]) is list or type(root_synsets[0]) is tuple:
@@ -111,6 +113,7 @@ class HyponymCorpusRetriever(WordSetCorpusRetriever):
         return hyponym_list
 
 
+# class for retrieving word set based on WordNet hypernyms
 class HypernymCorpusRetriever(WordSetCorpusRetriever):
     def __init__(self, *root_synsets, max_level=10, excepts=[], categoricals=[]):
         if type(root_synsets[0]) is list or type(root_synsets[0]) is tuple:
@@ -143,6 +146,7 @@ class HypernymCorpusRetriever(WordSetCorpusRetriever):
         return self.synset_list
 
 
+# class for retrieving word set by words list file
 class ListFileCorpusRetriever(WordSetCorpusRetriever):
     def __init__(self, file_path, pos_fliter=('n','a','v','r','s'),
                  excepts=[], categoricals=[]):
@@ -175,6 +179,7 @@ class ListFileCorpusRetriever(WordSetCorpusRetriever):
         return synset_list
 
 
+# class for retrieving word set by synset list file
 class SynsetListFileCorpusRetriever(WordSetCorpusRetriever):
     def __init__(self, file_path, excepts=[], categoricals=[]):
         self.synset_list = list()
@@ -259,6 +264,7 @@ class SynsetListFileCorpusRetriever(WordSetCorpusRetriever):
         return None
 
 
+# class for retrieving word set by preference verb list file
 class PreferenceVerbCorpusRetriever(ListFileCorpusRetriever):
     def __init__(self, like_file_path, dislike_file_path, excepts=[]):
         self.synset_list = list()
@@ -301,6 +307,7 @@ class PreferenceVerbCorpusRetriever(ListFileCorpusRetriever):
         return 0
 
 
+# class for SentiWordNet Corpus Retriever
 class SentiWordNetRetriever(object):
     IDX_POS = 0
     IDX_OFFSET_ID = 1
@@ -380,6 +387,7 @@ class SentiWordNetRetriever(object):
         return score_dict['positivity'] - score_dict['negativity']
 
 
+# class for Tendency Analytics
 class TendencyAnalyzer(object):
     """Perform Tendency analysis"""
     DEBUG = False
@@ -394,18 +402,14 @@ class TendencyAnalyzer(object):
         self.senti_wordnet = senti_wordnet
         self.pref_verb_corpus = None
         self.words_corpora = defaultdict(lambda: None)
-        # and more word set ...
 
     def add_word_set(self, target, target_type, words_set):
         if words_set:
             self.words_corpora[(target, target_type)] = words_set
 
     # input: a list of tagged diary
-    def analyze_diary(self, diary_tags_list, target_types):
+    def analyze_diary(self, diary_tags_list):
         diary_len = len(diary_tags_list)
-
-        # step 1
-        self.load_word_corpora(target_types)
 
         # step 2
         print("\n##### Step 2. #####")
@@ -514,48 +518,35 @@ class TendencyAnalyzer(object):
                                        'dislike_word_list.txt')
         pref_verbs = PreferenceVerbCorpusRetriever(pv_like_path, pv_dislike_path,
                                                    excepts=['sleep_together.v.01', 'visualize.v.01'])
-        foods_categoricals = ['cut.n.06', 'cold_cuts.n.01', 'nutriment.n.01', 'foodstuff.n.02', 'dish.n.02', 'plate.n.07',
-                              'course.n.07', 'game.n.07', 'halal.n.01', 'horsemeat.n.01', 'broth.n.01',
-                              'date.n.08', 'side.n.09', 'pop.n.02', 'bird.n.02', 'carbonado.n.02',]
-        foods_categoricals.extend(list(_get_hypernyms_name(wn.synset('cut.n.06'))))
-        foods = HyponymCorpusRetriever(wn.synset('food.n.02'), wn.synset('food.n.01'),
-                                       max_level=10,
-                                       excepts=['slop.n.04', 'loaf.n.02', 'leftovers.n.01',
-                                          'convenience_food.n.01', 'concentrate.n.02',
-                                          'miraculous_food.n.01', 'micronutrient.n.01',
-                                          'feed.n.01', 'fare.n.04',
-                                          'culture_medium.n.01', 'comestible.n.01',
-                                          'comfort_food.n.01', 'commissariat.n.01',
-                                          'alcohol.n.01', 'chyme.n.01', 'meal.n.03', 'meal.n.01',
-                                          'variety_meat.n.01', 'vitamin.n.01'],
-                                       categoricals=foods_categoricals)
-        restaurants = HyponymCorpusRetriever(wn.synset('restaurant.n.01'), max_level=8)
-        weathers = HyponymCorpusRetriever(wn.synset('weather.n.01'), max_level=8,
-                                          excepts=['thaw.n.02', 'wave.n.08', 'wind.n.01',
-                                             'elements.n.01', 'atmosphere.n.04'])
-        exercises = HyponymCorpusRetriever(wn.synset('exercise.n.01'), wn.synset('exercise.v.03'),
-                                           wn.synset('exercise.v.04'), max_level=12,
-                                           excepts=['set.n.03'])
-        hobbies = SynsetListFileCorpusRetriever("wordset/hobbies_wiki_wordnet.txt")
-        sports = SynsetListFileCorpusRetriever("wordset/sports_wiki_wordnet.txt")
-
         self.senti_wordnet = senti_wordnet
         self.pref_verb_corpus = pref_verbs
 
         for type in type_corpora:
             word_set_corpus = None
             if type == ('food', 'thing'):
+                foods_categoricals = ['cut.n.06', 'cold_cuts.n.01', 'nutriment.n.01', 'foodstuff.n.02', 'dish.n.02',
+                                      'plate.n.07',
+                                      'course.n.07', 'game.n.07', 'halal.n.01', 'horsemeat.n.01', 'broth.n.01',
+                                      'date.n.08', 'side.n.09', 'pop.n.02', 'bird.n.02', 'carbonado.n.02', ]
+                foods_categoricals.extend(list(_get_hypernyms_name(wn.synset('cut.n.06'))))
+                foods = HyponymCorpusRetriever(wn.synset('food.n.02'), wn.synset('food.n.01'),
+                                               max_level=10,
+                                               excepts=['slop.n.04', 'loaf.n.02', 'leftovers.n.01',
+                                                        'convenience_food.n.01', 'concentrate.n.02',
+                                                        'miraculous_food.n.01', 'micronutrient.n.01',
+                                                        'feed.n.01', 'fare.n.04',
+                                                        'culture_medium.n.01', 'comestible.n.01',
+                                                        'comfort_food.n.01', 'commissariat.n.01',
+                                                        'alcohol.n.01', 'chyme.n.01', 'meal.n.03', 'meal.n.01',
+                                                        'variety_meat.n.01', 'vitamin.n.01'],
+                                               categoricals=foods_categoricals)
                 word_set_corpus = foods
-            elif type == ('restaurant', 'thing'):
-                word_set_corpus = restaurants
-            elif type == ('weather', 'thing'):
-                word_set_corpus = weathers
             elif type == ('hobby', 'activity'):
+                hobbies = SynsetListFileCorpusRetriever("wordset/hobbies_wiki_wordnet.txt")
                 word_set_corpus = hobbies
             elif type == ('sport', 'activity'):
+                sports = SynsetListFileCorpusRetriever("wordset/sports_wiki_wordnet.txt")
                 word_set_corpus = sports
-            elif type == ('exercise', 'activity'):
-                word_set_corpus = exercises
             self.add_word_set(type[0], type[1], word_set_corpus)
 
     ###############################################################################
@@ -1861,9 +1852,14 @@ def _nounify(verb_synset):
     return set_of_related_nouns
 
 
-if __name__ == "__main__":
-    JENIIFER_DIARY = [
-    ]
+# create instance for TendencyAnalyzer
+tend_analyzer = TendencyAnalyzer()
+tend_analyzer.load_word_corpora([('food', 'thing'), ('hobby', 'activity'), ('sport', 'activity')])
+
+
+# if __name__ == "__main__":
+    # JENIIFER_DIARY = [
+    # ]
     # for i in range(0, len(JENIIFER_DIARY)):
     #     diary = JENIIFER_DIARY[i]
     #     print("start tagging diary #%s" % i)
@@ -1871,8 +1867,6 @@ if __name__ == "__main__":
     #     print("create piclke for tags of diary #%s" % i)
     #     tagger.tags_to_pickle(diary_tags, "pickles/jennifer" + str(i) + ".pkl")
     #     print()
-
-    tend_analyzer = TendencyAnalyzer()
 
     # joanne_diaries = list()
     # for i in range(0, 30):
@@ -1920,13 +1914,12 @@ if __name__ == "__main__":
     # print("load eliz diaries done.")
     # tend_analyzer.analyze_diary(elize_diaries, [('food', 'thing')])
 
-    as_travel_diaries = list()
-    for i in range(1, 56):
-        diary_tags = tagger.pickle_to_tags("diary_pickles/as_travel_" + str(i) + ".pkl")
-        as_travel_diaries.append(diary_tags[1])
-    print("load as travel diaries done.")
-    tend_analyzer.analyze_diary(as_travel_diaries,
-                                [('food', 'thing'), ('hobby', 'activity'), ('sport', 'activity')])
+    # as_travel_diaries = list()
+    # for i in range(1, 56):
+    #     diary_tags = tagger.pickle_to_tags("diary_pickles/as_travel_" + str(i) + ".pkl")
+    #     as_travel_diaries.append(diary_tags[1])
+    # print("load as travel diaries done.")
+    # tend_analyzer.analyze_diary(as_travel_diaries)
 
     # jeniffer_2015_diaries = list()
     # for i in range(0, 228):
