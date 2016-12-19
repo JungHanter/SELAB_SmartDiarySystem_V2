@@ -387,9 +387,8 @@ class TendencyAnalyzer(object):
     SIMILAR_PATH_MAX_HYPERNYM = 2
     SIMILAR_PATH_MAX_HYPONYM = 1
 
-    # CLUSTER_CUT_DIST = 1  #1
-    CLUSTER_CUT_DIST = 5  #1
-    CLUSTER_PATH_DIST_MAGNIFICATION = 1 #4
+    CLUSTER_CUT_DIST = 5
+    CLUSTER_PATH_DIST_MAGNIFICATION = 1
 
     def __init__(self, senti_wordnet=None):
         self.senti_wordnet = senti_wordnet
@@ -1895,10 +1894,11 @@ if __name__ == "__main__":
     #                                                ('food', 'thing')])
     # tend_analyzer.analyze_diary(jeniffer_diaries, [('exercise', 'activity')])
     # tend_analyzer.analyze_diary(jeniffer_diaries, [('hobby', 'activity')])
-    #
+
     # smiley_diaries = list()
-    # for i in range(0, 50):
-    #     diary_tags = tagger.pickle_to_tags("pickles/smiley" + str(i) + ".pkl")
+    # # for i in range(1, 116):
+    # for i in range(1, 50):
+    #     diary_tags = tagger.pickle_to_tags("diary_pickles/ksmiley_" + str(i) + ".pkl")
     #     smiley_diaries.append(diary_tags[1])
     # print("load smiley diaries done.")
     # tend_analyzer.analyze_diary(smiley_diaries,
