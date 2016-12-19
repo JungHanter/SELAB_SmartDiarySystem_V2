@@ -407,15 +407,15 @@ class TendencyAnalyzer(object):
         if words_set:
             self.words_corpora[(target, target_type)] = words_set
 
-    # input: a list of tagged diary
-    def analyze_diary(self, diary_tags_list):
-        diary_len = len(diary_tags_list)
+    # input: a list of tagged(preprocessed) diary
+    def analyze_diaries(self, preprocessed_diaries):
+        diary_len = len(preprocessed_diaries)
 
         # step 2
         print("\n##### Step 2. #####")
         extracted_sent_dict_list = list()
         for diary_idx in range(0, diary_len):
-            diary_tags = diary_tags_list[diary_idx]
+            diary_tags = preprocessed_diaries[diary_idx]
             extracted_sent_dict = self.extract_sentences(diary_tags)
             extracted_sent_dict_list.append(extracted_sent_dict)
             print("Diary #%s" % (diary_idx+1))
@@ -429,7 +429,7 @@ class TendencyAnalyzer(object):
         print("\n##### Step 3. #####")
         scores_tend_list = list()
         for diary_idx in range(0, diary_len):
-            diary_tags = diary_tags_list[diary_idx]
+            diary_tags = preprocessed_diaries[diary_idx]
             extracted_sent_dict = extracted_sent_dict_list[diary_idx]
             scores_tend = self.compute_tend_scores(diary_tags, extracted_sent_dict, diary_idx + 1)
             scores_tend_list.append(scores_tend)
@@ -483,7 +483,7 @@ class TendencyAnalyzer(object):
         neg_tendency = dict()
         for type, clustering_info in clustering_dict.items():
             pos_results, neg_result = self.figure_out_best_ta(clustering_info['clusters'],
-                                                              len(diary_tags_list),
+                                                              len(preprocessed_diaries),
                                                               clustering_info['pref_num'])
             if len(pos_results) > 0:
                 pos_tendency[type] = pos_results
