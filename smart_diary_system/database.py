@@ -19,7 +19,7 @@ class DBManager(object):
 
         """
         try:
-            self.conn = pymysql.connect(host='203.253.23.17', port=3306, user='root', passwd='lovejesus',
+            self.conn = pymysql.connect(host='203.253.23.53', port=3306, user='root', passwd='lovejesus',
                                         db='smartdiary2', charset='utf8', use_unicode=True)
             self.connected = True
         except pymysql.Error:
