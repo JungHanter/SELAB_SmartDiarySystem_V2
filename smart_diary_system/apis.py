@@ -485,20 +485,43 @@ def manage_analyze(request, option=None):
                     return JsonResponse({'analyzed': True, 'result': {'pos': [], 'neg': []}})
                 else:
                     diary_tag_list = []
+                    diary_date_list = []
                     for audio_diary in audio_diary_list:  # load pickles
                         pprint.pprint(audio_diary)
+                        diary_tags_tuple = None
 
-                        # load pickles
-                        ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-                        PICKLE_DIR = os.path.join(ROOT_DIR, 'pickles', audio_diary['user_id'],
-                                                  str(audio_diary['audio_diary_id']), 'pos_texts.pkl')
-                        diary_tag_list.append(tagger.pickle_to_tags(PICKLE_DIR)[1])
+                        if audio_diary['pickle'] == 0:
+                            # do pickling again...
+                            pass
+                        elif audio_diary['pickle'] == 1:
+                            # wait for pickling
+                            pass
+                        else: #2
+                            # load pickles
+                            ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+                            PICKLE_DIR = os.path.join(ROOT_DIR, 'pickles', audio_diary['user_id'],
+                                                      str(audio_diary['audio_diary_id']), 'pos_texts.pkl')
+                            diary_tags_tuple = tagger.pickle_to_tags(PICKLE_DIR)
 
-                    # analyze tendency
-                    pos_tend, neg_tend = tendency.tend_analyzer.analyze_diaries(diary_tag_list)
-                    # pprint.pprint(pos_tend)
-                    # pprint.pprint(neg_tend)
-                    return JsonResponse({'analyzed': True, 'result': {'pos': pos_tend, 'neg': neg_tend}})
+                        if diary_tags_tuple:
+                            diary_tag_list.append(tagger.pickle_to_tags(PICKLE_DIR)[1])
+                            if option == 'activity_pattern':
+                                diary_date_list = audio_diary['created_date']
+                        else:
+                            # privious picklingis failed. do pickling again.
+                            pass
+
+                    if option == 'tendency':
+                        # analyze tendency
+                        pos_tend, neg_tend = tendency.tend_analyzer.analyze_diaries(diary_tag_list)
+                        # pprint.pprint(pos_tend)
+                        # pprint.pprint(neg_tend)
+                        return JsonResponse({'analyzed': True, 'result': {'pos': pos_tend, 'neg': neg_tend}})
+                    elif option == 'activity_pattern':
+                        recurrent, frequency, regularity = activity_pattern.activity_pattern_analyzer\
+                            (diary_tag_list, diary_date_list)
+                        return JsonResponse({'analyzed': True, 'result':
+                            {'recurrent': recurrent, 'frequency': frequency, 'regularity': regularity}})
 
                     # making tendency DB record
                     # tendencys_dict_list = []

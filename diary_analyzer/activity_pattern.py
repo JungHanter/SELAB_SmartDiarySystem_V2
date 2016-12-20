@@ -434,3 +434,5 @@ class ActivityPatternAnalyzer(object):
         print(reg)
 
         return rec, freq, reg
+
+activity_pattern_analyzer = ActivityPatternAnalyzer()
