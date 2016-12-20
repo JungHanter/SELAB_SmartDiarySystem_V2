@@ -520,7 +520,7 @@ def manage_analyze(request, option=None):
                         return JsonResponse({'analyzed': True, 'result': {'pos': pos_tend, 'neg': neg_tend}})
                     elif option == 'activity_pattern':
                         recurrent, frequency, regularity = activity_pattern.activity_pattern_analyzer\
-                            (diary_tag_list, diary_date_list)
+                            .analyze_diaries(diary_tag_list, diary_date_list)
                         return JsonResponse({'analyzed': True, 'result':
                             {'recurrent': recurrent, 'frequency': frequency, 'regularity': regularity}})
 
