@@ -412,34 +412,34 @@ class TendencyAnalyzer(object):
         diary_len = len(preprocessed_diaries)
 
         # step 2
-        print("\n##### Step 2. #####")
+        # print("\n##### Step 2. #####")
         extracted_sent_dict_list = list()
         for diary_idx in range(0, diary_len):
             diary_tags = preprocessed_diaries[diary_idx]
             extracted_sent_dict = self.extract_sentences(diary_tags)
             extracted_sent_dict_list.append(extracted_sent_dict)
-            print("Diary #%s" % (diary_idx+1))
-            for sent_id, extracted_words in extracted_sent_dict.items():
-                print('Sen ' + str(sent_id+1) + ':', extracted_words[0])
-                for idx in range(1, len(extracted_words)):
-                    print('      ', extracted_words[idx])
-            print()
+            # print("Diary #%s" % (diary_idx+1))
+            # for sent_id, extracted_words in extracted_sent_dict.items():
+            #     print('Sen ' + str(sent_id+1) + ':', extracted_words[0])
+            #     for idx in range(1, len(extracted_words)):
+            #         print('      ', extracted_words[idx])
+            # print()
 
         # step 3
-        print("\n##### Step 3. #####")
+        # print("\n##### Step 3. #####")
         scores_tend_list = list()
         for diary_idx in range(0, diary_len):
             diary_tags = preprocessed_diaries[diary_idx]
             extracted_sent_dict = extracted_sent_dict_list[diary_idx]
             scores_tend = self.compute_tend_scores(diary_tags, extracted_sent_dict, diary_idx + 1)
             scores_tend_list.append(scores_tend)
-            print("Diary #%s" % (diary_idx+1))
-            pprint(dict(scores_tend))
-            print()
+            # print("Diary #%s" % (diary_idx+1))
+            # pprint(dict(scores_tend))
+            # print()
 
         # step 4
         # convert & add scores_pref dictionary to list
-        print("\n##### Step 4. #####")
+        # print("\n##### Step 4. #####")
         tend_list = list()
         for diary_idx in range(0, diary_len):
             scores_tend = scores_tend_list[diary_idx]
@@ -452,33 +452,33 @@ class TendencyAnalyzer(object):
         for type, tend_group_list in tend_dict.items():
             if len(tend_group_list) < 10:
                 continue
-            print("Clustering for %s->%s" % (type[1].capitalize(), type[0].capitalize()))
+            # print("Clustering for %s->%s" % (type[1].capitalize(), type[0].capitalize()))
             clusters, pref_num = self.perform_clustering(tend_group_list)
             clustering_dict[type] = {'clusters': clusters, 'pref_num': pref_num}
-            print("Number of Clusters: %s" % len(clusters))
-            for idx in range(0, len(clusters)):
-                cluster = clusters[idx]
-                print("Number of Elements in Cluster #%s: %s" % ((idx+1), len(cluster)))
-            print()
-            for idx in range(0, len(clusters)):
-                cluster = clusters[idx]
-                score_sum = 0
-                score_cnt = 0
-                for ta in cluster:
-                    score_sum += ta[1]
-                    score_cnt += 1
-                if score_cnt == 0:
-                    score_cnt = 1
-                score_avg = score_sum / score_cnt
-                print("Cluster #%s: %s (count: %s, avg_score: %s)" %
-                      ((idx+1), self._label_for_cluster(cluster, self.words_corpora[type]),
-                       len(cluster), score_avg))
-                for ta in cluster:
-                    print(ta)
-                print()
+            # print("Number of Clusters: %s" % len(clusters))
+            # for idx in range(0, len(clusters)):
+            #     cluster = clusters[idx]
+            #     print("Number of Elements in Cluster #%s: %s" % ((idx+1), len(cluster)))
+            # print()
+            # for idx in range(0, len(clusters)):
+            #     cluster = clusters[idx]
+            #     score_sum = 0
+            #     score_cnt = 0
+            #     for ta in cluster:
+            #         score_sum += ta[1]
+            #         score_cnt += 1
+            #     if score_cnt == 0:
+            #         score_cnt = 1
+            #     score_avg = score_sum / score_cnt
+            #     print("Cluster #%s: %s (count: %s, avg_score: %s)" %
+            #           ((idx+1), self._label_for_cluster(cluster, self.words_corpora[type]),
+            #            len(cluster), score_avg))
+            #     for ta in cluster:
+            #         print(ta)
+            #     print()
 
         # step 5
-        print("\n##### Step 5. #####")
+        # print("\n##### Step 5. #####")
         pos_tendency = dict()
         neg_tendency = dict()
         for type, clustering_info in clustering_dict.items():
@@ -490,16 +490,16 @@ class TendencyAnalyzer(object):
             if len(neg_result) > 0:
                 neg_tendency[type] = neg_result
 
-            print("Tendency for %s->%s" % (type[1].capitalize(), type[0].capitalize()))
-            for pos_ta in pos_results:
-                print(_get_default_lemma(pos_ta[0]) + ': ' + \
-                      self._get_preference_class_name(pos_ta[1]) + \
-                      ' (' + str(pos_ta[1]) + ')')
-            for neg_ta in neg_result:
-                print(_get_default_lemma(neg_ta[0]) + ': ' + \
-                      self._get_preference_class_name(neg_ta[1]) + \
-                      ' (' + str(neg_ta[1]) + ')')
-            print()
+            # print("Tendency for %s->%s" % (type[1].capitalize(), type[0].capitalize()))
+            # for pos_ta in pos_results:
+            #     print(_get_default_lemma(pos_ta[0]) + ': ' + \
+            #           self._get_preference_class_name(pos_ta[1]) + \
+            #           ' (' + str(pos_ta[1]) + ')')
+            # for neg_ta in neg_result:
+            #     print(_get_default_lemma(neg_ta[0]) + ': ' + \
+            #           self._get_preference_class_name(neg_ta[1]) + \
+            #           ' (' + str(neg_ta[1]) + ')')
+            # print()
 
         # self._plot_result(pos_tendency, neg_tendency)
 
