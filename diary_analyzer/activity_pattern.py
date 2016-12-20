@@ -314,8 +314,7 @@ class ActivityPatternAnalyzer(object):
             word_list = []
             # for token_list in token_list_2d_lemma:
             for token_list in token_list_2d_dep:
-                for token in token_list:
-                    word_list.append(token[0])
+                word_list = [token[0] for token in token_list]
                 named_list = ner_tagger.tag(word_list)
                 for token, (_, named_entity) in zip(token_list, named_list):
                     named_entity = named_entity if named_entity != 'O' else None
@@ -323,10 +322,12 @@ class ActivityPatternAnalyzer(object):
                 token_list_2d_named.append(token_list)
 
             preprocessed_diaries.append(token_list_2d_named)
-
             return preprocessed_diaries
 
-    def analyze_diaries(self, preprocessed_diaries, diary_dates):
+    def analyze_diaries(self, preprocessed_diaries, diary_dates, threshold_interval):
+        preprocessed_diaries = preprocessed_diaries[::-1]
+        diary_dates = diary_dates[::-1]
+
         # ---------------------------------------------------
         # Step 1. Extracting Activities
         # ---------------------------------------------------
@@ -381,7 +382,7 @@ class ActivityPatternAnalyzer(object):
                 else:
                     Z = linkage(np.array(interval_list).reshape(len(interval_list), 1), 'ward')
                     interval_groups = pd.DataFrame(columns=['group', 'interval'])
-                    for group, interval in zip(fcluster(Z, t=7., criterion='distance'), interval_list):
+                    for group, interval in zip(fcluster(Z, t=threshold_interval, criterion='distance'), interval_list):
                         interval_groups = interval_groups.append({'group': group, 'interval': interval},
                                                                  ignore_index=True)
                     freq_values = interval_groups.groupby('group').mean()
@@ -422,7 +423,7 @@ class ActivityPatternAnalyzer(object):
             if len(interval_list) > 1:
                 Z = linkage(np.array(interval_list).reshape(len(interval_list), 1), 'ward')
                 interval_groups = pd.DataFrame(columns=['group', 'interval'])
-                for group, interval in zip(fcluster(Z, t=7., criterion='distance'), interval_list):
+                for group, interval in zip(fcluster(Z, t=threshold_interval, criterion='distance'), interval_list):
                     interval_groups = interval_groups.append({'group': group, 'interval': interval}, ignore_index=True)
                 regularity_values = interval_groups.groupby('group').mean()
                 reg[activity] = sorted(regularity_values['interval'].tolist())
