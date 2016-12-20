@@ -507,7 +507,7 @@ def manage_analyze(request, option=None):
                         if diary_tags_tuple:
                             diary_tag_list.append(tagger.pickle_to_tags(PICKLE_DIR)[1])
                             if option == 'activity_pattern':
-                                diary_date_list = datetime.datetime.fromtimestamp(audio_diary['created_date'])
+                                diary_date_list.append(datetime.datetime.fromtimestamp(int(audio_diary['created_date']/1000)))
                         else:
                             # privious picklingis failed. do pickling again.
                             pass
