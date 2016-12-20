@@ -331,7 +331,7 @@ class ActivityPatternAnalyzer(object):
         # Step 1. Extracting Activities
         # ---------------------------------------------------
         print("Step 1. Extracting activity-related words ---------------------------")
-        activity_word_set_path = os.path.join(settings.BASE_DIR, os.path.join('datasets', 'activity_word_set.pickle'))
+        activity_word_set_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'wordset', 'activity_word_set.pickle')
 
         activity_word_set = set()
         if False and os.path.exists(activity_word_set_path):
@@ -339,7 +339,7 @@ class ActivityPatternAnalyzer(object):
                 activity_word_set = pickle.load(f)
                 activity_word_set = [wn.synset(word) for word in activity_word_set]
         else:
-            with open(os.path.join(settings.BASE_DIR, 'datasets/activity_word_set.txt'), 'r') as f:
+            with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'wordset', 'activity_word_set.txt'), 'r') as f:
                 activity_word_set = f.read().splitlines()
             activity_word_set = set([wn.synset(activity) for activity in activity_word_set])
             activity_word_set_ext = set([word.name() for word in activity_word_set])
