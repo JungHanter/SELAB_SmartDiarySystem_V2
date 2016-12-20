@@ -327,6 +327,7 @@ class ActivityPatternAnalyzer(object):
     def analyze_diaries(self, preprocessed_diaries, diary_dates, threshold_interval):
         preprocessed_diaries = preprocessed_diaries[::-1]
         diary_dates = diary_dates[::-1]
+        max_n_reg = int(threshold_interval / 3)
 
         # ---------------------------------------------------
         # Step 1. Extracting Activities
@@ -426,7 +427,7 @@ class ActivityPatternAnalyzer(object):
                 for group, interval in zip(fcluster(Z, t=threshold_interval, criterion='distance'), interval_list):
                     interval_groups = interval_groups.append({'group': group, 'interval': interval}, ignore_index=True)
                 regularity_values = interval_groups.groupby('group').mean()
-                reg[activity] = sorted(regularity_values['interval'].tolist())
+                reg[activity] = sorted(regularity_values['interval'].tolist())[:max_n_reg]
                 # print(activity, interval_list, interval_groups)
 
         regularity_df = pd.DataFrame(columns=['activity', 'regularity'])
