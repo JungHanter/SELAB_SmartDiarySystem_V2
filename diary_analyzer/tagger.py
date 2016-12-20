@@ -53,7 +53,7 @@ def tag_pos_doc(document, ne_tag=False):
                     fixed_tags.append(result_word)
                     tag_idx += 1
                 else:
-                    fixed_tags.append([w, None, None, None])
+                    fixed_tags.append([w, '', None, ''])
             fixed_tags_list.append(fixed_tags)
 
     else:
@@ -74,7 +74,7 @@ def tag_pos_doc(document, ne_tag=False):
                     fixed_tags.append(result_word)
                     tag_idx += 1
                 else:
-                    fixed_tags.append([w, None, None, None, None])
+                    fixed_tags.append([w, '', None, '', None])
             fixed_tags_list.append(fixed_tags)
 
     return sentences, fixed_tags_list
@@ -104,3 +104,28 @@ def pickle_to_tags(file_path):
         print(e)
     return tags
 
+
+def update_pickle(file_path):
+    try:
+        pickle_file = open(file_path, mode='rb+')
+        tags = pickle.load(pickle_file, encoding="utf-8")
+        pickle_file.close()
+
+        for sent in tags[1]:
+            for entity in sent:
+                if entity[1] is None:
+                    entity[1] = ''
+                if entity[3] is None:
+                    entity[3] = ''
+
+        pickle_file = open(file_path, mode='wb+')
+        pickle.dump(obj=tags, file=pickle_file, protocol=pickle.HIGHEST_PROTOCOL)
+        pickle_file.close()
+
+    except Exception as e:
+        print(e)
+
+
+# for filename in glob.iglob("smart_diary_system/pickles/**/*.pkl", recursive=True):
+#     update_pickle(filename)
+#     print(filename, 'updated')

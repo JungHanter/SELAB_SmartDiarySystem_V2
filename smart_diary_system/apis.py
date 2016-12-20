@@ -488,7 +488,7 @@ def manage_analyze(request, option=None):
                     diary_tag_list = []
                     diary_date_list = []
                     for audio_diary in audio_diary_list:  # load pickles
-                        pprint.pprint(audio_diary)
+                        # pprint.pprint(audio_diary)
                         diary_tags_tuple = None
 
                         if audio_diary['pickle'] == 0:
