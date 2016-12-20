@@ -7,7 +7,8 @@ from smart_diary_system import security
 import logging
 from django.http import Http404
 from diary_analyzer import tagger
-from diary_analyzer import lifestyles
+from diary_analyzer import tendency
+from diary_analyzer import activity_pattern
 import pprint
 import operator
 import random
@@ -440,127 +441,106 @@ def manage_analyze(request, option=None):
 
     elif request.method == 'GET':
 
-            if option is None:
-                pass
+        if option is None:
+            pass
 
-            if option == 'check_pos_tagging':
-                try:
-                    data = json.loads(json.dumps(request.GET))
-                    logger.debug("INPUT :%s", data)
+        if option == 'check_pos_tagging':
+            try:
+                data = json.loads(json.dumps(request.GET))
+                logger.debug("INPUT :%s", data)
 
-                    audio_diary_manager = database.AudioDiaryManager()
-                    audio_diary_list = audio_diary_manager.retrieve_state_flags(data['audio_diary_id'])
+                audio_diary_manager = database.AudioDiaryManager()
+                audio_diary_list = audio_diary_manager.retrieve_state_flags(data['audio_diary_id'])
 
-                    if audio_diary_list is None:
-                        return JsonResponse({'check_pos_tagging': False, 'reason': 'AUDIO_DIARY_NOT_EXIST'})
+                if audio_diary_list is None:
+                    return JsonResponse({'check_pos_tagging': False, 'reason': 'AUDIO_DIARY_NOT_EXIST'})
+                else:
+                    state = audio_diary_list['pickle']
+                    if state == 0:
+                        return JsonResponse({'check_pos_tagging': False, 'reason': 'MAKING_FAILED'})
+                    elif state == 1:
+                        return JsonResponse({'check_pos_tagging': False, 'reason': 'WORKING'})
                     else:
-                        state = audio_diary_list['pickle']
-                        if state == 0:
-                            return JsonResponse({'check_pos_tagging': False, 'reason': 'MAKING_FAILED'})
-                        elif state == 1:
-                            return JsonResponse({'check_pos_tagging': False, 'reason': 'WORKING'})
-                        else:
-                            return JsonResponse({'check_pos_tagging': True})
+                        return JsonResponse({'check_pos_tagging': True})
 
-                except Exception as exp:
-                    logger.exception(exp)
-                    logger.debug("RETURN : FALSE - EXCEPTION")
-                    return JsonResponse({'parsing_is_done': False})
+            except Exception as exp:
+                logger.exception(exp)
+                logger.debug("RETURN : FALSE - EXCEPTION")
+                return JsonResponse({'parsing_is_done': False})
 
-            if option == 'tendency':
-                try:
-                    data = json.loads(json.dumps(request.GET))
-                    logger.debug("INPUT :%s", data)
+        if option == 'tendency' or option == 'activity_pattern':
+            try:
+                data = json.loads(json.dumps(request.GET))
+                logger.debug("INPUT :%s", data)
 
-                    thing_type = data['thing_type']
-                    defined_thing_type = ['food', 'sport']
-                    if not (thing_type in defined_thing_type):
-                        # Can not Anaylzed, THING TYPE is wrong, which is not defined
-                        logger.debug("RETURN : FALSE - INVALID THING TYPE")
-                        return JsonResponse({'tendency': False, 'reason': 'INVALID THING TYPE'})
+                # init DB Mangagers
+                audio_diary_manager = database.AudioDiaryManager()
+                life_style_manager = database.TendencyManager()
 
-                    # init DB Mangagers
-                    audio_diary_manager = database.AudioDiaryManager()
-                    life_style_manager = database.TendencyManager()
+                # retrieve audio diaries which will be analyzed
+                audio_diary_list = audio_diary_manager.retrieve_audio_diary_list_by_timestamp(data)  # user_id, timestamp_from, timestamp_to
+                if audio_diary_list is None:
+                    # Nothing to show
+                    logger.debug("RETURN : TRUE - NO DIARY AVAILABLE")
+                    return JsonResponse({'analyzed': True, 'result': {'pos': [], 'neg': []}})
+                else:
+                    diary_tag_list = []
+                    for audio_diary in audio_diary_list:  # load pickles
+                        pprint.pprint(audio_diary)
 
-                    # retrieve audio diaries which will be analyzed
-                    audio_diary_list = audio_diary_manager.retrieve_audio_diary_list_by_timestamp(data)  # user_id, timestamp_from, timestamp_to
-                    if audio_diary_list is None:
-                        # Nothing to show
-                        logger.debug("RETURN : TRUE - NO DIARY AVAILABLE")
-                        return JsonResponse({'tendency': True, 'result': []})
-                    else:
-                        diary_tag_list = []
-                        analyzed_audio_diary_id_list = []
-                        ranking_audio_diary_id_list = []
-                        for audio_diary in audio_diary_list:  # load pickles
-                            ranking_audio_diary_id_list.append(audio_diary['audio_diary_id'])
+                        # load pickles
+                        ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+                        PICKLE_DIR = os.path.join(ROOT_DIR, 'pickles', audio_diary['user_id'],
+                                                  str(audio_diary['audio_diary_id']), 'pos_texts.pkl')
+                        diary_tag_list.append(tagger.pickle_to_tags(PICKLE_DIR)[1])
 
-                            # check if required thing_type already analyzed
-                            analyzed_types = parse_lifetype(audio_diary['tendency_analyzed'])
-                            if thing_type in analyzed_types:
-                                logger.debug('tendency : id(%s) already Analyzed', audio_diary['audio_diary_id'])
-                            else:
-                                logger.debug('tendency : id(%s) Will be Analyzed FOR %s',
-                                             audio_diary['audio_diary_id'], thing_type)
-                                # load pickles
-                                ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-                                PICKLE_DIR = os.path.join(ROOT_DIR, 'pickles', audio_diary['user_id'],
-                                                          str(audio_diary['audio_diary_id']), 'pos_texts.pkl')
-                                diary_tag_list.append(tagger.pickle_to_tags(PICKLE_DIR))
+                    # analyze tendency
+                    pos_tend, neg_tend = tendency.tend_analyzer.analyze_diaries(diary_tag_list)
+                    # pprint.pprint(pos_tend)
+                    # pprint.pprint(neg_tend)
+                    return JsonResponse({'analyzed': True, 'result': {'pos': pos_tend, 'neg': neg_tend}})
 
-                                if audio_diary['tendency_analyzed'] is None:
-                                    tendency_analyzed = thing_type + ','
-                                else:
-                                    tendency_analyzed = thing_type + ',' + audio_diary['tendency_analyzed']
-                                temp = {'audio_diary_id': audio_diary['audio_diary_id'], 'tendency_analyzed': tendency_analyzed}
-                                analyzed_audio_diary_id_list.append(temp)
+                    # making tendency DB record
+                    # tendencys_dict_list = []
+                    # for audio_diary_id, diary_tags in zip(analyzed_audio_diary_id_list, diary_tag_list):
+                    #     # analyze tendency
+                    #     if thing_type == 'food':
+                    #         tendency_analyze_result = lifestyles.analyzer.analyze_food(diary_tags[1])
+                    #     elif thing_type == 'sport':
+                    #         # tendency_analyze_result = tendencys.analyzer.sport_collect(diary_tags[1])
+                    #         return JsonResponse({'tendency': False, 'reason': 'NOT YET IMPLEMENTED'})
+                    #
+                    #     for tendency_item in tendency_analyze_result.keys():
+                    #         tendency_dict = {'audio_diary_id': audio_diary_id['audio_diary_id'], 'thing_type': thing_type,
+                    #                            'thing': tendency_item, 'score': tendency_analyze_result[tendency_item]}
+                    #         tendencys_dict_list.append(tendency_dict)
+                    #
+                    # if tendencys_dict_list:  # insert tendency record into DB
+                    #     life_style_manager.create_tendency_by_list(tendencys_dict_list)
 
-                        if not diary_tag_list and not analyzed_audio_diary_id_list:
-                            logger.debug('tendency : NOTHING TO INSERT INTO DB')
+                    # statistic analyze
+                    # tendency_item_list = life_style_manager.retrieve_tendency(ranking_audio_diary_id_list, thing_type)
+                    # if tendency_item_list:
+                    #     if str(data['option']).lower() == 'like':
+                    #         like = True
+                    #     elif str(data['option']).lower() == 'dislike':
+                    #         like = False
+                    #     else:
+                    #         logger.debug("RETURN : FALSE - INVALID OPTION TYPE")
+                    #         return JsonResponse({'tendency': False, 'reason': 'INVALID OPTION TYPE'})
+                    #     final_result = lifestyles.ranking_lifestyle(lifestyle_list=tendency_item_list, like=like)
+                    #     logger.debug("RETURN : %s", final_result)
+                    #
+                    #     # updating tendency_analyzed flag in audio_diary table
+                    #     audio_diary_manager.update_tendency_analyzed_state(analyzed_audio_diary_id_list)
+                    #     return JsonResponse({'tendency': True, 'result': final_result})
+                    # else:
+                    #     return JsonResponse({'tendency': True, 'result': []})
 
-                        # making tendency DB record
-                        tendencys_dict_list = []
-                        for audio_diary_id, diary_tags in zip(analyzed_audio_diary_id_list, diary_tag_list):
-                            # analyze tendency
-                            if thing_type == 'food':
-                                tendency_analyze_result = lifestyles.analyzer.analyze_food(diary_tags[1])
-                            elif thing_type == 'sport':
-                                # tendency_analyze_result = tendencys.analyzer.sport_collect(diary_tags[1])
-                                return JsonResponse({'tendency': False, 'reason': 'NOT YET IMPLEMENTED'})
-
-                            for tendency_item in tendency_analyze_result.keys():
-                                tendency_dict = {'audio_diary_id': audio_diary_id['audio_diary_id'], 'thing_type': thing_type,
-                                                   'thing': tendency_item, 'score': tendency_analyze_result[tendency_item]}
-                                tendencys_dict_list.append(tendency_dict)
-
-                        if tendencys_dict_list:  # insert tendency record into DB
-                            life_style_manager.create_tendency_by_list(tendencys_dict_list)
-
-                        # statistic analyze
-                        tendency_item_list = life_style_manager.retrieve_tendency(ranking_audio_diary_id_list, thing_type)
-                        if tendency_item_list:
-                            if str(data['option']).lower() == 'like':
-                                like = True
-                            elif str(data['option']).lower() == 'dislike':
-                                like = False
-                            else:
-                                logger.debug("RETURN : FALSE - INVALID OPTION TYPE")
-                                return JsonResponse({'tendency': False, 'reason': 'INVALID OPTION TYPE'})
-                            final_result = lifestyles.ranking_lifestyle(lifestyle_list=tendency_item_list, like=like)
-                            logger.debug("RETURN : %s", final_result)
-
-                            # updating tendency_analyzed flag in audio_diary table
-                            audio_diary_manager.update_tendency_analyzed_state(analyzed_audio_diary_id_list)
-                            return JsonResponse({'tendency': True, 'result': final_result})
-                        else:
-                            return JsonResponse({'tendency': True, 'result': []})
-
-
-                except Exception as exp:
-                    logger.exception(exp)
-                    logger.debug("RETURN : FALSE - EXCEPTION")
-                    return JsonResponse({'tendency': False, 'reason': 'INTERNAL SERVER ERROR'})
+            except Exception as exp:
+                logger.exception(exp)
+                logger.debug("RETURN : FALSE - EXCEPTION")
+                return JsonResponse({'analyzed': False, 'reason': 'INTERNAL SERVER ERROR'})
 
     elif request.method == 'PUT':
         try:

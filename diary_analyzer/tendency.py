@@ -501,7 +501,7 @@ class TendencyAnalyzer(object):
                       ' (' + str(neg_ta[1]) + ')')
             print()
 
-        self._plot_result(pos_tendency, neg_tendency)
+        # self._plot_result(pos_tendency, neg_tendency)
 
         return pos_tendency, neg_tendency
 
