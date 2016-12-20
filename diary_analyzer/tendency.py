@@ -486,9 +486,9 @@ class TendencyAnalyzer(object):
                                                               len(preprocessed_diaries),
                                                               clustering_info['pref_num'])
             if len(pos_results) > 0:
-                pos_tendency[type] = pos_results
+                pos_tendency[type[0]] = pos_results
             if len(neg_result) > 0:
-                neg_tendency[type] = neg_result
+                neg_tendency[type[0]] = neg_result
 
             # print("Tendency for %s->%s" % (type[1].capitalize(), type[0].capitalize()))
             # for pos_ta in pos_results:
@@ -1384,11 +1384,11 @@ class TendencyAnalyzer(object):
         pos_scores_ta = list()
         for ta_name, score in pos_ta_score_dict.items():
             if score >= 0.2:   # preference score is more than
-                pos_scores_ta.append((ta_name, score))
+                pos_scores_ta.append((wn.synset(ta_name).lemmas()[0].name(), score))
         neg_scores_ta = list()
         for ta_name, score in neg_ta_score_dict.items():
             if score <= -0.2:
-                neg_scores_ta.append((ta_name, score))
+                neg_scores_ta.append((wn.synset(ta_name).lemmas()[0].name(), score))
 
         # best tend things and activities
         best_pos_scores = sorted(pos_scores_ta, key=lambda ta: ta[1], reverse=True)[:5]
