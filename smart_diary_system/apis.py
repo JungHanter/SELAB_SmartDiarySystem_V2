@@ -9,6 +9,7 @@ from django.http import Http404
 from diary_analyzer import tagger
 from diary_analyzer import tendency
 from diary_analyzer import activity_pattern
+import datetime
 import pprint
 import operator
 import random
@@ -506,7 +507,7 @@ def manage_analyze(request, option=None):
                         if diary_tags_tuple:
                             diary_tag_list.append(tagger.pickle_to_tags(PICKLE_DIR)[1])
                             if option == 'activity_pattern':
-                                diary_date_list = audio_diary['created_date']
+                                diary_date_list = datetime.datetime.fromtimestamp(audio_diary['created_date'])
                         else:
                             # privious picklingis failed. do pickling again.
                             pass
