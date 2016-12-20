@@ -525,7 +525,7 @@ class TendencyAnalyzer(object):
             word_set_corpus = None
             if type == ('food', 'thing'):
                 foods_categoricals = ['cut.n.06', 'cold_cuts.n.01', 'nutriment.n.01', 'foodstuff.n.02', 'dish.n.02',
-                                      'plate.n.07',
+                                      'plate.n.07', 'side_dish.n.01'
                                       'course.n.07', 'game.n.07', 'halal.n.01', 'horsemeat.n.01', 'broth.n.01',
                                       'date.n.08', 'side.n.09', 'pop.n.02', 'bird.n.02', 'carbonado.n.02', ]
                 foods_categoricals.extend(list(_get_hypernyms_name(wn.synset('cut.n.06'))))
