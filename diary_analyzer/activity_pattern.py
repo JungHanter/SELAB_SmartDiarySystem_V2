@@ -13,6 +13,8 @@ from nltk import StanfordTokenizer, StanfordPOSTagger, WordNetLemmatizer, Porter
 from nltk.parse.stanford import StanfordDependencyParser
 from nltk.tag.stanford import StanfordNERTagger
 
+from functools import reduce
+
 from diary_analyzer import tools
 from smart_diary_system import settings
 
@@ -438,3 +440,26 @@ class ActivityPatternAnalyzer(object):
         return rec, freq, reg
 
 activity_pattern_analyzer = ActivityPatternAnalyzer()
+
+
+def rank_result(rec, freq, reg):
+    rec_list = []
+    for activity, value in rec:
+        rec_list.append((activity, value))
+    rec_list = sorted(rec_list, key=lambda elem: elem[1], reverse=True)[:5]
+
+    freq_list = []
+    for activity, value in freq:
+        if type(value) is not list:
+            value = [value]
+        freq_list.append((activity, value))
+    freq_list = sorted(freq_list, key=lambda elem: reduce(lambda x, y: x + y, elem[1]) / len(elem[1]))[:5]
+
+    reg_list = []
+    for activity, value in reg:
+        if type(value) is not list:
+            value = [value]
+        reg_list.append((activity, value))
+    reg_list = sorted(reg_list, key=lambda elem: reduce(lambda x, y: x + y, elem[1]) / len(elem[1]))[:5]
+
+    return rec_list, freq_list, reg_list

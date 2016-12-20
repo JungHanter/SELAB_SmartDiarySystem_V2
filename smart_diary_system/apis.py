@@ -487,6 +487,7 @@ def manage_analyze(request, option=None):
                 else:
                     diary_tag_list = []
                     diary_date_list = []
+
                     for audio_diary in audio_diary_list:  # load pickles
                         # pprint.pprint(audio_diary)
                         diary_tags_tuple = None
@@ -520,8 +521,27 @@ def manage_analyze(request, option=None):
                         return JsonResponse({'analyzed': True, 'result': {'pos': pos_tend, 'neg': neg_tend}})
                     elif option == 'activity_pattern':
                         # pprint.pprint(diary_date_list)
+
+                        interval = data.get('interval')
+                        if interval is None:
+                            interval = 0
+                        else:
+                            interval = int(interval)
+                        if interval == 0:
+                            if len(audio_diary_list) > 2:
+                                period_millis = audio_diary_list[0]['created_date'] \
+                                        - audio_diary_list[len(audio_diary_list)-1]['created_date']
+                                period_days = period_millis / (1000*60*60*24)
+                                if period_days >= (365 * 5): interval = 30;
+                                elif period_days >= 365: interval = 14;
+                                elif period_days >= 90: interval = 7;
+                                else: interval = 3;
+                            else:
+                                interval = 3
+
                         recurrent, frequency, regularity = activity_pattern.activity_pattern_analyzer\
-                            .analyze_diaries(diary_tag_list, diary_date_list, int(data['interval']))
+                            .analyze_diaries(diary_tag_list, diary_date_list, interval)
+                        recurrent, frequency, regularity = activity_pattern.rank_result(recurrent, frequency, regularity)
                         return JsonResponse({'analyzed': True, 'result':
                             {'recurrent': recurrent, 'frequency': frequency, 'regularity': regularity}})
 
