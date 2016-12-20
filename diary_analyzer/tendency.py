@@ -549,7 +549,7 @@ class TendencyAnalyzer(object):
             elif type == ('sport', 'activity'):
                 sport_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'wordset',
                                           'sports_wiki_wordnet.txt')
-                sports = SynsetListFileCorpusRetriever("sport_path")
+                sports = SynsetListFileCorpusRetriever(sport_path)
                 word_set_corpus = sports
             self.add_word_set(type[0], type[1], word_set_corpus)
 
