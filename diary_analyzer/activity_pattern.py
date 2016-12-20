@@ -336,7 +336,7 @@ class ActivityPatternAnalyzer(object):
         activity_word_set_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'wordset', 'activity_word_set.pickle')
 
         activity_word_set = set()
-        if False and os.path.exists(activity_word_set_path):
+        if os.path.exists(activity_word_set_path):
             with open(activity_word_set_path, 'rb') as f:
                 activity_word_set = pickle.load(f)
                 activity_word_set = [wn.synset(word) for word in activity_word_set]
