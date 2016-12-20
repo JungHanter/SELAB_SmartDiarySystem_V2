@@ -562,16 +562,16 @@ class TendencyAnalyzer(object):
             tagged_sent = diary_tags[sent_idx]
 
             # for last 'for' loop in word
-            if tagged_sent[len(tagged_sent)-1][TAG_WORD_POS] is not None or \
-                    tagged_sent[len(tagged_sent) - 1][TAG_WORD_ROLE] is not None:
-                tagged_sent.append((None, None, None, None, None))
+            if tagged_sent[len(tagged_sent)-1][TAG_WORD_POS] or \
+                    tagged_sent[len(tagged_sent) - 1][TAG_WORD_ROLE] :
+                tagged_sent.append(('', '', '', '', ''))
 
             prev_word_comp_list = [] # for compound word
             for entity_idx in range(0, len(tagged_sent)):
                 entity = tagged_sent[entity_idx]
 
                 # find word as noun
-                if entity[TAG_WORD_POS] is None or not entity[TAG_WORD_POS].startswith('NN'):
+                if not entity[TAG_WORD_POS] or not entity[TAG_WORD_POS].startswith('NN'):
                     # end of single or compound noun
                     if len(prev_word_comp_list) >= 1:
                         is_found = False
@@ -687,7 +687,7 @@ class TendencyAnalyzer(object):
                         continue
 
                 # a word have pos and role
-                if entity[TAG_WORD_POS] is not None and entity[TAG_WORD_ROLE] is not None:
+                if entity[TAG_WORD_POS] and entity[TAG_WORD_ROLE]:
                     if 'VB' in entity[TAG_WORD_POS]:
                         # find activities as verb
                         found_synset_list \
@@ -810,7 +810,7 @@ class TendencyAnalyzer(object):
             # find words depend on which main entities
             entities_dep_dict = defaultdict(lambda: [])
             for entity_idx in range(0, len(tagged_sen)):
-                if tagged_sen[entity_idx][TAG_WORD_POS] is None:
+                if not tagged_sen[entity_idx][TAG_WORD_POS]:
                     continue
                 if entity_idx in main_entities_idxs:
                     entities_dep_dict[entity_idx].append(entity_idx)
@@ -819,7 +819,7 @@ class TendencyAnalyzer(object):
                     while True:
                         now_entity = tagged_sen[now_idx]
                         # print(now_entity)
-                        if now_entity[TAG_DEPENDENCY] == None:
+                        if not now_entity[TAG_DEPENDENCY]:
                             break
                         dep_idx = int(now_entity[TAG_DEPENDENCY]) - 1
                         if now_idx == dep_idx:
@@ -854,7 +854,7 @@ class TendencyAnalyzer(object):
                         main_ta_dict[main_idx]['ta_list'].append(entity_idx)
                         continue
 
-                    if entity[TAG_WORD_POS] is None or entity[TAG_WORD_ROLE] is None:
+                    if not entity[TAG_WORD_POS] or not entity[TAG_WORD_ROLE]:
                         continue
 
                     if 'subj' in entity[TAG_WORD_ROLE]:
@@ -1861,7 +1861,7 @@ tend_analyzer = TendencyAnalyzer()
 tend_analyzer.load_word_corpora([('food', 'thing'), ('hobby', 'activity'), ('sport', 'activity')])
 
 
-# if __name__ == "__main__":
+if __name__ == "__main__":
     # JENIIFER_DIARY = [
     # ]
     # for i in range(0, len(JENIIFER_DIARY)):
@@ -1918,12 +1918,14 @@ tend_analyzer.load_word_corpora([('food', 'thing'), ('hobby', 'activity'), ('spo
     # print("load eliz diaries done.")
     # tend_analyzer.analyze_diary(elize_diaries, [('food', 'thing')])
 
-    # as_travel_diaries = list()
-    # for i in range(1, 56):
-    #     diary_tags = tagger.pickle_to_tags("diary_pickles/as_travel_" + str(i) + ".pkl")
-    #     as_travel_diaries.append(diary_tags[1])
-    # print("load as travel diaries done.")
-    # tend_analyzer.analyze_diary(as_travel_diaries)
+    as_travel_diaries = list()
+    for i in range(1, 56):
+        diary_tags = tagger.pickle_to_tags("diary_pickles/as_travel_" + str(i) + ".pkl")
+        as_travel_diaries.append(diary_tags[1])
+    print("load as travel diaries done.")
+    pos_result, neg_result = tend_analyzer.analyze_diaries(as_travel_diaries)
+    pprint(pos_result)
+    pprint(neg_result)
 
     # jeniffer_2015_diaries = list()
     # for i in range(0, 228):

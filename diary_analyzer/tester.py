@@ -224,14 +224,16 @@ def nounify2(verb_synset):
                 set_of_related_nouns.append(synset)
     return set_of_related_nouns
 
-for synset in wn.synsets('sailed'):
-    print(synset, synset.pos(), synset.offset(), synset.frame_ids(), synset.definition(),
-          synset.examples(), synset.lexname(), sep=' | ')
-    for lemma in synset.lemmas():
-        print('\t', lemma, lemma.name(), lemma.syntactic_marker(), lemma.frame_ids(),
-              lemma.frame_strings(), lemma.count(), sep=' | ')
-    print()
-print()
+# for synset in wn.synsets('side_dish'):
+#     print(synset, synset.pos(), synset.offset(), synset.frame_ids(), synset.definition(),
+#           synset.examples(), synset.lexname(), sep=' | ')
+#     # for lemma in synset.lemmas():
+#     #     print('\t', lemma, lemma.name(), lemma.syntactic_marker(), lemma.frame_ids(),
+#     #           lemma.frame_strings(), lemma.count(), sep=' | ')
+#     # print()
+# print()
+
+# print(wn.synset('coffee.n.01').lemmas()[0].name())
 
 # print(nounify('sketch'))
 # print(nounify2(wn.synset('macrame.v.01')))
@@ -287,3 +289,26 @@ print()
 # for i in range(0, 10)[::-1]:
 #     print(i)
 
+
+import pickle
+### update pickles
+for i in range(1, 56):
+    file_path = "diary_pickles/as_travel_" + str(i) + ".pkl"
+    try:
+        pickle_file = open(file_path, mode='rb+')
+        tags = pickle.load(pickle_file, encoding="utf-8")
+        pickle_file.close()
+
+        for sent in tags[1]:
+            for entity in sent:
+                if entity[1] is None:
+                    entity[1] = ''
+                if entity[3] is None:
+                    entity[3] = ''
+
+        pickle_file = open(file_path, mode='wb+')
+        pickle.dump(obj=tags, file=pickle_file, protocol=pickle.HIGHEST_PROTOCOL)
+        pickle_file.close()
+
+    except Exception as e:
+        print(e)
