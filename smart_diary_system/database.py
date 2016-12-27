@@ -495,11 +495,10 @@ class AudioDiaryManager(DBManager):
             logger.error("ERROR MSG : %s", error_msg)
             return False
 
-    def update_audio_diary(self, audio_diary_info):
+    def update_audio_diary(self, audio_diary_id, user_id, title, created_date):
         """Creating new audio_diary to SD DB
             Usually, this method be called
             When User retrieving audio_diary
-
 
             :param audio_diary_info:
             :rtype None:
@@ -509,10 +508,16 @@ class AudioDiaryManager(DBManager):
 
         assert self.connected
         try:
-            query_for_delete = "UPDATE audio_diary SET title = %s, created_date = %s WHERE audio_diary_id = %s "
+            query_for_delete = "UPDATE audio_diary " \
+                               "SET title = %s, created_date = %s " \
+                               "WHERE audio_diary_id = %s AND user_id=%s "
 
             with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
-                affected_rows = cur.execute(query_for_delete, (audio_diary_info['title'], audio_diary_info['created_date'], int(audio_diary_info['audio_diary_id'])))
+                affected_rows = cur.execute(query_for_delete,
+                                            (title,
+                                             created_date,
+                                             audio_diary_id,
+                                             user_id))
                 self.conn.commit()
                 # END : for calculating execution time
                 stop = timeit.default_timer()
@@ -754,6 +759,32 @@ class TextDiaryManager(DBManager):
             logger.error("ERROR NO : %s", num)
             logger.error("ERROR MSG : %s", error_msg)
             return False
+
+    def update_text_diary(self, audio_diary_id, content):
+        start = timeit.default_timer()
+        assert self.connected
+        query_for_update_c_text = "UPDATE text_diary " \
+                                  "SET content=%s " \
+                                  "WHERE audio_diary=%s"
+        try:
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
+                affected_rows = cur.execute(query_for_update_c_text,
+                                            (content, audio_diary_id))
+                self.conn.commit()
+                # END : for calculating execution time
+                stop = timeit.default_timer()
+                logger.debug("DB : update_text_diary() - Execution Time : %s", stop - start)
+                logger.debug("DB : AFFECTED ROWS : %s rows", affected_rows)
+                return True
+
+        except Exception as exp:
+            logger.error(">>>MYSQL ERROR<<<")
+            logger.error("At update_text_diary()")
+            num, error_msg = exp.args
+            logger.error("ERROR NO : %s", num)
+            logger.error("ERROR MSG : %s", error_msg)
+            return False
+
 
     def retrieve_text_diary_list(self, audio_diary_info):
         """Creating new audio_diary to SD DB
@@ -1112,8 +1143,8 @@ class TagManager(DBManager):
         assert self.connected
         if type(tag_info) is list:
             query_for_tag = "INSERT INTO tag " \
-                                             "(audio_diary_id, value) " \
-                                             "VALUES"
+                             "(audio_diary_id, value) " \
+                             "VALUES"
             for d_item in tag_info:
                 query_for_tag += " (%s, '%s')," % (
                     audio_diary_id, d_item['value'])
