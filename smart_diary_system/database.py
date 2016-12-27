@@ -509,8 +509,8 @@ class AudioDiaryManager(DBManager):
         assert self.connected
         try:
             query_for_delete = "UPDATE audio_diary " \
-                               "SET title = %s, created_date = %s " \
-                               "WHERE audio_diary_id = %s AND user_id=%s "
+                               "SET title=%s, created_date=%s " \
+                               "WHERE audio_diary_id=%s AND user_id=%s "
 
             with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
                 affected_rows = cur.execute(query_for_delete,
@@ -580,7 +580,7 @@ class AudioDiaryManager(DBManager):
 
         assert self.connected
         try:
-            query_for_delete = "DELETE FROM text_diary WHERE audio_diary_id  = %s "
+            query_for_delete = "DELETE FROM text_diary WHERE audio_diary_id = %s "
             with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
                 cur.execute(query_for_delete, int(audio_diary_id))
                 self.conn.commit()
@@ -760,16 +760,16 @@ class TextDiaryManager(DBManager):
             logger.error("ERROR MSG : %s", error_msg)
             return False
 
-    def update_text_diary(self, audio_diary_id, content):
+    def update_text_diary(self, audio_diary_id, content, created_date):
         start = timeit.default_timer()
         assert self.connected
         query_for_update_c_text = "UPDATE text_diary " \
-                                  "SET content=%s " \
-                                  "WHERE audio_diary=%s"
+                                  "SET content=%s, created_date=%s " \
+                                  "WHERE audio_diary_id=%s"
         try:
             with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
                 affected_rows = cur.execute(query_for_update_c_text,
-                                            (content, audio_diary_id))
+                                            (content, created_date, audio_diary_id))
                 self.conn.commit()
                 # END : for calculating execution time
                 stop = timeit.default_timer()

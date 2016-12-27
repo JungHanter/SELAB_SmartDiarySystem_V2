@@ -901,13 +901,13 @@ def update_diary(data):
     # UPDATE Text INTO DB
     audio_diary_id = data['audio_diary_id']
     updated = audio_diary_manager.update_audio_diary(
-        data['user_id'], data['user_id'], data['title'], data['created_date'])
+        data['audio_diary_id'], data['user_id'], data['title'], data['created_date'])
     if not updated:
         return False
 
     text_diary_manager = database.TextDiaryManager()
     updated = text_diary_manager.update_text_diary(
-        audio_diary_id, data['content'])
+        audio_diary_id, data['content'], data['created_date'])
 
     if not updated:
         return False
