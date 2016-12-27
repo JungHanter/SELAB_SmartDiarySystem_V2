@@ -907,7 +907,7 @@ def update_diary(data):
 
     text_diary_manager = database.TextDiaryManager()
     updated = text_diary_manager.update_text_diary(
-        audio_diary_id, data['content'], data['created_date'])
+        audio_diary_id, data['content'])
 
     if not updated:
         return False

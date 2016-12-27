@@ -760,16 +760,16 @@ class TextDiaryManager(DBManager):
             logger.error("ERROR MSG : %s", error_msg)
             return False
 
-    def update_text_diary(self, audio_diary_id, content, created_date):
+    def update_text_diary(self, audio_diary_id, content):
         start = timeit.default_timer()
         assert self.connected
         query_for_update_c_text = "UPDATE text_diary " \
-                                  "SET content=%s, created_date=%s " \
+                                  "SET content=%s " \
                                   "WHERE audio_diary_id=%s"
         try:
             with self.conn.cursor(pymysql.cursors.DictCursor) as cur:
                 affected_rows = cur.execute(query_for_update_c_text,
-                                            (content, created_date, audio_diary_id))
+                                            (content, audio_diary_id))
                 self.conn.commit()
                 # END : for calculating execution time
                 stop = timeit.default_timer()
