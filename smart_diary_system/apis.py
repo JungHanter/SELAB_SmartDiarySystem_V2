@@ -257,10 +257,10 @@ def auth_email(request):
 @csrf_exempt
 def manage_diary(request, option=None):
     logger.debug(request)
-    if request.method == 'POST':  # create diary
-        if option == None:
+    if request.method == 'POST':
+        if option is None:  # create diary
             try:
-                # Diary Info from APP
+                # Diary Info from APP (multipart)
                 data = json.loads(request.POST['json'])  # at POST
                 # data = json.loads(request.body.decode('utf-8'))  # at BODY
                 logger.debug("INPUT : %s", data)
@@ -277,6 +277,22 @@ def manage_diary(request, option=None):
                 logger.exception(exp)
                 logger.debug("RETURN : FALSE - EXCEPTION")
                 return JsonResponse({'create_diary': False})
+
+        elif option == 'update':   # update diary
+            try:
+                # input From APP
+                data = json.loads(request.body.decode('utf-8'))  # at BODY
+                logger.debug("INPUT : %s", data)
+
+                updated = update_diary(data)
+                if updated:
+                    return JsonResponse({'update_diary': True})
+                else:
+                    return JsonResponse({'update_diary': False})
+
+            except Exception as exp:
+                logger.exception(exp)
+                return JsonResponse({'update_diary': False})
 
         if option == 'delete':
             try:
@@ -389,34 +405,6 @@ def manage_diary(request, option=None):
             logger.exception(exp)
             logger.debug("RETURN : FALSE - EXCEPTION")
             return JsonResponse({'retrieve_diary': False})
-
-    elif request.method == 'PUT':
-        try:
-            if option is None:
-                # input From APP
-                data = json.loads(request.body.decode('utf-8'))  # at BODY
-                logger.debug("INPUT : %s", data)
-                audio_diary_id = data.get('audio_diary_id')
-                user_id = data.get('user_id')
-
-                # Delete text_diary
-                text_diary_manger = database.TextDiaryManager()
-                text_diary_manger.delete_text_diary_by_audio_diary_id(audio_diary_id)
-
-                # Delete Delete Diary Attachment Files
-                # ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-                # dest_path = ROOT_DIR + '/uploaded/' + data['user_id'] + '/' + audio_diary_id
-                # if os.path.isdir(dest_path):
-                #     shutil.rmtree(dest_path)
-
-                # Insert New text_diary, sentence, sent_element
-                audio_diary_id, text_diary_id = insert_new_diary(data, request)
-
-                return JsonResponse({'update_diary': True, 'text_diary_id': text_diary_id})
-
-        except Exception as exp:
-            logger.exception(exp)
-            return JsonResponse({'update_diary': False})
 
 
 @csrf_exempt
@@ -810,16 +798,17 @@ def insert_new_diary(data, request):
         return JsonResponse({'create_diary': False})
 
     # INSERT Text INTO DB
-    if not ('audio_diary_id' in data):  # NEW NOTE
-        audio_diary_id = audio_diary_manager.create_audio_diary(data['user_id'], data['title'], data['created_date'])
-        data['audio_diary_id'] = audio_diary_id
-        if not('tag' in data):
-            data['tag'] = []
-        tag_manager.create_tag(audio_diary_id, data['tag'])
-    else:  # EDIT NOTE
-        audio_diary_manager.update_audio_diary(data)
-        audio_diary_id = data['audio_diary_id']
-        e_context_manager.delete_environmental_by_audio_diary_id(audio_diary_id)
+    # if not ('audio_diary_id' in data):  # NEW NOTE
+    audio_diary_id = audio_diary_manager.create_audio_diary(
+        data['user_id'], data['title'], data['created_date'])
+    data['audio_diary_id'] = audio_diary_id
+    if not('tag' in data):
+        data['tag'] = []
+    tag_manager.create_tag(audio_diary_id, data['tag'])
+    # else:  # EDIT NOTE
+    #     audio_diary_manager.update_audio_diary(data)
+    #     audio_diary_id = data['audio_diary_id']
+    #     e_context_manager.delete_environmental_by_audio_diary_id(audio_diary_id)
 
     text_diary_manager = database.TextDiaryManager()
     text_diary_id = text_diary_manager.create_text_diary(data['audio_diary_id'], data['content'])
@@ -893,18 +882,39 @@ def insert_new_diary(data, request):
                 i += 1
             else:
                 break
-
-
-
-    # FILE UPLOAD LOGIC END---------------------------------------------------------------------------------------------
-
-    # NLP PICKLING LOGIC------------------------------------------------------------------------------------------------
+    # FILE UPLOAD LOGIC END---------------------------------------------------------------------
 
     # pickling in thread
     pickle_th = threading.Thread(target=pickling, args=(str(data['user_id']), audio_diary_id, data['content']))
     pickle_th.start()
 
     return audio_diary_id, text_diary_id, mc_id_list
+
+
+def update_diary(data):
+    audio_diary_manager = database.AudioDiaryManager()
+    # DB Transaction
+    # KerError Exception Handling
+    if not ('content' in data) or data['content'] is '' or data['content'] is None:
+        return False
+
+    # UPDATE Text INTO DB
+    audio_diary_id = data['audio_diary_id']
+    updated = audio_diary_manager.update_audio_diary(
+        data['user_id'], data['user_id'], data['title'], data['created_date'])
+    if not updated:
+        return False
+
+    text_diary_manager = database.TextDiaryManager()
+    updated = text_diary_manager.update_text_diary(
+        audio_diary_id, data['content'])
+
+    if not updated:
+        return False
+
+    pickle_th = threading.Thread(target=pickling, args=(str(data['user_id']), audio_diary_id, data['content']))
+    pickle_th.start()
+    return True
 
 
 def pickling(user_id, audio_diary_id, content):

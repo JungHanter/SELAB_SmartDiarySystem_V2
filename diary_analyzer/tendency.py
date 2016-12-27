@@ -482,13 +482,13 @@ class TendencyAnalyzer(object):
         pos_tendency = dict()
         neg_tendency = dict()
         for type, clustering_info in clustering_dict.items():
-            pos_results, neg_result = self.figure_out_best_ta(clustering_info['clusters'],
-                                                              len(preprocessed_diaries),
-                                                              clustering_info['pref_num'])
+            pos_results, neg_results = self.figure_out_best_ta(clustering_info['clusters'],
+                                                               len(preprocessed_diaries),
+                                                               clustering_info['pref_num'])
             if len(pos_results) > 0:
                 pos_tendency[type[0]] = pos_results
-            if len(neg_result) > 0:
-                neg_tendency[type[0]] = neg_result
+            if len(neg_results) > 0:
+                neg_tendency[type[0]] = neg_results
 
             # print("Tendency for %s->%s" % (type[1].capitalize(), type[0].capitalize()))
             # for pos_ta in pos_results:
